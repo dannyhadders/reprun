@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local dev. All optional.
+STRAVA_CLIENT_ID=
+STRAVA_CLIENT_SECRET=
+ALLOWED_EMAIL=
+# DEMO=1 fills an empty database with made-up training history, like the public demo
+DEMO=

@@ -1,0 +1,56 @@
+export const localISO = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+export const today = () => localISO()
+export const daysAgo = (n: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return localISO(d)
+}
+export const parseISO = (s: string) => new Date(s + 'T12:00:00')
+export const daysBetween = (a: string, b: string) => Math.round((parseISO(b).getTime() - parseISO(a).getTime()) / 86_400_000)
+/** Monday of the week containing `iso`. */
+export const weekStart = (iso: string) => {
+  const d = parseISO(iso)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return localISO(d)
+}
+
+export const num = (n: number, dp = 0) => n.toLocaleString('en-GB', { maximumFractionDigits: dp, minimumFractionDigits: 0 })
+export const kg = (n: number | null | undefined) => (n === null || n === undefined ? '–' : `${num(n, 1)} kg`)
+export const km = (m: number | null | undefined, dp = 2) => (m === null || m === undefined ? '–' : `${num(m / 1000, dp)} km`)
+
+export const date = (iso: string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }) =>
+  parseISO(iso).toLocaleDateString('en-GB', opts)
+export const shortDate = (iso: string) => date(iso, { day: 'numeric', month: 'short' })
+export const weekday = (iso: string) => date(iso, { weekday: 'long' })
+export const monthLabel = (iso: string) => date(iso, { month: 'long', year: 'numeric' })
+
+export const ago = (iso: string) => {
+  const d = daysBetween(iso, today())
+  if (d <= 0) return 'Today'
+  if (d === 1) return 'Yesterday'
+  if (d < 7) return `${d} days ago`
+  if (d < 30) return `${Math.floor(d / 7)} wk ago`
+  return shortDate(iso)
+}
+
+export const duration = (s: number | null | undefined) => {
+  if (!s) return '–'
+  const h = Math.floor(s / 3600)
+  const m = Math.round((s % 3600) / 60)
+  return h ? `${h}h ${m}m` : `${m}m`
+}
+export const clock = (s: number) => {
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = Math.round(s % 60)
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`
+}
+/** seconds per km -> "5:26 /km" */
+export const pace = (sPerKm: number | null) => (sPerKm ? `${clock(sPerKm)} /km` : '–')
+
+export const plural = (n: number, word: string, many = word + 's') => `${num(n)} ${n === 1 ? word : many}`
+export const greeting = () => {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "reprun",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  // Off so the only way in is your domain, behind Cloudflare Access.
+  "workers_dev": false,
+  // Your own values: either edit these two placeholders, or leave them and set REPRUN_DOMAIN and
+  // REPRUN_DATABASE_ID as build variables in Cloudflare (scripts/config.mjs swaps them in at build time).
+  "routes": [{ "pattern": "gym.example.com", "custom_domain": true }],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    // API routes must reach the worker even on a full-page navigation (e.g. the Strava redirect).
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "reprun",
+      "database_id": "YOUR_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Secrets (Cloudflare dashboard, or `npx wrangler secret put NAME`):
+  //   ALLOWED_EMAIL         the email you sign in to Cloudflare Access with; the API refuses anyone else
+  //   STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET   optional, for Strava sync
+
+  "env": {
+    // The public demo (built with CLOUDFLARE_ENV=demo): made-up data, no sign-in, wiped at 03:00 UTC.
+    // Not needed for your own copy; delete this block or point it at your own domain and database.
+    "demo": {
+      "routes": [{ "pattern": "demo.danielhadaway.dev", "custom_domain": true }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "reprun-demo",
+          "database_id": "62ce7fcb-6e66-46d4-a3f9-573d3b0fe9a6",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "vars": { "DEMO": "1" },
+      "triggers": { "crons": ["0 3 * * *"] }
+    }
+  }
+}
