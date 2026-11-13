@@ -1,11 +1,12 @@
 {
   "name": "RepRun",
   "short_name": "RepRun",
-  "start_url": "/log",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0a0c11",
   "theme_color": "#0a0c11",
+  "shortcuts": [{ "name": "Start workout", "short_name": "Start", "url": "/log" }],
   "icons": [
     { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }

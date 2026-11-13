@@ -73,14 +73,48 @@ Right now anyone with the address can see and edit your data. Put a login in fro
 
 Check it: open your address in a private window. You should get Cloudflare's sign-in page.
 
+### 6b. Let the app icons through the login (Optional)
+
+Without this step, adding RepRun to an iPhone home screen gives a blank or screenshot icon. iOS
+fetches the icon without your login, so it gets the sign-in page instead of the image. The icon
+files are public in this repo anyway, so making them public exposes nothing.
+
+Don't add this to the application from step 6: its rules cover the whole site, and an "everyone"
+rule there would open your data. Make a second, smaller application instead. Cloudflare uses the
+most specific address, so these four files skip the login and everything else stays locked.
+
+1. **Zero Trust → Access → Applications → Add an application → Self-hosted**.
+2. Name: `RepRun icons`.
+3. Destinations (**Add public hostname** for each), all with your subdomain and domain from step 3,
+   and these paths (no leading `/`):
+   `apple-touch-icon.png`, `icon-512.png`, `favicon.svg`, `og.png`
+4. Policy: name `Public icons`, Action **Bypass** (no login at all, which is not the same as
+   Allow), Include → **Everyone**.
+5. Leave everything else at the defaults and **Save**.
+
+Check it:
+
+```sh
+curl -I https://gym.yourname.com/apple-touch-icon.png   # want: 200 and content-type: image/png
+```
+
+A `302` pointing at `cloudflareaccess.com` means it isn't applied yet. Wait a minute, and check the
+paths for typos. Your address in a private window should still ask you to sign in.
+
 ## 7. Put it on your phone
 
 **iPhone:** open your address in **Safari**, sign in, then **Share → Add to Home Screen**. It opens
-straight to the workout logger, full screen, with no browser bars.
+full screen on your dashboard, with no browser bars. The big **+** starts a workout.
 
-**Android:** open it in Chrome, then **⋮ → Add to Home screen**.
+**Android:** open it in Chrome, then **⋮ → Add to Home screen**. Long-press the icon for a
+**Start workout** shortcut.
 
 No App Store and no developer account needed.
+
+Wrong or old icon? iOS saves the icon when you add the app and never checks again. Long-press it
+→ **Remove App** → **Delete Bookmark**, then add it again from Safari. This only removes the
+shortcut, not your data. Don't clear Safari's website data to fix it: that also deletes workouts
+still waiting to upload.
 
 ## 8. Optional: Strava
 
