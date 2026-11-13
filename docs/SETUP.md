@@ -92,6 +92,12 @@ No App Store and no developer account needed.
 
 ---
 
+## Link previews (optional)
+
+`index.html` points its preview image at the public demo. If you'll share links to your own copy,
+change `og:image` to `https://<your address>/og.png`. Most copies sit behind a login, though, and
+then link previews show the Cloudflare sign-in page whatever you set.
+
 ## Keeping up to date
 
 On your fork's GitHub page, click **Sync fork**. That push deploys, and any new database changes

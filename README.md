@@ -1,5 +1,7 @@
 # RepRun
 
+![RepRun](public/og.png)
+
 A private gym and running dashboard you host yourself, for free, on Cloudflare.
 
 **Try it:** <https://demo.danielhadaway.dev> (made-up data, resets every night)
