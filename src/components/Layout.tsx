@@ -77,7 +77,7 @@ export function Layout() {
         <p className="mt-auto px-2 text-xs text-muted">Lift. Run. Repeat.</p>
       </aside>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 md:px-8 md:pb-12 md:pt-10">
+      <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8 md:pb-12 md:pt-10">
         {data.demo && (
           <p className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
             <b>Demo</b> with made-up data: click around, log a workout, break things. It all resets every night.{' '}

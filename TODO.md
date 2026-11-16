@@ -4,7 +4,8 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 
 ## Bugs
 
-- [x] **Workout stuck "saved on this phone, not uploaded"**: Try again failed, Sign in again went to the home page and the workout disappeared from view. Show pending uploads everywhere, retry on open, return to the same page after sign-in, and say clearly when the sign-in has expired.
+- [x] **Workout stuck "saved on this phone, not uploaded"**: Try again failed, Sign in again went to the home page and the workout disappeared from view. Show pending uploads everywhere, retry on open, return to the same page after sign-in, and say clearly when the sign-in has expired. Real cause: the API started requiring the ALLOWED_EMAIL secret (5c7f7cc) and the worker had none, so every request got a 403 since midday.
+- [x] **Banner under the status bar**: page had no safe-area top padding.
 
 ## Logging a workout
 
