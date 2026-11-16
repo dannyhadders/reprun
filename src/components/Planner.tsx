@@ -4,7 +4,7 @@ import { estimateS, formatLine, parsePlan, roughTime, targetText, type PlanItem 
 import type { Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
-import { haptic } from '../lib/haptic'
+import { Tap } from '../lib/haptic'
 import { Icon } from './Layout'
 import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../lib/session'
 
@@ -13,12 +13,12 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
   const { data, model } = useData()
   const [editing, setEditing] = useState<Routine | 'new' | null>(null)
   const [open, setOpen] = useState<string | null>(null) // which row is showing its preview
-  const toggle = (k: string) => (haptic(), setOpen(open === k ? null : k))
+  const toggle = (k: string) => setOpen(open === k ? null : k)
   const last = (name: string) => {
     const id = data.exercises.find(e => e.name === name)?.id
     return (id && model.exHistory.get(id)?.at(-1)?.sets) || []
   }
-  const go = (a: Active) => (haptic(), begin(a))
+  const go = (a: Active) => begin(a)
 
   // A routine counts as done when a workout carries its name (starting one sets the title).
   const routines = data.routines.map(r => ({ r, items: parsePlan(r.body).flatMap(x => x.items), last: model.sessions.find(s => s.workout && s.title === r.name)?.date ?? null }))
@@ -38,31 +38,31 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
         <section className="rounded-2xl border border-accent/40 bg-accent/10 p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-accent">Next up</p>
           <h2 className="mt-1 text-xl font-bold">{next.r.name}</h2>
-          <button className="mt-1 w-full text-left text-sm text-muted" aria-expanded={open === 'next'} onClick={() => toggle('next')}>
+          <button className="relative mt-1 w-full text-left text-sm text-muted" aria-expanded={open === 'next'} onClick={() => toggle('next')}><Tap />
             {open === 'next' ? 'Hide exercises' : <>{next.items.slice(0, 4).map(i => i.name).join(' · ')}{next.items.length > 4 ? ` · +${next.items.length - 4} more` : ''}</>} <Chevron open={open === 'next'} />
           </button>
           {open === 'next' && <Preview rows={planRows(next.items)} />}
           <p className="mt-1 text-xs text-muted"><Time s={estimateS(next.items)} /> · {next.last ? `Last done ${ago(next.last).toLowerCase()}` : 'Not done yet'}</p>
-          <button className="btn mt-3 w-full py-3 text-base" onClick={() => go(fromRoutine(next.r, data.exercises, last))}>Start {next.r.name}</button>
+          <button className="relative btn mt-3 w-full py-3 text-base" onClick={() => go(fromRoutine(next.r, data.exercises, last))}><Tap />Start {next.r.name}</button>
         </section>
       )}
 
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-[13px] font-semibold uppercase tracking-wider text-muted">Routines</h2>
-          <button className="btn-ghost py-1.5" onClick={() => (haptic(), setEditing('new'))}>+ Import plan</button>
+          <button className="relative btn-ghost py-1.5" onClick={() => setEditing('new')}><Tap />+ Import plan</button>
         </div>
         {routines.length ? (
           <ul className="divide-y divide-line rounded-2xl border border-line bg-surface">
             {routines.map(({ r, items, last: when }) => (
               <li key={r.id} className="p-3">
                 <div className="flex items-center gap-2">
-                  <button className="min-w-0 flex-1 text-left" aria-expanded={open === `r${r.id}`} onClick={() => toggle(`r${r.id}`)}>
+                  <button className="relative min-w-0 flex-1 text-left" aria-expanded={open === `r${r.id}`} onClick={() => toggle(`r${r.id}`)}><Tap />
                     <p className="truncate font-semibold">{r.name} <Chevron open={open === `r${r.id}`} /></p>
                     <p className="truncate text-xs text-muted"><Time s={estimateS(items)} /> · {plural(items.length, 'exercise')} · {when ? ago(when) : 'not done yet'}</p>
                   </button>
-                  <button className="icon-btn" aria-label={`Edit ${r.name}`} onClick={() => (haptic(), setEditing(r))}>✎</button>
-                  <button className="btn py-1.5" onClick={() => go(fromRoutine(r, data.exercises, last))}>Start</button>
+                  <button className="relative icon-btn" aria-label={`Edit ${r.name}`} onClick={() => setEditing(r)}><Tap />✎</button>
+                  <button className="relative btn py-1.5" onClick={() => go(fromRoutine(r, data.exercises, last))}><Tap />Start</button>
                 </div>
                 {open === `r${r.id}` && (
                   <Preview rows={planRows(items)} />
@@ -80,11 +80,11 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
             {recent.map(s => (
               <li key={s.key} className="p-3">
                 <div className="flex items-center gap-2">
-                  <button className="min-w-0 flex-1 text-left" aria-expanded={open === s.key} onClick={() => toggle(s.key)}>
+                  <button className="relative min-w-0 flex-1 text-left" aria-expanded={open === s.key} onClick={() => toggle(s.key)}><Tap />
                     <p className="truncate font-semibold">{s.title} <Chevron open={open === s.key} /></p>
                     <p className="truncate text-xs text-muted"><Time s={s.durationS} approx={s.durationSource === 'estimate'} /> · {fmtDate(s.date, { weekday: 'short', day: 'numeric', month: 'short' })} · {plural(new Set(s.workout!.sets.map(x => x.exercise_id)).size, 'exercise')}</p>
                   </button>
-                  <button className="btn-ghost py-1.5" onClick={() => go(fromWorkout(s.workout!, model.exById))}>Repeat</button>
+                  <button className="relative btn-ghost py-1.5" onClick={() => go(fromWorkout(s.workout!, model.exById))}><Tap />Repeat</button>
                 </div>
                 {open === s.key && <Preview rows={byExercise(s.workout!.sets).map(([id, sets]) => [model.exById.get(id)?.name ?? '?', sets.map(x => `${x.weight_kg ?? 'BW'}×${x.reps ?? '–'}`).join(', '), null])} />}
               </li>
@@ -93,7 +93,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
         </section>
       )}
 
-      <button className="btn-ghost w-full py-3" onClick={() => go(start())}>Empty workout</button>
+      <button className="relative btn-ghost w-full py-3" onClick={() => go(start())}><Tap />Empty workout</button>
     </div>
   )
 }

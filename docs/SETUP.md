@@ -117,7 +117,7 @@ most specific address, so these four files skip the login and everything else st
 1. **Zero Trust → Access → Applications → Add an application → Self-hosted**.
 2. Name: `RepRun icons`.
 3. Destinations (**Add public hostname** for each), all with your address, and these paths (no
-   leading `/`): `apple-touch-icon.png`, `icon-512.png`, `favicon.svg`, `og.png`
+   leading `/`): `apple-touch-icon.png`, `icon-512.png`, `favicon.svg`, `og.jpg`
 4. Policy: name `Public icons`, Action **Bypass** (no login at all, which is not the same as
    Allow), Include → **Everyone**.
 5. Leave everything else at the defaults and **Save**.
@@ -143,7 +143,7 @@ Dashboard → your profile (top right) → **API Tokens** → the token named af
 ## Link previews (optional)
 
 `index.html` points its preview image at the public demo. If you'll share links to your own copy,
-change `og:image` to `https://<your address>/og.png`. Most copies sit behind a login, though, and
+change `og:image` to `https://<your address>/og.jpg`. Most copies sit behind a login, though, and
 then link previews show the Cloudflare sign-in page whatever you set.
 
 ## Keeping up to date

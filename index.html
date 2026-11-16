@@ -20,13 +20,15 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="RepRun" />
     <meta property="og:description" content="Your gym and running log, on your phone. Self-hosted and free on Cloudflare." />
-    <meta property="og:image" content="https://demo.danielhadaway.dev/og.png" />
+    <meta property="og:image" content="https://demo.danielhadaway.dev/og.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>
+    <!-- Target for <Tap /> labels: tapping one flips this, which gives iOS its haptic tick (src/lib/haptic.tsx). -->
+    <input type="checkbox" switch id="haptic" hidden aria-hidden="true" tabindex="-1" />
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

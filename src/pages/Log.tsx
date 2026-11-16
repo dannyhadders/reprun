@@ -4,7 +4,7 @@ import { targetText } from '../../shared/plan'
 import { Planner } from '../components/Planner'
 import type { ImportWorkout, Muscle } from '../../shared/types'
 import { useData } from '../lib/data'
-import { haptic } from '../lib/haptic'
+import { Tap } from '../lib/haptic'
 import { clock, duration, num, plural } from '../lib/format'
 import { beep, flush, loadActive, newExercise, outbox, queue, rememberRest, saveActive, toImport, totals, unlockAudio, type Active } from '../lib/session'
 import { MUSCLES } from '../lib/stats'
@@ -120,7 +120,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           <input className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-ink" placeholder="Workout" value={a.title} onChange={e => update(x => (x.title = e.target.value))} aria-label="Workout name" />
           <p className="text-sm tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · {plural(t.sets, 'set')} · {num(t.volume)} kg</p>
         </div>
-        <button className="btn" onClick={() => (haptic(), finish())}>Finish</button>
+        <button className="relative btn" onClick={finish}><Tap />Finish</button>
       </header>
 
       {a.exercises.map((ex, i) => {
@@ -152,9 +152,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                   <input key={`w${j}`} className="input px-2 text-center" type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || 'BW'} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
                   <input key={`r${j}`} className="input px-2 text-center" type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />,
                   <button key={`d${j}`} aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
-                    className={`h-10 rounded-xl text-lg font-bold transition ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'}`}
+                    className={`relative h-10 rounded-xl text-lg font-bold transition ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'}`}
                     onClick={() => {
-                      haptic()
                       unlockAudio()
                       update(x => {
                         const y = x.exercises[i].sets[j]
@@ -164,7 +163,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         y.done = !y.done
                         x.restEndsAt = y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
                       })
-                    }}>✓</button>,
+                    }}><Tap />✓</button>,
                 ]
               })}
             </div>

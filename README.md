@@ -1,6 +1,6 @@
 # RepRun
 
-![RepRun](public/og.png)
+![RepRun](public/og.jpg)
 
 A private gym and running dashboard you host yourself, for free, on Cloudflare.
 

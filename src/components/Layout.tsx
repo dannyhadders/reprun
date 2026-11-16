@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../lib/data'
-import { haptic } from '../lib/haptic'
+import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
 
 const I = {
@@ -33,14 +33,19 @@ export const Icon = ({ d, className = 'h-5 w-5' }: { d: string; className?: stri
 
 export function Layout() {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const [more, setMore] = useState(false)
   const { data } = useData()
-  const inMore = NAV.some(n => !TABS.includes(n.to) && pathname.startsWith(n.to))
+  const on = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
+  // Like Link: tapping where you already are doesn't stack another back-swipe.
+  const go = (to: string) => navigate(to, { replace: pathname === to })
+  const inMore = NAV.some(n => !TABS.includes(n.to) && on(n.to))
   const tab = (n: (typeof NAV)[number]) => (
-    <NavLink key={n.to} to={n.to} end={n.to === '/'} onClick={haptic} className={({ isActive }) => `flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${isActive ? 'text-accent' : 'text-muted'}`}>
+    <button key={n.to} onClick={() => go(n.to)} aria-current={on(n.to) ? 'page' : undefined} className={`relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${on(n.to) ? 'text-accent' : 'text-muted'}`}>
+      <Tap />
       <Icon d={n.icon} />
       {n.label}
-    </NavLink>
+    </button>
   )
   useEffect(() => {
     window.scrollTo(0, 0)
@@ -84,22 +89,25 @@ export function Layout() {
           <div className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-line bg-surface px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-2.5" onClick={e => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-line" />
             {NAV.filter(n => !TABS.includes(n.to)).map(n => (
-              <Link key={n.to} to={n.to} onClick={() => (haptic(), setMore(false))} className="flex items-center gap-3 border-b border-line px-1 py-3.5 text-[15px]">
+              <button key={n.to} onClick={() => (go(n.to), setMore(false))} className="relative flex w-full items-center gap-3 border-b border-line px-1 py-3.5 text-left text-[15px]">
+                <Tap />
                 <Icon d={n.icon} className="h-5 w-5 text-muted" />{n.label === 'Year' ? 'Year in review' : n.label}
-              </Link>
+              </button>
             ))}
-            <AddWorkout onOpen={haptic} className="flex w-full items-center gap-3 px-1 py-3.5 text-left text-[15px] text-muted" />
+            <AddWorkout className="flex w-full items-center gap-3 px-1 py-3.5 text-left text-[15px] text-muted" />
           </div>
         </div>
       )}
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {tab(NAV[0])}
         {tab(NAV[1])}
-        <Link to="/log" aria-label="Start workout" onClick={haptic} className="-mt-5 grid h-14 w-14 place-self-center place-items-center rounded-full border-4 border-bg text-white shadow-lg shadow-accent/40 grad-bg">
+        <button onClick={() => go('/log')} aria-label="Start workout" className="relative -mt-5 grid h-14 w-14 place-self-center place-items-center rounded-full border-4 border-bg text-white shadow-lg shadow-accent/40 grad-bg">
+          <Tap />
           <Icon d={I.plus} className="h-6 w-6" />
-        </Link>
+        </button>
         {tab(NAV[3])}
-        <button onClick={() => (haptic(), setMore(!more))} aria-expanded={more} className={`flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${more || inMore ? 'text-accent' : 'text-muted'}`}>
+        <button onClick={() => setMore(!more)} aria-expanded={more} className={`relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${more || inMore ? 'text-accent' : 'text-muted'}`}>
+          <Tap />
           <Icon d={I.more} />
           More
         </button>

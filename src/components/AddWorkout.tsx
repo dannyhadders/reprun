@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Tap } from '../lib/haptic'
 import { resolveExercise } from '../../shared/catalogue.ts'
 import type { ImportPayload } from '../../shared/types.ts'
 import { api, useData } from '../lib/data'
@@ -10,7 +11,7 @@ const blank: Row = { exercise: '', reps: '', weight: '' }
 // "45" = minutes, "45:30" = mm:ss, "1:02:30" = h:mm:ss
 const toSeconds = (t: string) => (t.includes(':') ? t.split(':').reduce((a, b) => a * 60 + Number(b), 0) : Number(t) * 60)
 
-export function AddWorkout({ className = '', onOpen }: { className?: string; onOpen?: () => void }) {
+export function AddWorkout({ className = '' }: { className?: string }) {
   const { data, reload } = useData()
   const dlg = useRef<HTMLDialogElement>(null)
   const [kind, setKind] = useState<'strength' | 'run'>('strength')
@@ -23,7 +24,6 @@ export function AddWorkout({ className = '', onOpen }: { className?: string; onO
   const [busy, setBusy] = useState(false)
 
   const open = () => {
-    onOpen?.()
     setDate(today()); setTitle(''); setRows([blank]); setDist(''); setTime(''); setError(null)
     dlg.current?.showModal()
   }
@@ -65,7 +65,7 @@ export function AddWorkout({ className = '', onOpen }: { className?: string; onO
 
   return (
     <>
-      <button className={className} onClick={open} aria-label="Log a workout">+ Add past workout</button>
+      <button className={`relative ${className}`} onClick={open} aria-label="Log a workout"><Tap />+ Add past workout</button>
       <dialog ref={dlg} className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-5 text-ink backdrop:bg-black/60">
         <form method="dialog" className="space-y-4" onSubmit={e => (e.preventDefault(), save())}>
           <div className="flex items-center justify-between gap-3">
