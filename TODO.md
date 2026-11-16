@@ -17,6 +17,10 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [ ] **Tick / untick sets**: already works. Make sure a collapsed exercise shows what's done.
 - [ ] **Confirm removing a set** when it has any data in it.
 
+## Workouts list
+
+- [ ] **Edit instead of delete**: drop the per-set edit/delete icons and the Delete button on each workout. One Edit button opens the whole workout for editing (sets, title, notes), with Delete tucked inside that.
+
 ## Phone feel
 
 - [ ] **No zoom**: stop pinch zoom and the iOS zoom-in when tapping a text box.
