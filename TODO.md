@@ -28,4 +28,4 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 
 ## Settings
 
-- [ ] **About page**: app version and an update log. Add a CLAUDE.md so every commit adds a line to the log.
+- [x] **About page**: app version and an update log. Add a CLAUDE.md so every commit adds a line to the log.

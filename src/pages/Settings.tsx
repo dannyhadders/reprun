@@ -3,7 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import type { ImportResult, Profile } from '../../shared/types'
 import { Card, PageHeader, SourceBadge } from '../components/ui'
 import { api, useData } from '../lib/data'
+import { CHANGELOG } from '../lib/changelog'
 import { date as fmtDate, kg, plural, shortDate } from '../lib/format'
+
+declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 
 export default function Settings() {
   const { data } = useData()
@@ -16,6 +19,7 @@ export default function Settings() {
         {!data.demo && <StravaCard />}
         <BodyWeightLog />
         <SourcesCard />
+        <AboutCard />
       </div>
     </div>
   )
@@ -177,6 +181,21 @@ function SourcesCard() {
           <li key={label} className="flex items-center gap-3"><span className="w-28"><SourceBadge source={s} sample={!!sample} /></span><span className="text-muted">{label}</span></li>
         ))}
       </ul>
+    </Card>
+  )
+}
+
+function AboutCard() {
+  return (
+    <Card title="About" action={<span className="text-xs tabular-nums text-muted">Version {__BUILD__.date} · {__BUILD__.sha}</span>}>
+      <ol className="max-h-96 space-y-4 overflow-y-auto text-sm">
+        {CHANGELOG.map(c => (
+          <li key={c.date}>
+            <p className="font-semibold">{fmtDate(c.date)}</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted">{c.changes.map(x => <li key={x}>{x}</li>)}</ul>
+          </li>
+        ))}
+      </ol>
     </Card>
   )
 }
