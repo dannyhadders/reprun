@@ -4,7 +4,11 @@
 
 A private gym and running dashboard you host yourself, for free, on Cloudflare.
 
-**Try it:** <https://demo.danielhadaway.dev> (made-up data, resets every night)
+**Look around:** <https://demo.danielhadaway.dev> (made-up data, resets every night)
+
+**Use it for real, no setup:** <https://reprun.danielhadaway.dev>. Add it to your home screen and your training stays
+on your phone only: no account, no server. Save a backup file now and then (Settings → Backup); deleting the app
+deletes the data. Restore that file into your own copy whenever you want it synced.
 
 - **Log workouts as you train**, on your phone. It installs to your home screen like an app, keeps
   the screen on, runs a rest timer with a beep, and still works with no signal at the gym.

@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-16',
     changes: [
+      'RepRun with no setup: reprun.danielhadaway.dev keeps everything on your phone, with a reminder to back up after each workout.',
       'Settings → Backup: save everything to one file, and restore it here or into another copy.',
       'Sets read the same everywhere: 60 kg × 8, BW × 12.',
       'Settings → About: app version and this update log.',

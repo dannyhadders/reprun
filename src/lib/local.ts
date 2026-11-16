@@ -4,6 +4,7 @@
 import { isBackup, planRestore, workoutSeen } from '../../shared/backup.ts'
 import { isDate, num, routineOk, setNumbers } from '../../shared/rules.ts'
 import type { Backup, BodyWeight, Data, ImportPayload, ImportResult, Profile, Routine } from '../../shared/types.ts'
+import { localISO } from './format.ts'
 
 declare const __LOCAL__: boolean // vite.config.ts: true only in the phone-only build (CLOUDFLARE_ENV=local)
 /** This is a phone-only copy: no server, everything lives in this browser. */
@@ -21,11 +22,11 @@ export async function startLocal(sample: boolean) {
   // Ask iOS/Android not to clear this site's storage when space runs low. Installed home-screen apps usually get it.
   void (navigator as { storage?: { persist?: () => Promise<boolean> } }).storage?.persist?.().catch(() => false)
   // Fetch the sample code before touching storage: if that fails (offline first open), nothing has changed.
-  const mods = sample ? await Promise.all([import('../../shared/demo.ts'), import('../../shared/strava.ts'), import('./format.ts')]) : null
+  const mods = sample ? await Promise.all([import('../../shared/demo.ts'), import('../../shared/strava.ts')]) : null
   store(blank())
   for (const k of [SAMPLE_KEY, 'reprun.lastBackup']) localStorage.removeItem(k) // a backup of sample data doesn't count
   if (!mods) return
-  const [{ demoData }, { fromStrava, sampleStravaActivities }, { localISO }] = mods
+  const [{ demoData }, { fromStrava, sampleStravaActivities }] = mods
   const today = localISO()
   const d = demoData(today)
   const runs = sampleStravaActivities(today, d.payload.workouts.map(w => w.date)).filter(a => a.sport_type === 'Run').map(a => fromStrava(a, true))

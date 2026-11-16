@@ -9,6 +9,17 @@ import { Card } from './ui'
 const SETUP = 'https://github.com/dannyhadders/reprun/blob/main/docs/SETUP.md'
 const ios = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 const android = () => /Android/.test(navigator.userAgent)
+// The icons iOS shows on those buttons, so the steps match what's on screen.
+const ShareIcon = () => (
+  <svg viewBox="0 0 24 24" className="-mt-1 inline size-[1.15em]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="Share">
+    <path d="M12 3v12M8 7l4-4 4 4M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2" />
+  </svg>
+)
+const AddIcon = () => (
+  <svg viewBox="0 0 24 24" className="-mt-1 inline size-[1.15em]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" role="img" aria-label="Add">
+    <rect x="4" y="4" width="16" height="16" rx="4" /><path d="M12 8.5v7M8.5 12h7" />
+  </svg>
+)
 const installed = () => matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true
 
 /** First run. Shown by DataProvider until the phone picks one of the two buttons. */
@@ -33,7 +44,9 @@ export function Welcome({ onStart }: { onStart: (sample: boolean) => Promise<voi
         {!installed() && (ios() || android()) && (
           <div className={`${tip} border-accent/40 bg-accent/10 text-ink`}>
             <b>First, add it to your home screen</b>
-            {ios() ? <> in Safari: <b>Share → Add to Home Screen</b></> : <>: <b>⋮ → Add to Home screen</b></>}, then open it from there.
+            {ios()
+              ? <> in Safari: tap <b>Share <ShareIcon /></b> (bottom of the screen, or top right on iPad), then <b>Add to Home Screen <AddIcon /></b></>
+              : <>: <b>⋮ → Add to Home screen</b></>}, then open it from there.
             It then works like an app, offline too.{ios() && ' What you log here in Safari stays separate from the app.'}
           </div>
         )}
