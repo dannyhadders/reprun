@@ -125,7 +125,11 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
                 const hint = ex.suggest ?? { weight: p?.weight_kg?.toString() ?? '', reps: p?.reps?.toString() ?? '' }
                 return [
-                  <span key={`n${j}`} className="text-center text-muted">{j + 1}</span>,
+                  // Tap the set number for a note on that set.
+                  <button key={`n${j}`} className="relative text-center text-muted" aria-label={`Note for set ${j + 1}`}
+                    onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
+                    {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
+                  </button>,
                   <span key={`p${j}`} className="truncate text-muted">{p ? `${p.weight_kg ?? 'BW'} × ${p.reps ?? '–'}` : '–'}</span>,
                   <input key={`w${j}`} className="input px-2 text-center" type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || 'BW'} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
                   <input key={`r${j}`} className="input px-2 text-center" type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />,
@@ -142,14 +146,18 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         x.restEndsAt = y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
                       })
                     }}><Tap />✓</button>,
+                  s.note !== undefined && (
+                    <input key={`t${j}`} className="input col-span-5 py-1.5" placeholder={`Note for set ${j + 1}, e.g. felt easy, left shoulder`} aria-label={`Set ${j + 1} note`}
+                      autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))} />
+                  ),
                 ]
               })}
             </div>
             <div className="mt-3 flex gap-2">
-              <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false }))}>+ Set</button>
+              <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false, note: undefined }))}>+ Set</button>
               {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => {
                 const last = ex.sets[ex.sets.length - 1]
-                if ((last.done || last.reps || last.weight) && !confirm(`Remove set ${ex.sets.length} of ${ex.name}? It has data in it.`)) return
+                if ((last.done || last.reps || last.weight || last.note) && !confirm(`Remove set ${ex.sets.length} of ${ex.name}? It has data in it.`)) return
                 update(x => void x.exercises[i].sets.pop())
               }}>− Set</button>}
             </div>
@@ -194,6 +202,9 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           </label>
         )}
       </form>
+
+      <textarea className="input min-h-20" placeholder="Workout notes: how it felt, sleep, anything for next time" aria-label="Workout notes"
+        value={a.notes ?? ''} onChange={e => update(x => void (x.notes = e.target.value))} />
 
       <button className="w-full py-3 text-sm text-bad" onClick={() => confirm('Discard this workout? Nothing will be saved.') && set(null)}>Discard workout</button>
 

@@ -5,7 +5,7 @@ import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, 
 import { api } from './data'
 import { localISO } from './format'
 
-export type LogSet = { reps: string; weight: string; done: boolean } // strings: they're straight from inputs
+export type LogSet = { reps: string; weight: string; done: boolean; note?: string } // strings: they're straight from inputs; note undefined = no note box
 export type LogExercise = {
   name: string
   muscle: Muscle
@@ -15,7 +15,7 @@ export type LogExercise = {
   suggest?: { weight: string; reps: string } // progression pick, shown as placeholders
   collapsed?: boolean // folded away in the logger; ticked count still shows
 }
-export type Active = { clientId: string; startedAt: number; title: string; exercises: LogExercise[]; restEndsAt: number | null }
+export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null }
 
 const KEY = { active: 'reprun.active', outbox: 'reprun.outbox', rest: 'reprun.rest' }
 const DEFAULT_REST = 90
@@ -100,7 +100,7 @@ export function toImport(a: Active, endedAt = Date.now()): ImportWorkout {
   return {
     date: localISO(new Date(a.startedAt)),
     title: a.title.trim() || null,
-    notes: null,
+    notes: a.notes?.trim() || null,
     source: 'app',
     duration_s: Math.round((endedAt - a.startedAt) / 1000),
     client_id: a.clientId,
@@ -108,7 +108,7 @@ export function toImport(a: Active, endedAt = Date.now()): ImportWorkout {
       const lift = resolveExercise(e.name, null).lift ?? null
       return e.sets.filter(validSet).map(s => ({
         exercise: e.name, muscle: e.muscle, lift, position: position++,
-        weight_kg: s.weight === '' ? null : +s.weight, reps: +s.reps, seconds: null, notes: null,
+        weight_kg: s.weight === '' ? null : +s.weight, reps: +s.reps, seconds: null, notes: s.note?.trim() || null,
       }))
     }),
   }
