@@ -122,9 +122,12 @@ export function queue(w: ImportWorkout) {
 }
 
 /** Uploads everything queued. Each one leaves the outbox only after the server accepted it; client_id makes retries safe. */
-export async function flush(): Promise<{ sent: number; error: string | null }> {
+let running: Promise<{ sent: number; error: string | null }> | null = null
+export const flush = () => (running ??= send().finally(() => (running = null))) // one upload at a time
+
+async function send() {
   let sent = 0
-  for (const w of outbox()) {
+  for (let w: ImportWorkout | undefined; (w = outbox()[0]); sent++) { // re-read each time: a workout finished mid-upload goes up too
     const payload: ImportPayload = { workouts: [w], activities: [], records: [], goals: [] }
     try {
       await api('POST', 'import', payload)
@@ -132,7 +135,6 @@ export async function flush(): Promise<{ sent: number; error: string | null }> {
       return { sent, error: e instanceof Error ? e.message : String(e) }
     }
     write(KEY.outbox, outbox().filter(x => x.client_id !== w.client_id))
-    sent++
   }
   return { sent, error: null }
 }

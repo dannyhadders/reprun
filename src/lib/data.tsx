@@ -1,18 +1,32 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Data } from '../../shared/types.ts'
 import { sessionLines } from './motivation.ts'
+import { flush, outbox } from './session.ts'
 import { buildModel, type Model } from './stats.ts'
 
-type Ctx = { data: Data; model: Model; lines: Map<string, string>; reload: () => Promise<void> }
+export type Upload = { state: 'sending' | 'sent' | 'queued'; error?: string }
+type Ctx = {
+  data: Data; model: Model; lines: Map<string, string>; reload: () => Promise<void>
+  pending: number; upload: Upload | null; sync: () => Promise<void> // finished workouts still on this phone
+}
 const DataCtx = createContext<Ctx | null>(null)
 const CACHE = 'reprun.data'
 
 export async function api<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`/api/${path}`, {
-    method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  let res: Response
+  try {
+    res = await fetch(`/api/${path}`, {
+      method,
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      // Cloudflare Access answers an expired session with a redirect to its login page. Followed, that's a
+      // cross-origin fetch the browser blocks with a vague "Load failed"; caught here, it can say what happened.
+      redirect: 'manual',
+    })
+  } catch {
+    throw new Error('No signal')
+  }
+  if (res.type === 'opaqueredirect') throw new Error('Sign-in expired')
   const out = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error((out as { error?: string }).error ?? `Request failed (${res.status})`)
   return out as T
@@ -21,6 +35,8 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<Data | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pending, setPending] = useState(() => outbox().length)
+  const [upload, setUpload] = useState<Upload | null>(null)
   const reload = useCallback(async () => {
     try {
       const d = await api<Data>('GET', 'data')
@@ -38,11 +54,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
     void reload()
   }, [reload])
 
+  // Finished workouts go up from any page: on open, when the app comes back to the front, and when signal returns.
+  const sync = useCallback(async () => {
+    setPending(outbox().length)
+    if (!outbox().length) return
+    setUpload({ state: 'sending' })
+    const r = await flush()
+    setPending(outbox().length)
+    setUpload(r.error ? { state: 'queued', error: r.error } : { state: 'sent' })
+    if (r.sent) await reload()
+  }, [reload])
+  useEffect(() => {
+    const front = () => document.visibilityState === 'visible' && void sync()
+    void sync()
+    window.addEventListener('online', sync)
+    document.addEventListener('visibilitychange', front)
+    return () => (window.removeEventListener('online', sync), document.removeEventListener('visibilitychange', front))
+  }, [sync])
+
   const value = useMemo(() => {
     if (!data) return null
     const model = buildModel(data)
-    return { data, model, lines: sessionLines(model), reload }
-  }, [data, reload])
+    return { data, model, lines: sessionLines(model), reload, pending, upload, sync }
+  }, [data, reload, pending, upload, sync])
 
   // ponytail: matches the worker's "Almost there" message rather than adding an error code.
   if (error?.startsWith('Almost there') && !data) return <FinishSetup />

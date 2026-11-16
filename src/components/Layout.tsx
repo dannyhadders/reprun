@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../lib/data'
+import { plural } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
 
@@ -81,6 +82,7 @@ export function Layout() {
             <a className="font-semibold text-accent underline" href="https://github.com/dannyhadders/reprun">Host your own →</a>
           </p>
         )}
+        <Outbox className="mb-5" />
         <Outlet />
       </main>
 
@@ -112,6 +114,24 @@ export function Layout() {
           More
         </button>
       </nav>
+    </div>
+  )
+}
+
+/** Finished workouts that haven't reached the server yet. Shown on every page until they're up. */
+export function Outbox({ className = '' }: { className?: string }) {
+  const { pending, upload, sync } = useData()
+  if (!pending) return null
+  const sending = upload?.state === 'sending'
+  return (
+    <div className={`rounded-2xl border border-pb/40 bg-pb/10 p-4 text-sm ${className}`}>
+      <p>{plural(pending, 'workout')} saved on this phone, not uploaded yet. It's safe here until it goes up.</p>
+      {upload?.error && <p className="mt-1 text-muted">Last try: {upload.error}.</p>}
+      <div className="mt-3 flex gap-2">
+        <button className="btn-ghost" disabled={sending} onClick={() => void sync()}>{sending ? 'Uploading…' : 'Try again'}</button>
+        {/* A full page load goes through Cloudflare Access, which renews an expired session and comes back here. */}
+        <a className="btn-ghost" href={location.pathname}>Sign in again</a>
+      </div>
     </div>
   )
 }

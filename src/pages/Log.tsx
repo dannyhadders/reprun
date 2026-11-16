@@ -1,45 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
+import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
 import type { ImportWorkout, Muscle } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { clock, duration, num, plural } from '../lib/format'
-import { beep, flush, loadActive, newExercise, outbox, queue, rememberRest, saveActive, toImport, totals, unlockAudio, type Active } from '../lib/session'
+import { beep, loadActive, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, type Active } from '../lib/session'
 import { MUSCLES } from '../lib/stats'
 
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
-type Upload = { state: 'sending' | 'sent' | 'queued'; error?: string }
 
 export default function Log() {
-  const { reload } = useData()
+  const { sync } = useData()
   const [active, setActiveRaw] = useState(loadActive)
   const [finished, setFinished] = useState<ImportWorkout | null>(null)
-  const [upload, setUpload] = useState<Upload | null>(null)
-  const [pending, setPending] = useState(() => outbox().length)
   const setActive = (a: Active | null) => (saveActive(a), setActiveRaw(a))
-
-  const send = async () => {
-    setUpload({ state: 'sending' })
-    const r = await flush()
-    setPending(outbox().length)
-    setUpload(r.error ? { state: 'queued', error: r.error } : { state: 'sent' })
-    if (r.sent) await reload()
-  }
-
-  // Anything finished offline goes up as soon as there's signal.
-  useEffect(() => {
-    const retry = async () => {
-      if (!outbox().length) return
-      const r = await flush()
-      setPending(outbox().length)
-      if (r.sent) await reload()
-    }
-    void retry()
-    window.addEventListener('online', retry)
-    return () => window.removeEventListener('online', retry)
-  }, [reload])
 
   const finish = (a: Active) => {
     if (!totals(a).sets) return confirm('No sets ticked off. Discard this workout?') && setActive(null)
@@ -47,28 +24,14 @@ export default function Log() {
     queue(w)
     setActive(null)
     setFinished(w)
-    void send()
+    void sync()
   }
 
   return (
     <div className="mx-auto min-h-dvh max-w-xl px-4 pb-40 pt-[max(1rem,env(safe-area-inset-top))]">
-      {finished ? <Summary w={finished} upload={upload} retry={send} done={() => (setFinished(null), setUpload(null))} />
+      {finished ? <Summary w={finished} done={() => setFinished(null)} />
         : active ? <Workout a={active} set={setActive} finish={() => finish(active)} />
-        : <Planner begin={setActive}>{pending > 0 && <Outbox n={pending} upload={upload} retry={send} />}</Planner>}
-    </div>
-  )
-}
-
-function Outbox({ n, upload, retry }: { n: number; upload: Upload | null; retry: () => void }) {
-  return (
-    <div className="rounded-2xl border border-pb/40 bg-pb/10 p-4 text-sm">
-      <p>{plural(n, 'workout')} saved on this phone, not uploaded yet.</p>
-      {upload?.error && <p className="mt-1 text-muted">Last try: {upload.error}. No signal, or your sign-in expired.</p>}
-      <div className="mt-3 flex gap-2">
-        <button className="btn-ghost" disabled={upload?.state === 'sending'} onClick={retry}>{upload?.state === 'sending' ? 'Uploading…' : 'Try again'}</button>
-        {/* A full page load goes through Cloudflare Access, which is how an expired session gets renewed. */}
-        <a className="btn-ghost" href="/">Sign in again</a>
-      </div>
+        : <Planner begin={setActive}><Outbox /></Planner>}
     </div>
   )
 }
@@ -211,8 +174,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   )
 }
 
-function Summary({ w, upload, retry, done }: { w: ImportWorkout; upload: Upload | null; retry: () => void; done: () => void }) {
-  const { model } = useData()
+function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
+  const { model, pending } = useData()
   const nav = useNavigate()
   const pbs = model.sessions.find(s => s.workout?.client_id === w.client_id)?.pbs ?? 0
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
@@ -226,7 +189,7 @@ function Summary({ w, upload, retry, done }: { w: ImportWorkout; upload: Upload 
         <div><div className="text-xl font-bold">{num(volume)} kg</div><div className="text-xs text-muted">Volume</div></div>
       </div>
       {pbs > 0 && <p className="font-semibold text-pb">🏆 {plural(pbs, 'PB')}</p>}
-      {upload?.state === 'queued' ? <Outbox n={outbox().length} upload={upload} retry={retry} /> : <p className="text-sm text-muted">{upload?.state === 'sent' ? 'Uploaded.' : 'Uploading…'}</p>}
+      {pending ? <Outbox /> : <p className="text-sm text-muted">Uploaded.</p>}
       <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>
     </div>
   )
