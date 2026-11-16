@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "node scripts/config.mjs && tsc -b && vite build",
     "build:demo": "CLOUDFLARE_ENV=demo npm run build",
+    "build:local": "CLOUDFLARE_ENV=local npm run build",
+    "deploy:local": "npm run build:local && wrangler deploy",
     "lint": "oxlint",
     "preview": "vite preview",
     "db:migrate": "wrangler d1 migrations apply DB --local",

@@ -4,6 +4,7 @@ import { isBackup, toBackup } from '../../shared/backup'
 import type { ImportResult, Profile } from '../../shared/types'
 import { Card, PageHeader, SourceBadge } from '../components/ui'
 import { api, useData } from '../lib/data'
+import { LOCAL } from '../lib/local'
 import { CHANGELOG } from '../lib/changelog'
 import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/format'
 
@@ -18,7 +19,7 @@ export default function Settings() {
         <ProfileCard />
         <BackupCard />
         {!data.demo && <ImportCard />}
-        {!data.demo && <StravaCard />}
+        {!data.demo && !LOCAL && <StravaCard />}
         <BodyWeightLog />
         <SourcesCard />
         <AboutCard />

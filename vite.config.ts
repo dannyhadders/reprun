@@ -9,5 +9,9 @@ const sha = process.env.WORKERS_CI_COMMIT_SHA ?? (() => { try { return execSync(
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), cloudflare()],
-  define: { __BUILD__: JSON.stringify({ sha: sha.trim().slice(0, 7), date: new Date().toISOString().slice(0, 10) }) },
+  define: {
+    __BUILD__: JSON.stringify({ sha: sha.trim().slice(0, 7), date: new Date().toISOString().slice(0, 10) }),
+    // Phone-only build (reprun.danielhadaway.dev): data in the browser instead of the Worker. Dead code everywhere else.
+    __LOCAL__: JSON.stringify(process.env.CLOUDFLARE_ENV === 'local'),
+  },
 })

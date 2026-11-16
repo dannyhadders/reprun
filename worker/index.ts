@@ -1,5 +1,6 @@
 import type { Activity, Backup, BodyWeight, Data, Exercise, Goal, ImportActivity, ImportPayload, ImportResult, Profile, RecordRow, Routine, Workout, WorkoutSet } from '../shared/types.ts'
-import { activityKey, goalKey, isBackup, recordKey, routineKey, workoutKey } from '../shared/backup.ts'
+import { isBackup, planRestore, workoutSeen } from '../shared/backup.ts'
+import { isDate, num, routineOk, setNumbers } from '../shared/rules.ts'
 import { demoData } from '../shared/demo.ts'
 import { fromStrava, sampleStravaActivities, type StravaActivity } from '../shared/strava.ts'
 
@@ -16,12 +17,12 @@ type Env = {
 
 const json = (body: unknown, status = 200) => Response.json(body, { status })
 const bad = (msg: string, status = 400) => json({ error: msg }, status)
-const num = (v: unknown) => (v === null || v === '' || v === undefined ? null : Number.isFinite(Number(v)) ? Number(v) : NaN)
 
 export default {
   async fetch(req, env): Promise<Response> {
     const url = new URL(req.url)
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req)
+    if (!env.DB) return bad('This copy keeps everything on your phone; it has no server data', 404) // the phone-only build
 
     // Cloudflare Access sits in front of every real copy. Local dev and the public demo skip sign-in.
     const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
@@ -82,8 +83,9 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (m === 'DELETE') return (await db.prepare('DELETE FROM sets WHERE id = ?').bind(id).run(), json({ ok: true }))
     if (m === 'PATCH') {
       const b = (await req.json()) as Partial<WorkoutSet>
-      const [w, r, s] = [num(b.weight_kg), num(b.reps), num(b.seconds)]
-      if ([w, r, s].some(x => Number.isNaN(x) || (x !== null && x < 0))) return bad('Weight, reps and seconds must be positive numbers')
+      const v = setNumbers(b)
+      if (typeof v === 'string') return bad(v)
+      const [w, r, s] = v
       await db.prepare('UPDATE sets SET weight_kg = ?, reps = ?, seconds = ?, notes = ? WHERE id = ?').bind(w, r, s, b.notes ?? null, id).run()
       return json({ ok: true })
     }
@@ -110,7 +112,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (m === 'POST') {
       const b = (await req.json()) as BodyWeight
       const kg = num(b.kg)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date) || kg === null || Number.isNaN(kg) || kg <= 0) return bad('Need a date and a weight')
+      if (!isDate(b.date) || kg === null || Number.isNaN(kg) || kg <= 0) return bad('Need a date and a weight')
       await db.prepare('INSERT INTO body_weight (date, kg, source) VALUES (?, ?, ?) ON CONFLICT(date) DO UPDATE SET kg = excluded.kg').bind(b.date, kg, 'manual').run()
       return json({ ok: true })
     }
@@ -120,13 +122,13 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
   if (resource === 'routines') {
     if (m === 'POST') {
       const list = ((await req.json()) as { routines: Partial<Routine>[] }).routines
-      if (!Array.isArray(list) || !list.length || list.length > 50 || !list.every(ok)) return bad('Each routine needs a name and some exercises')
+      if (!Array.isArray(list) || !list.length || list.length > 50 || !list.every(routineOk)) return bad('Each routine needs a name and some exercises')
       await db.batch(list.map(r => db.prepare('INSERT INTO routines (name, body) VALUES (?, ?)').bind(r.name!.trim(), r.body)))
       return json({ ok: true })
     }
     if (m === 'PUT' && id) {
       const r = (await req.json()) as Partial<Routine>
-      if (!ok(r)) return bad('A routine needs a name and some exercises')
+      if (!routineOk(r)) return bad('A routine needs a name and some exercises')
       await db.prepare('UPDATE routines SET name = ?, body = ? WHERE id = ?').bind(r.name!.trim(), r.body, id).run()
       return json({ ok: true })
     }
@@ -174,9 +176,6 @@ async function loadAll(env: Env): Promise<Data> {
   }
 }
 
-const ok = (r: Partial<Routine>) => typeof r.name === 'string' && !!r.name.trim() && r.name.length <= 100 && typeof r.body === 'string' && !!r.body.trim() && r.body.length <= 10_000
-const isDate = (s: unknown) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)
-
 /** Spreadsheet imports, logger uploads and backup restores. A backup merges: anything already here is left as it is. */
 async function importPayload(db: D1Database, p: ImportPayload | Backup): Promise<ImportResult> {
   const result: ImportResult = { workouts: 0, skipped: [], sets: 0, activities: 0, records: 0, goals: 0 }
@@ -195,21 +194,16 @@ async function importPayload(db: D1Database, p: ImportPayload | Backup): Promise
   // and never overwrites edits made in the app.
   // App uploads carry a client_id instead, so a retried upload is skipped but two sessions in one day are kept.
   const rows = (await db.prepare('SELECT date, source, title, client_id FROM workouts').all()).results as Pick<Workout, 'date' | 'source' | 'title' | 'client_id'>[]
-  const existing = new Set(rows.map(w => `${w.date}|${w.source}`))
-  const clientIds = new Set(rows.map(w => w.client_id))
-  const keys = new Set(rows.map(workoutKey))
+  const seen = workoutSeen(rows, backup)
   // One batch for every new workout and its sets: it saves completely or not at all, and counts as a single
   // D1 query (the Free plan allows 50 per request). Sets find their workout as the newest row, which is safe
   // because a batch runs as one transaction.
   const writes: D1PreparedStatement[] = []
   for (const w of p.workouts) {
-    const seen = backup ? keys.has(workoutKey(w)) : w.client_id ? clientIds.has(w.client_id) : w.source === 'sheet' && existing.has(`${w.date}|${w.source}`)
-    if (seen) {
+    if (seen(w)) {
       result.skipped.push(w.date)
       continue
     }
-    keys.add(workoutKey(w))
-    if (w.client_id) clientIds.add(w.client_id)
     writes.push(db.prepare('INSERT INTO workouts (date, title, notes, source, duration_s, client_id) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(w.date, w.title ?? null, w.notes ?? null, w.source, w.duration_s ?? null, w.client_id ?? null))
     for (const s of w.sets) {
@@ -242,32 +236,24 @@ async function importPayload(db: D1Database, p: ImportPayload | Backup): Promise
   return result
 }
 
-/** The rest of a backup restore: only adds what's missing, never changes or deletes. */
+/** The rest of a backup restore (shared/backup.ts planRestore): only adds what's missing, never changes or deletes. */
 async function restoreRest(db: D1Database, b: Backup) {
   const all = async <T,>(sql: string) => (await db.prepare(sql).all()).results as T[]
-  const [acts, recs, goals, routines, bw] = await Promise.all([
+  const [activities, records, goals, routines, bodyWeight] = await Promise.all([
     all<Activity>('SELECT * FROM activities'), all<RecordRow>('SELECT * FROM records'), all<Goal>('SELECT * FROM goals'), all<Routine>('SELECT * FROM routines'), all<BodyWeight>('SELECT date FROM body_weight'),
   ])
-  const has = <T,>(rows: T[], key: (x: T) => string) => { const s = new Set(rows.map(key)); return (x: T) => s.has(key(x)) }
-  const actHas = has(acts, activityKey), recHas = has(recs, recordKey), goalHas = has(goals, goalKey), routineHas = has(routines, routineKey)
-  const newActs = b.activities.filter(a => !actHas(a as Activity))
-  const newRecs = b.records.filter(r => !recHas(r as RecordRow))
-  const newGoals = b.goals.filter(g => !goalHas(g as Goal))
-  const list = <T,>(x: T[] | undefined) => (Array.isArray(x) ? x : [])
-  const newRoutines = list(b.routines).filter(r => ok(r) && !routineHas(r as Routine))
-  const dates = new Set(bw.map(w => w.date))
-  const weights = list(b.bodyWeight).filter(w => isDate(w.date) && Number(w.kg) > 0 && !dates.has(w.date))
+  const add = planRestore({ activities, records, goals, routines, bodyWeight }, b)
   await db.batch([
-    ...newActs.map(a => db.prepare(`INSERT OR IGNORE INTO activities (date, start, sport, name, distance_m, moving_s, elapsed_s, elevation_m, avg_hr, notes, source, external_id, sample)
+    ...add.activities.map(a => db.prepare(`INSERT OR IGNORE INTO activities (date, start, sport, name, distance_m, moving_s, elapsed_s, elevation_m, avg_hr, notes, source, external_id, sample)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`).bind(a.date, a.start, a.sport, a.name, a.distance_m, a.moving_s, a.elapsed_s, a.elevation_m, a.avg_hr, a.notes, a.source, a.external_id)),
-    ...newRecs.map(r => db.prepare('INSERT INTO records (category, name, value, date, context, source) VALUES (?, ?, ?, ?, ?, ?)').bind(r.category, r.name, r.value, r.date, r.context, r.source)),
-    ...newGoals.map(g => db.prepare('INSERT INTO goals (exercise, latest, target, context, source) VALUES (?, ?, ?, ?, ?)').bind(g.exercise, g.latest, g.target, g.context, g.source)),
-    ...newRoutines.map(r => db.prepare('INSERT INTO routines (name, body) VALUES (?, ?)').bind(r.name.trim(), r.body)),
-    ...weights.map(w => db.prepare('INSERT OR IGNORE INTO body_weight (date, kg, source) VALUES (?, ?, ?)').bind(w.date, Number(w.kg), w.source ?? 'manual')),
+    ...add.records.map(r => db.prepare('INSERT INTO records (category, name, value, date, context, source) VALUES (?, ?, ?, ?, ?, ?)').bind(r.category, r.name, r.value, r.date, r.context, r.source)),
+    ...add.goals.map(g => db.prepare('INSERT INTO goals (exercise, latest, target, context, source) VALUES (?, ?, ?, ?, ?)').bind(g.exercise, g.latest, g.target, g.context, g.source)),
+    ...add.routines.map(r => db.prepare('INSERT INTO routines (name, body) VALUES (?, ?)').bind(r.name.trim(), r.body)),
+    ...add.bodyWeight.map(w => db.prepare('INSERT OR IGNORE INTO body_weight (date, kg, source) VALUES (?, ?, ?)').bind(w.date, Number(w.kg), w.source ?? 'manual')),
     // Profile only if this copy has none yet.
     ...(b.profile ? [db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('profile', ?)").bind(JSON.stringify(b.profile))] : []),
   ])
-  return { activities: newActs.length, records: newRecs.length, goals: newGoals.length, routines: newRoutines.length, bodyWeight: weights.length }
+  return { activities: add.activities.length, records: add.records.length, goals: add.goals.length, routines: add.routines.length, bodyWeight: add.bodyWeight.length }
 }
 
 async function upsertActivities(db: D1Database, list: ImportActivity[]) {

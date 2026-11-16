@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Data } from '../../shared/types.ts'
+import { local, LOCAL } from './local.ts'
 import { sessionLines } from './motivation.ts'
 import { flush, outbox } from './session.ts'
 import { buildModel, type Model } from './stats.ts'
@@ -13,6 +14,7 @@ const DataCtx = createContext<Ctx | null>(null)
 const CACHE = 'reprun.data'
 
 export async function api<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
+  if (LOCAL) return local<T>(method, path, body)
   let res: Response
   try {
     res = await fetch(`/api/${path}`, {
@@ -42,7 +44,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const d = await api<Data>('GET', 'data')
       setData(d)
       setError(null)
-      try { localStorage.setItem(CACHE, JSON.stringify(d)) } catch { /* full or blocked: just no offline copy */ }
+      if (!LOCAL) try { localStorage.setItem(CACHE, JSON.stringify(d)) } catch { /* full or blocked: just no offline copy */ }
     } catch (e) {
       // Offline at the gym (or Access session expired): carry on with the last copy so the logger still works.
       const cached = (() => { try { return localStorage.getItem(CACHE) } catch { return null } })()

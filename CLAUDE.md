@@ -22,7 +22,8 @@ npm run dev                     # Vite + the Worker locally (http://localhost:51
 npm run db:migrate              # apply migrations to the local D1 (first run, and after adding a migration)
 npm run build                   # scripts/config.mjs, then tsc -b, then vite build → dist/
 npm run lint                    # oxlint
-npx tsx scripts/check-plan.ts   # the only test: assert-based self-check for the plan parser and progression
+npx tsx scripts/check-plan.ts   # assert-based self-check: plan parser and progression
+npx tsx scripts/check-local.ts  # assert-based self-check: the phone-only backend (import, restore, edits)
 ```
 
 Local dev skips sign-in (requests to `localhost`). Put `DEMO=1` in `.dev.vars` to seed made-up history.
@@ -47,6 +48,7 @@ Every `/api` request except on `localhost` and the demo must come through Cloudf
 `wrangler.jsonc` is generic: `workers_dev: true`, D1 `reprun` with no `database_id` (Cloudflare auto-creates it).
 - **The owner's live site**: Workers Builds runs `npm run build` + `npm run release` with build variables `REPRUN_DOMAIN` + `REPRUN_DATABASE_ID`. `scripts/config.mjs` swaps those into `wrangler.jsonc` at build time (custom domain, `workers_dev: false`, pinned database). Setting only one of them fails the build on purpose: no database ID would mean a new, empty database.
 - **Public demo** (`env.demo`, `npm run build:demo` + `npm run release`): `DEMO=1` skips sign-in and Strava, seeds `shared/demo.ts`, and a 03:00 UTC cron wipes and reseeds it.
+- **Phone-only** (`env.local`, Workers Builds: build `npm run build:local` + deploy `npx wrangler deploy`; by hand only `npm run deploy:local`, reprun.danielhadaway.dev): no database, no sign-in. `__LOCAL__` (vite.config.ts) swaps `api()` for `src/lib/local.ts`, which runs the same routes over one `Data` object in localStorage. Import/restore rules live in `shared/backup.ts` and `shared/rules.ts` so the Worker and local.ts can't drift; any new `/api` route needs a local.ts twin. The code is dead (tree-shaken) in every other build: check with `grep -rl reprun.local dist/client`.
 - **Deploy to Cloudflare button**: uses `npm run build` + `npm run deploy` (deploy before migrating, because the database only exists after the first deploy).
 - **`npm run setup`** (`scripts/setup.mjs`): for other people's accounts. Creates a D1 named after the Worker, patches only the build output `dist/reprun/wrangler.json`, and tags its deploys `--message "reprun setup"`. It refuses any existing Worker that doesn't carry that tag; keep that check intact.
 - `wrangler d1 migrations` doesn't follow the vite plugin's `.wrangler/deploy/config.json` redirect, hence `-c dist/reprun/wrangler.json` in the scripts.

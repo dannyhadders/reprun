@@ -42,6 +42,13 @@
       ],
       "vars": { "DEMO": "1" },
       "triggers": { "crons": ["0 3 * * *"] }
+    },
+    // Phone-only (built with CLOUDFLARE_ENV=local): no database and no sign-in. Each visitor's data stays in
+    // their own browser (src/lib/local.ts), so the Worker only serves the app. Workers Builds: build `npm run build:local`,
+    // deploy `npx wrangler deploy`. By hand: `npm run deploy:local` (a bare `wrangler deploy` ships whatever was built last).
+    "local": {
+      "workers_dev": false,
+      "routes": [{ "pattern": "reprun.danielhadaway.dev", "custom_domain": true }]
     }
   }
 }
