@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "db:migrate": "wrangler d1 migrations apply DB --local",
     "seed": "tsx scripts/seed.ts",
-    "deploy": "npm run build && npm run release",
+    "deploy": "(npm run migrate || true) && wrangler deploy && npm run migrate",
+    "migrate": "wrangler d1 migrations apply DB --remote -c dist/reprun/wrangler.json",
     "release": "wrangler d1 migrations apply DB --remote -c dist/reprun/wrangler.json && wrangler deploy",
     "import:strava": "tsx scripts/strava-export.ts"
   },
@@ -36,5 +37,24 @@
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
     "wrangler": "^4.160.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "ALLOWED_EMAIL": {
+        "description": "The email you will sign in with. The app refuses everyone else."
+      },
+      "ACCESS_TEAM": {
+        "description": "Leave empty for now. Filled in when you turn on Cloudflare Access (docs/SETUP.md)."
+      },
+      "ACCESS_AUD": {
+        "description": "Leave empty for now. Filled in when you turn on Cloudflare Access (docs/SETUP.md)."
+      },
+      "STRAVA_CLIENT_ID": {
+        "description": "Optional, for Strava sync. Leave empty to skip."
+      },
+      "STRAVA_CLIENT_SECRET": {
+        "description": "Optional, for Strava sync. Leave empty to skip."
+      }
+    }
   }
 }

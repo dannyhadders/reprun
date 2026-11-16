@@ -1,6 +1,7 @@
-# Copy to .dev.vars for local dev. All optional.
+# Copy to .dev.vars for local dev. All optional. Add DEMO=1 to fill an empty database with made-up
+# training history, like the public demo (never set DEMO on your real site: it switches sign-in off).
 STRAVA_CLIENT_ID=
 STRAVA_CLIENT_SECRET=
 ALLOWED_EMAIL=
-# DEMO=1 fills an empty database with made-up training history, like the public demo
-DEMO=
+ACCESS_TEAM=
+ACCESS_AUD=

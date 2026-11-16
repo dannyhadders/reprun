@@ -1,93 +1,123 @@
 # Set up your own RepRun
 
-**TL;DR:** fork the repo → create a database → put two values in `wrangler.jsonc` → connect the
-fork to Cloudflare → put a login in front of it → add the app to your phone. About 20 minutes,
-all on free plans.
+**TL;DR:** click the button → put a login in front of it → add the app to your phone. About 10
+minutes, all on free plans, and no domain needed.
 
-**You need:** a free [Cloudflare](https://dash.cloudflare.com/sign-up) account, a GitHub account,
-and a domain whose DNS is on Cloudflare. A spare subdomain such as `gym.yourname.com` is fine.
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/dannyhadders/reprun)
+
+**You need:** a free [Cloudflare](https://dash.cloudflare.com/sign-up) account and a GitHub account.
+
+Got a domain and want RepRun on it, e.g. `gym.yourname.com`? Use [Own domain](#own-domain) instead.
 
 ---
 
-## 1. Fork the repo
+## 1. Click the button
 
-On GitHub, click **Fork** on this repo. Your copy is where your settings live, and every push to
-it deploys your site.
+Click **Deploy to Cloudflare** above and sign in to Cloudflare and GitHub. Cloudflare copies RepRun
+into your GitHub, creates the database, and deploys it. Every push to your copy deploys again.
 
-## 2. Create the database
+When it asks for values:
 
-Cloudflare dashboard → **Storage & databases → D1 SQL database → Create database**.
+- `ALLOWED_EMAIL`: the email you'll sign in with. The app refuses everyone else.
+- Leave the rest empty. You'll fill in the `ACCESS_…` ones in step 2. Strava is optional (step 5).
 
-- Name: `reprun`
-- Copy the **Database ID** it shows. You'll need it next.
+When it's done you get an address like `reprun.yourname.workers.dev`. Opening it now says
+"Almost there: turn on Cloudflare Access". That's expected: it stays locked until step 2.
 
-You don't create any tables yourself. Every deploy brings the database up to date.
+> Build failed at the database step (`wrangler d1 migrations`)? The build's token needs database
+> access. See [Let deploys update the database](#let-deploys-update-the-database), then retry the
+> build.
 
-## 3. Put your two values in `wrangler.jsonc`
+## 2. Put a login in front of it
 
-In your fork, edit `wrangler.jsonc` (GitHub's ✎ button works):
+1. Dashboard → **Workers & Pages → reprun → Settings → Domains & Routes**. On the `workers.dev`
+   row, turn on **Cloudflare Access**.
+2. It shows two values. Copy them:
+   - the **Audience (AUD) tag**, a long string of letters and numbers
+   - your **team name**, the part before `.cloudflareaccess.com` in the URL it shows
+3. Same Settings page → **Variables and Secrets → Add**, type **Secret**, twice:
+   `ACCESS_AUD` = the Audience tag, `ACCESS_TEAM` = the team name. Then **Deploy**.
+4. Dashboard → **Zero Trust → Access → Applications** → the new reprun application → check its
+   policy lets in your email (Include → **Emails**). Set **Session duration** to **1 month** so the
+   phone app rarely asks you to sign in again.
 
-| Replace | With |
-|---|---|
-| `gym.example.com` | the address you want, e.g. `gym.yourname.com` |
-| `YOUR_DATABASE_ID` | the ID from step 2 |
+Check it: open your address in a private window. You should get Cloudflare's sign-in page, then
+your (empty) dashboard.
 
-Also delete the `"env": { "demo": … }` block at the bottom. It's for the public demo only.
+Why both a login and the secrets? Access does the sign-in. The secrets let the app check Access's
+signed pass itself, so nobody can get in by pretending to be you.
 
-> Rather keep these out of git? Leave the placeholders and add `REPRUN_DOMAIN` and
-> `REPRUN_DATABASE_ID` as **build variables** in step 4. The build swaps them in.
+## 3. Put it on your phone
 
-## 4. Connect the fork to Cloudflare
+**iPhone:** open your address in **Safari**, sign in, then **Share → Add to Home Screen**. It opens
+full screen on your dashboard, with no browser bars. The big **+** starts a workout.
 
-Dashboard → **Workers & Pages → Create → Import a repository** → pick your fork.
+**Android:** open it in Chrome, then **⋮ → Add to Home screen**. Long-press the icon for a
+**Start workout** shortcut.
 
-- Project name: `reprun` (it must match `"name"` in `wrangler.jsonc`)
-- Build command: `npm run build`
-- Deploy command: `npm run release` (this updates the database tables, then deploys)
+No App Store and no developer account needed.
 
-Save and let the first build run. **It will fail at the database step.** That's expected: the
-build's token can't touch databases yet. Fix it in the next step.
+Wrong or old icon? iOS saves the icon when you add the app and never checks again. Long-press it
+→ **Remove App** → **Delete Bookmark**, then add it again from Safari. This only removes the
+shortcut, not your data. Don't clear Safari's website data to fix it: that also deletes workouts
+still waiting to upload. A blank or screenshot icon means iOS couldn't fetch it through the login:
+see [Let the app icons through the login](#let-the-app-icons-through-the-login-optional).
 
-## 5. Let deploys update the database
+## 4. That's it
 
-Cloudflare made an API token for your builds. Give it database access:
+Log a workout, or paste a plan from your PT: **+ → Import plan**.
 
-Dashboard → your profile (top right) → **API Tokens** → the token named after your Worker build
-→ **Edit** → **Add more** → `Account` · `D1` · `Edit` → **Continue → Update token**.
+## 5. Optional: Strava
 
-Then **Workers & Pages → reprun → Deployments → Retry build**. It should go green, and your
-address starts working within a minute or two. Cloudflare creates the DNS record for you.
+1. Create an app at <https://www.strava.com/settings/api>, with **Authorization Callback Domain**
+   set to your address (no `https://`).
+2. **Workers & Pages → reprun → Settings → Variables and Secrets**, and add two secrets:
+   `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET`, from the Strava app page.
+3. In RepRun: **Settings → Strava → Connect**, then **Sync now**.
 
-## 6. Lock it down (important)
+---
 
-Right now anyone with the address can see and edit your data. Put a login in front of it:
+## Own domain
 
-1. Dashboard → **Zero Trust → Access → Applications → Add an application → Self-hosted**.
-2. Application domain: your address from step 3. Session duration: **1 month**, so the phone app
-   rarely asks you to sign in again.
-3. Add a policy: Action **Allow**, Include → **Emails** → your email. The default one-time PIN
-   login is fine.
-4. Then tell the app who you are, so its API refuses anything that didn't come through that
-   login: **Workers & Pages → reprun → Settings → Variables and Secrets → Add** → type
-   **Secret**, name `ALLOWED_EMAIL`, value your email → **Deploy**.
+Same app on an address like `gym.yourname.com`. You need a domain whose DNS is on Cloudflare.
 
-Check it: open your address in a private window. You should get Cloudflare's sign-in page.
+1. **Fork** this repo on GitHub.
+2. **Create the database:** dashboard → **Storage & databases → D1 SQL database → Create
+   database**, name `reprun`. Copy the **Database ID**.
+3. **Connect the fork:** **Workers & Pages → Create → Import a repository** → pick your fork.
+   - Project name: `reprun`
+   - Build command: `npm run build`
+   - Deploy command: `npm run release` (updates the database tables, then deploys)
+   - **Build variables:** `REPRUN_DOMAIN` = your address, `REPRUN_DATABASE_ID` = the ID from step 2.
+     The build swaps them into `wrangler.jsonc`, so they stay out of git.
 
-### 6b. Let the app icons through the login (Optional)
+   The first build fails at the database step. That's expected; the next step fixes it.
+4. [Let deploys update the database](#let-deploys-update-the-database), then **Deployments →
+   Retry build**. Your address works within a minute or two. Cloudflare creates the DNS record.
+5. **Login:** **Zero Trust → Access → Applications → Add an application → Self-hosted**.
+   Application domain: your address. Session duration: **1 month**. Policy: Action **Allow**,
+   Include → **Emails** → your email.
+6. **Secrets:** **Workers & Pages → reprun → Settings → Variables and Secrets → Add**, type
+   **Secret**: `ALLOWED_EMAIL` = your email. Optionally also `ACCESS_AUD` (the application's
+   Audience tag, under its **Overview**) and `ACCESS_TEAM` (your team name, under **Zero Trust →
+   Settings**) so the app checks Access's signed pass too.
+7. Check it in a private window: you should get Cloudflare's sign-in page. Then [put it on your
+   phone](#3-put-it-on-your-phone).
 
-Without this step, adding RepRun to an iPhone home screen gives a blank or screenshot icon. iOS
+### Let the app icons through the login (optional)
+
+Without this, adding RepRun to an iPhone home screen can give a blank or screenshot icon. iOS
 fetches the icon without your login, so it gets the sign-in page instead of the image. The icon
 files are public in this repo anyway, so making them public exposes nothing.
 
-Don't add this to the application from step 6: its rules cover the whole site, and an "everyone"
+Don't add this to your main login application: its rules cover the whole site, and an "everyone"
 rule there would open your data. Make a second, smaller application instead. Cloudflare uses the
 most specific address, so these four files skip the login and everything else stays locked.
 
 1. **Zero Trust → Access → Applications → Add an application → Self-hosted**.
 2. Name: `RepRun icons`.
-3. Destinations (**Add public hostname** for each), all with your subdomain and domain from step 3,
-   and these paths (no leading `/`):
-   `apple-touch-icon.png`, `icon-512.png`, `favicon.svg`, `og.png`
+3. Destinations (**Add public hostname** for each), all with your address, and these paths (no
+   leading `/`): `apple-touch-icon.png`, `icon-512.png`, `favicon.svg`, `og.png`
 4. Policy: name `Public icons`, Action **Bypass** (no login at all, which is not the same as
    Allow), Include → **Everyone**.
 5. Leave everything else at the defaults and **Save**.
@@ -101,28 +131,12 @@ curl -I https://gym.yourname.com/apple-touch-icon.png   # want: 200 and content-
 A `302` pointing at `cloudflareaccess.com` means it isn't applied yet. Wait a minute, and check the
 paths for typos. Your address in a private window should still ask you to sign in.
 
-## 7. Put it on your phone
+### Let deploys update the database
 
-**iPhone:** open your address in **Safari**, sign in, then **Share → Add to Home Screen**. It opens
-full screen on your dashboard, with no browser bars. The big **+** starts a workout.
+Cloudflare made an API token for your builds. Give it database access:
 
-**Android:** open it in Chrome, then **⋮ → Add to Home screen**. Long-press the icon for a
-**Start workout** shortcut.
-
-No App Store and no developer account needed.
-
-Wrong or old icon? iOS saves the icon when you add the app and never checks again. Long-press it
-→ **Remove App** → **Delete Bookmark**, then add it again from Safari. This only removes the
-shortcut, not your data. Don't clear Safari's website data to fix it: that also deletes workouts
-still waiting to upload.
-
-## 8. Optional: Strava
-
-1. Create an app at <https://www.strava.com/settings/api>, with **Authorization Callback Domain**
-   set to your address (no `https://`).
-2. **Workers & Pages → reprun → Settings → Variables and Secrets**, and add two secrets:
-   `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET`, from the Strava app page.
-3. In RepRun: **Settings → Strava → Connect**, then **Sync now**.
+Dashboard → your profile (top right) → **API Tokens** → the token named after your Worker build
+→ **Edit** → **Add more** → `Account` · `D1` · `Edit` → **Continue → Update token**.
 
 ---
 
@@ -134,8 +148,12 @@ then link previews show the Cloudflare sign-in page whatever you set.
 
 ## Keeping up to date
 
-On your fork's GitHub page, click **Sync fork**. That push deploys, and any new database changes
-are applied as part of it. Your data is never touched by updates.
+- **Forked (own domain):** on your fork's GitHub page, click **Sync fork**.
+- **Made with the button:** your copy isn't a fork, so there's no Sync button. In a terminal:
+  `git pull --allow-unrelated-histories https://github.com/dannyhadders/reprun main && git push`.
+
+Either way the push deploys, and any new database changes are applied as part of it. Your data is
+never touched by updates.
 
 ## Backups
 
@@ -156,5 +174,5 @@ it. To run your own:
 1. Create a second database (`reprun-demo`) and put its ID and a domain in the `demo` block.
 2. Import the same repo as a second Worker named `reprun-demo`. Use build command
    `npm run build:demo` and deploy command `npm run release`, then give its token D1 access as in
-   step 5.
+   [Let deploys update the database](#let-deploys-update-the-database).
 3. Don't add an Access login. The demo is meant to be public.

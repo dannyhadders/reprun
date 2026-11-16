@@ -15,8 +15,11 @@ A private gym and running dashboard you host yourself, for free, on Cloudflare.
 - **Runs from Strava**, matched up with your gym days.
 - **Your data stays yours**, in your own Cloudflare database behind your own login.
 
-**Set up your own:** [docs/SETUP.md](docs/SETUP.md) takes about 20 minutes and needs no paid
-plans, just a domain.
+**Set up your own** in about 10 minutes, free, no domain needed:
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/dannyhadders/reprun)
+
+Then follow [docs/SETUP.md](docs/SETUP.md) to add the login and put it on your phone.
 
 ## Stack
 
@@ -34,7 +37,7 @@ scripts/    seed.ts (load a workbook), config.mjs (fills your settings in at bui
 
 ```sh
 npm install
-cp .dev.vars.example .dev.vars   # then set DEMO=1 for made-up data, or leave it empty to start blank
+cp .dev.vars.example .dev.vars   # add DEMO=1 to it for made-up data, or leave it to start blank
 npm run db:migrate               # create the local database (first time only)
 npm run dev                      # http://localhost:5173
 ```

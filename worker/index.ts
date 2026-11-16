@@ -6,6 +6,8 @@ type Env = {
   DB: D1Database
   ASSETS: Fetcher
   ALLOWED_EMAIL?: string
+  ACCESS_TEAM?: string // the <team> in <team>.cloudflareaccess.com
+  ACCESS_AUD?: string // the Access application's Audience (AUD) tag
   DEMO?: string // "1" on the public demo: no sign-in, made-up data, wiped every night
   STRAVA_CLIENT_ID?: string
   STRAVA_CLIENT_SECRET?: string
@@ -20,9 +22,16 @@ export default {
     const url = new URL(req.url)
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(req)
 
-    // Cloudflare Access sits in front in production and adds this header. Locally ALLOWED_EMAIL is empty.
-    if (!env.DEMO && env.ALLOWED_EMAIL && req.headers.get('cf-access-authenticated-user-email') !== env.ALLOWED_EMAIL) {
-      return bad('Not signed in', 401)
+    // Cloudflare Access sits in front of every real copy. Local dev and the public demo skip sign-in.
+    const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
+    if (!env.DEMO && !local) {
+      const jwt = env.ACCESS_AUD && env.ACCESS_TEAM
+      // Anyone can send the email header to a workers.dev address, Access or not, so there it needs the signed token.
+      if (!env.ALLOWED_EMAIL || (!jwt && url.hostname.endsWith('.workers.dev'))) {
+        return bad('Almost there: turn on Cloudflare Access and add its secrets (see docs/SETUP.md)', 403)
+      }
+      const email = jwt ? await accessEmail(req, env.ACCESS_TEAM!, env.ACCESS_AUD!) : req.headers.get('cf-access-authenticated-user-email')
+      if (email?.toLowerCase() !== env.ALLOWED_EMAIL.toLowerCase()) return bad('Not signed in', 401)
     }
 
     try {
@@ -317,4 +326,36 @@ async function stravaToken(env: Env, body: Record<string, string>): Promise<Stra
   if (!res.ok) throw new Error(`Strava token exchange failed (${res.status})`)
   const t = (await res.json()) as StravaTokens
   return { access_token: t.access_token, refresh_token: t.refresh_token, expires_at: t.expires_at }
+}
+
+// Cloudflare Access signs a token (cf-access-jwt-assertion) for every request it lets through.
+// Checking it makes sign-in safe even where the email header could be faked.
+let accessKeys: { team: string; at: number; keys: (JsonWebKey & { kid: string })[] } | undefined
+
+async function accessEmail(req: Request, team: string, aud: string): Promise<string | null> {
+  team = team.replace(/\.cloudflareaccess\.com$/, '')
+  const token = req.headers.get('cf-access-jwt-assertion')
+  if (!token) return null
+  const [h, p, sig] = token.split('.')
+  const b64 = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+  try {
+    const header = JSON.parse(new TextDecoder().decode(b64(h)))
+    const claims = JSON.parse(new TextDecoder().decode(b64(p)))
+    // Keys cached for an hour per isolate; an unknown kid (Access rotated keys) refetches, at most once a minute.
+    const age = accessKeys?.team === team ? Date.now() - accessKeys.at : Infinity
+    const known = () => accessKeys?.keys.find((k) => k.kid === header.kid)
+    if (age > 3600_000 || (!known() && age > 60_000)) {
+      const res = await fetch(`https://${team}.cloudflareaccess.com/cdn-cgi/access/certs`)
+      accessKeys = { team, at: Date.now(), keys: ((await res.json()) as { keys: (JsonWebKey & { kid: string })[] }).keys }
+    }
+    const jwk = known()
+    if (!jwk || header.alg !== 'RS256') return null
+    const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'])
+    const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64(sig), new TextEncoder().encode(`${h}.${p}`))
+    const auds = Array.isArray(claims.aud) ? claims.aud : [claims.aud]
+    if (!ok || !auds.includes(aud) || claims.iss !== `https://${team}.cloudflareaccess.com` || !(claims.exp * 1000 > Date.now())) return null
+    return claims.email ?? null
+  } catch {
+    return null
+  }
 }
