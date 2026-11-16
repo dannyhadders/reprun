@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-16',
     changes: [
+      'Sets read the same everywhere: 60 kg × 8, BW × 12.',
       'Settings → About: app version and this update log.',
       'Leave a workout running: ‹ goes back to the menu, and a bar on every page shows the clock and rest timer.',
       'Notes on a set (tap its number) and on the whole workout.',

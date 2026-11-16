@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../lib/data'
 import { clock, plural, workoutText } from '../lib/format'
-import { beep, loadActive, outbox, saveActive, totals } from '../lib/session'
+import { beep, loadActive, outbox, saveActive, totals, useNow } from '../lib/session'
 import { CopyButton } from './ui'
 import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
@@ -125,11 +125,11 @@ export function Layout() {
 export function Outbox({ className = '' }: { className?: string }) {
   const { pending, upload, sync } = useData()
   if (!pending) return null
-  const sending = upload?.state === 'sending'
+  const { sending } = upload
   return (
     <div className={`rounded-2xl border border-pb/40 bg-pb/10 p-4 text-sm ${className}`}>
       <p>{plural(pending, 'workout')} saved on this phone, not uploaded yet. It's safe here until it goes up.</p>
-      {upload?.error && <p className="mt-1 text-muted">Last try: {upload.error}.</p>}
+      {upload.error && <p className="mt-1 text-muted">Last try: {upload.error}.</p>}
       <div className="mt-3 flex flex-wrap gap-2">
         <button className="btn-ghost" disabled={sending} onClick={() => void sync()}>{sending ? 'Uploading…' : 'Try again'}</button>
         {/* A full page load goes through Cloudflare Access, which renews an expired session and comes back here. */}
@@ -143,11 +143,7 @@ export function Outbox({ className = '' }: { className?: string }) {
 
 /** A workout left running: a bar above the tabs with its clock and rest timer. Tap to go back to it. */
 function Running() {
-  const [now, setNow] = useState(Date.now)
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
+  const now = useNow()
   const a = loadActive() // re-read each tick: the logger saves every change
   const rest = a?.restEndsAt ? (a.restEndsAt - now) / 1000 : null
   // The logger isn't mounted to beep, so the bar does it.

@@ -4,7 +4,7 @@ import type { WorkoutSet } from '../../shared/types'
 import { Icon } from '../components/Layout'
 import { CopyButton, Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
-import { duration, kg, monthLabel, num, plural, weekday, workoutText, date as fmtDate } from '../lib/format'
+import { duration, kg, monthLabel, plural, setText, weekday, workoutText, date as fmtDate } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
 
 const PENCIL = 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
@@ -137,10 +137,7 @@ function SetRow({ set, n }: { set: WorkoutSet; n: number }) {
       <td className="py-2 text-muted">{n}</td>
       <td className="py-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium tabular-nums">
-            {set.weight_kg !== null ? `${num(set.weight_kg, 1)} kg` : set.notes?.includes('bodyweight') ? 'Bodyweight' : '–'}
-            {timed(set) ? ` × ${num(set.seconds!)}s` : set.reps !== null ? ` × ${num(set.reps)}` : ''}
-          </span>
+          <span className="font-medium tabular-nums">{setText(set)}</span>
           <PbBadge kinds={model.pbs.get(set.id)} />
         </div>
         {set.notes && <div className="mt-0.5 text-xs text-muted">{set.notes}</div>}

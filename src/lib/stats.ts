@@ -104,6 +104,12 @@ export function buildModel(data: Data) {
 
 // ---------- per exercise ----------
 
+/** Sets from the last session that had this exercise, by name. */
+export const lastSets = (m: Model, name: string) => {
+  const id = m.data.exercises.find(e => e.name === name)?.id
+  return (id && m.exHistory.get(id)?.at(-1)?.sets) || []
+}
+
 export function exerciseBests(m: Model, exId: number) {
   const hist = m.exHistory.get(exId) ?? []
   const all = hist.flatMap(h => h.sets.map(s => ({ s, date: h.date, workoutId: h.workoutId })))

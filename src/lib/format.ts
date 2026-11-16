@@ -55,13 +55,16 @@ export const greeting = () => {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
+/** "60 kg × 8", "BW × 12", "BW × 45s" */
+export const setText = (s: { weight_kg: number | null; reps: number | null; seconds: number | null }) =>
+  `${s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'} × ${s.reps !== null ? num(s.reps) : s.seconds !== null ? `${num(s.seconds)}s` : '–'}`
+
 type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null }
 /** A workout as plain text, one line per exercise, for pasting into ChatGPT or sending to a PT. */
 export function workoutText(w: { date: string; title: string | null; duration_s?: number | null; notes?: string | null; sets: TextSet[] }) {
   const byEx = new Map<string, TextSet[]>()
   for (const s of w.sets) byEx.set(s.exercise, [...(byEx.get(s.exercise) ?? []), s])
-  const set = (s: TextSet) =>
-    `${s.weight_kg !== null ? `${num(s.weight_kg, 1)}kg` : 'BW'} × ${s.reps ?? (s.seconds !== null ? `${s.seconds}s` : '–')}${s.notes ? ` (${s.notes})` : ''}`
+  const set = (s: TextSet) => setText(s) + (s.notes ? ` (${s.notes})` : '')
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
   return [
     `${w.title || 'Workout'} · ${date(w.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}${w.duration_s ? ` · ${duration(w.duration_s)}` : ''}`,

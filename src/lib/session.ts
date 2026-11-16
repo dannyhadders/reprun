@@ -2,6 +2,7 @@
 import { resolveExercise } from '../../shared/catalogue.ts'
 import { parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
 import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
+import { useEffect, useState } from 'react'
 import { api } from './data'
 import { localISO } from './format'
 
@@ -138,6 +139,16 @@ async function send() {
     write(KEY.outbox, outbox().filter(x => x.client_id !== w.client_id))
   }
   return { sent, error: null }
+}
+
+/** Date.now(), re-rendering every second. */
+export function useNow() {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return now
 }
 
 // ---------- rest-over beep ----------

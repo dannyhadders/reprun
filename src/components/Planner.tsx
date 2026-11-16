@@ -5,6 +5,7 @@ import type { Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
 import { Tap } from '../lib/haptic'
+import { lastSets } from '../lib/stats'
 import { Icon } from './Layout'
 import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../lib/session'
 
@@ -14,10 +15,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
   const [editing, setEditing] = useState<Routine | 'new' | null>(null)
   const [open, setOpen] = useState<string | null>(null) // which row is showing its preview
   const toggle = (k: string) => setOpen(open === k ? null : k)
-  const last = (name: string) => {
-    const id = data.exercises.find(e => e.name === name)?.id
-    return (id && model.exHistory.get(id)?.at(-1)?.sets) || []
-  }
+  const last = (name: string) => lastSets(model, name)
   const go = (a: Active) => begin(a)
 
   // A routine counts as done when a workout carries its name (starting one sets the title).

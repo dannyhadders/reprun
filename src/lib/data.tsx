@@ -4,10 +4,10 @@ import { sessionLines } from './motivation.ts'
 import { flush, outbox } from './session.ts'
 import { buildModel, type Model } from './stats.ts'
 
-export type Upload = { state: 'sending' | 'sent' | 'queued'; error?: string }
+type Upload = { sending: boolean; error?: string }
 type Ctx = {
   data: Data; model: Model; lines: Map<string, string>; reload: () => Promise<void>
-  pending: number; upload: Upload | null; sync: () => Promise<void> // finished workouts still on this phone
+  pending: number; upload: Upload; sync: () => Promise<void> // finished workouts still on this phone
 }
 const DataCtx = createContext<Ctx | null>(null)
 const CACHE = 'reprun.data'
@@ -36,7 +36,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<Data | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(() => outbox().length)
-  const [upload, setUpload] = useState<Upload | null>(null)
+  const [upload, setUpload] = useState<Upload>({ sending: false })
   const reload = useCallback(async () => {
     try {
       const d = await api<Data>('GET', 'data')
@@ -58,10 +58,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const sync = useCallback(async () => {
     setPending(outbox().length)
     if (!outbox().length) return
-    setUpload({ state: 'sending' })
+    setUpload({ sending: true })
     const r = await flush()
     setPending(outbox().length)
-    setUpload(r.error ? { state: 'queued', error: r.error } : { state: 'sent' })
+    setUpload({ sending: false, error: r.error ?? undefined })
     if (r.sent) await reload()
   }, [reload])
   useEffect(() => {

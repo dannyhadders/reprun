@@ -6,10 +6,10 @@ import { Planner } from '../components/Planner'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { ago, clock, duration, num, plural, workoutText } from '../lib/format'
+import { ago, clock, duration, num, plural, setText, workoutText } from '../lib/format'
 import { CopyButton } from '../components/ui'
-import { beep, loadActive, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, type Active } from '../lib/session'
-import { MUSCLES } from '../lib/stats'
+import { beep, loadActive, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
+import { lastSets, MUSCLES } from '../lib/stats'
 
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
 
@@ -39,7 +39,7 @@ export default function Log() {
 
 function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => void; finish: () => void }) {
   const { data, model } = useData()
-  const [now, setNow] = useState(Date.now)
+  const now = useNow()
   const [name, setName] = useState('')
   const [muscle, setMuscle] = useState<Muscle>('other')
   const update = (f: (x: Active) => void) => {
@@ -48,10 +48,6 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     set(next)
   }
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
-  }, [])
 
   // Keep the screen on for the whole workout, so the rest timer stays visible and audible.
   useEffect(() => {
@@ -71,10 +67,6 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 
   const known = data.exercises.find(e => e.name.toLowerCase() === name.trim().toLowerCase())
   const isNew = name.trim() && !known && newExercise(name).muscle === 'other'
-  const previous = (exName: string) => {
-    const id = data.exercises.find(e => e.name === exName)?.id
-    return (id && model.exHistory.get(id)?.at(-1)?.sets) || []
-  }
   const t = totals(a)
   const add = (n: string, m?: Muscle) => (update(x => void x.exercises.push(newExercise(n, m))), setName(''))
   // Search as you type: what you've logged, most recently done first.
@@ -97,7 +89,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       </header>
 
       {a.exercises.map((ex, i) => {
-        const prev = previous(ex.name)
+        const prev = lastSets(model, ex.name)
         const done = ex.sets.filter(s => s.done).length
         return (
           <section key={i} className="rounded-2xl border border-line bg-surface p-4">
@@ -132,7 +124,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>,
-                  <span key={`p${j}`} className="truncate text-muted">{p ? `${p.weight_kg ?? 'BW'} × ${p.reps ?? '–'}` : '–'}</span>,
+                  <span key={`p${j}`} className="truncate text-muted">{p ? setText(p) : '–'}</span>,
                   <input key={`w${j}`} className="input px-2 text-center" type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || 'BW'} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
                   <input key={`r${j}`} className="input px-2 text-center" type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />,
                   <button key={`d${j}`} aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
@@ -187,7 +179,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     <Tap />
                     <span className="block font-medium">{e.name}</span>
                     <span className="block text-xs text-muted">
-                      {last ? <>Last {ago(last.date).toLowerCase()}: {setText(heaviest(last.sets))}</> : 'Not done yet'}
+                      {last ? <>Last {ago(last.date).toLowerCase()}: {setText(heaviest(last.sets)!)}</> : 'Not done yet'}
                       {best && <> · Best {setText(best)}</>}
                     </span>
                   </button>
@@ -247,4 +239,3 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
 }
 
 const heaviest = (sets: WorkoutSet[]) => sets.reduce<WorkoutSet | null>((b, s) => (!b || (s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b), null)
-const setText = (s: WorkoutSet | null) => (s ? `${s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'} × ${s.reps ?? (s.seconds !== null ? `${s.seconds}s` : '–')}` : '–')
