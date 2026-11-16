@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../lib/data'
+import { isSample, LOCAL, startLocal } from '../lib/local'
 import { clock, plural, workoutText } from '../lib/format'
 import { beep, loadActive, outbox, saveActive, totals, useNow } from '../lib/session'
 import { CopyButton } from './ui'
@@ -38,7 +39,7 @@ export function Layout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [more, setMore] = useState(false)
-  const { data } = useData()
+  const { data, reload } = useData()
   const on = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
   // Like Link: tapping where you already are doesn't stack another back-swipe.
   const go = (to: string) => navigate(to, { replace: pathname === to })
@@ -82,6 +83,16 @@ export function Layout() {
           <p className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
             <b>Demo</b> with made-up data: click around, log a workout, break things. It all resets every night.{' '}
             <a className="font-semibold text-accent underline" href="https://github.com/dannyhadders/reprun">Host your own →</a>
+          </p>
+        )}
+        {LOCAL && isSample() && (
+          <p className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
+            <b>Sample data</b> on this phone, made up so you can look around.{' '}
+            <button className="font-semibold text-accent underline" onClick={async () => {
+              if (!confirm('Clear the sample data, and anything you\'ve logged while trying it, and start with an empty RepRun?')) return
+              await startLocal(false)
+              await reload()
+            }}>Start fresh →</button>
           </p>
         )}
         <Outbox className="mb-5" />

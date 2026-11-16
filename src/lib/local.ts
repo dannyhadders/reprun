@@ -9,6 +9,35 @@ declare const __LOCAL__: boolean // vite.config.ts: true only in the phone-only 
 /** This is a phone-only copy: no server, everything lives in this browser. */
 export const LOCAL = __LOCAL__
 export const LOCAL_KEY = 'reprun.local'
+const SAMPLE_KEY = 'reprun.sample' // set while the copy holds the made-up sample history
+
+const get = (k: string) => { try { return localStorage.getItem(k) } catch { return null } }
+/** Has this phone picked "start fresh" or "sample data" yet? Until then the app shows the welcome screen. */
+export const started = () => get(LOCAL_KEY) !== null
+export const isSample = () => get(SAMPLE_KEY) === '1'
+
+/** First run, or "start fresh" from sample data: an empty copy, or one filled with the demo's made-up history. */
+export async function startLocal(sample: boolean) {
+  // Ask iOS/Android not to clear this site's storage when space runs low. Installed home-screen apps usually get it.
+  void (navigator as { storage?: { persist?: () => Promise<boolean> } }).storage?.persist?.().catch(() => false)
+  // Fetch the sample code before touching storage: if that fails (offline first open), nothing has changed.
+  const mods = sample ? await Promise.all([import('../../shared/demo.ts'), import('../../shared/strava.ts'), import('./format.ts')]) : null
+  store(blank())
+  for (const k of [SAMPLE_KEY, 'reprun.lastBackup']) localStorage.removeItem(k) // a backup of sample data doesn't count
+  if (!mods) return
+  const [{ demoData }, { fromStrava, sampleStravaActivities }, { localISO }] = mods
+  const today = localISO()
+  const d = demoData(today)
+  const runs = sampleStravaActivities(today, d.payload.workouts.map(w => w.date)).filter(a => a.sport_type === 'Run').map(a => fromStrava(a, true))
+  await local('POST', 'import', { app: 'reprun', version: 1, exported: today, ...d.payload, routines: d.routines, bodyWeight: d.bodyWeight, profile: d.profile } satisfies Backup)
+  await local('POST', 'import', { workouts: [], activities: runs, records: [], goals: [] } satisfies ImportPayload)
+  localStorage.setItem(SAMPLE_KEY, '1')
+}
+
+/** Settings → Start over: everything this copy keeps on the phone, gone. The welcome screen shows again. */
+export function wipeLocal() {
+  for (const k of Object.keys(localStorage)) if (k.startsWith('reprun.')) localStorage.removeItem(k)
+}
 
 const blank = (): Data => ({
   exercises: [], workouts: [], activities: [], records: [], goals: [], bodyWeight: [], routines: [],

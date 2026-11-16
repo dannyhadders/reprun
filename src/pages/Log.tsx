@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
 import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
+import { BackupNudge } from '../components/PhoneOnly'
+import { LOCAL } from '../lib/local'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
@@ -231,7 +233,7 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
         <div><div className="text-xl font-bold">{num(volume)} kg</div><div className="text-xs text-muted">Volume</div></div>
       </div>
       {pbs > 0 && <p className="font-semibold text-pb">🏆 {plural(pbs, 'PB')}</p>}
-      {pending ? <Outbox /> : <p className="text-sm text-muted">Uploaded.</p>}
+      {pending ? <Outbox /> : LOCAL ? <BackupNudge /> : <p className="text-sm text-muted">Uploaded.</p>}
       <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />
       <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>
     </div>

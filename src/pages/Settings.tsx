@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { isBackup, toBackup } from '../../shared/backup'
+import { isBackup } from '../../shared/backup'
 import type { ImportResult, Profile } from '../../shared/types'
 import { Card, PageHeader, SourceBadge } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
+import { lastBackup, saveBackup } from '../lib/backupFile'
+import { ThisPhoneCard } from '../components/PhoneOnly'
 import { CHANGELOG } from '../lib/changelog'
 import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/format'
 
@@ -17,6 +19,7 @@ export default function Settings() {
       <PageHeader title="Settings" sub="Your profile, data sources and imports." />
       <div className="grid gap-5 lg:grid-cols-2">
         <ProfileCard />
+        {LOCAL && <ThisPhoneCard />}
         <BackupCard />
         {!data.demo && <ImportCard />}
         {!data.demo && !LOCAL && <StravaCard />}
@@ -58,33 +61,20 @@ function ProfileCard() {
   )
 }
 
-const LAST_BACKUP = 'reprun.lastBackup' // this device only: when it last saved a backup file
-
 /** Everything to one file and back. Restoring merges, so it never duplicates or overwrites anything. */
 function BackupCard() {
   const { data, reload } = useData()
-  const [last, setLast] = useState(() => { try { return localStorage.getItem(LAST_BACKUP) } catch { return null } })
+  const [last, setLast] = useState(lastBackup)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
 
   const save = async () => {
     setMsg(null)
-    const file = new File([JSON.stringify(toBackup(data))], `reprun-backup-${localISO(new Date())}.json`, { type: 'application/json' })
     try {
-      // iPhone: the share sheet has "Save to Files". Elsewhere: a normal download.
-      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] })
-      else {
-        const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name })
-        a.click()
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-      }
+      if (await saveBackup(data)) setLast(lastBackup())
     } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') return // closed the share sheet
-      return setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
+      setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
     }
-    const now = new Date().toISOString()
-    try { localStorage.setItem(LAST_BACKUP, now) } catch { /* just no reminder */ }
-    setLast(now)
   }
 
   const restore = async (file: File) => {

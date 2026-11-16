@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Data } from '../../shared/types.ts'
-import { local, LOCAL } from './local.ts'
+import { Welcome } from '../components/PhoneOnly.tsx'
+import { local, LOCAL, startLocal, started } from './local.ts'
 import { sessionLines } from './motivation.ts'
 import { flush, outbox } from './session.ts'
 import { buildModel, type Model } from './stats.ts'
@@ -39,6 +40,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(() => outbox().length)
   const [upload, setUpload] = useState<Upload>({ sending: false })
+  const [ready, setReady] = useState(() => !LOCAL || started()) // phone-only: picked fresh or sample yet?
   const reload = useCallback(async () => {
     try {
       const d = await api<Data>('GET', 'data')
@@ -81,6 +83,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [data, reload, pending, upload, sync])
 
   // ponytail: matches the worker's "Almost there" message rather than adding an error code.
+  if (LOCAL && !ready) return <Welcome onStart={async sample => (await startLocal(sample), await reload(), setReady(true))} />
   if (error?.startsWith('Almost there') && !data) return <FinishSetup />
   if (error && !data) {
     return (

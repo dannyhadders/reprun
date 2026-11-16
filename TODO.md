@@ -36,6 +36,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **`npm run setup`**: one terminal command. Tested end to end on a throwaway Worker, Access login included.
 - [x] **AI setup guide** (`docs/SETUP-AI.md`) for Claude Code / Cursor.
 - [ ] **Test the Deploy button** on a spare Cloudflare account. Check: does the build get past the database step without adding D1 Edit to its token, do the setup prompts accept empty values, and does the "Almost there" screen show until Access is on. Fix `docs/SETUP.md` with what's actually there.
+- [ ] **Onboarding for new users** (self-hosted and phone-only): profile, a first routine, how the logger works. Phone-only shows it after the "start fresh / sample data" welcome; self-hosted after the first sign-in. Design once for both.
 - [ ] **Try it with no setup**: install from the demo and keep the data on the phone, with a first-run onboarding (and a way to move to your own copy later).
 
 ## Ideas
