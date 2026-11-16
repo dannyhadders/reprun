@@ -15,7 +15,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [ ] **Notes**: on a set and on the whole workout or routine.
 - [ ] **Collapse exercises**: accordion per exercise during a workout, with ticked sets still visible when it's closed (e.g. "3/4 ✓").
 - [ ] **Tick / untick sets**: already works. Make sure a collapsed exercise shows what's done.
-- [ ] **Confirm removing a set** when it has any data in it.
+- [x] **Confirm removing a set** when it has any data in it.
 
 ## Workouts list
 
@@ -23,7 +23,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 
 ## Phone feel
 
-- [ ] **No zoom**: stop pinch zoom and the iOS zoom-in when tapping a text box.
+- [x] **No zoom**: stop pinch zoom and the iOS zoom-in when tapping a text box.
 - [ ] **Screen stays on**: already asks for a wake lock during a workout. Check it actually holds on iPhone (needs iOS 16.4+ and the installed app).
 
 ## Settings

@@ -133,7 +133,11 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             </div>
             <div className="mt-3 flex gap-2">
               <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false }))}>+ Set</button>
-              {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => update(x => void x.exercises[i].sets.pop())}>− Set</button>}
+              {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => {
+                const last = ex.sets[ex.sets.length - 1]
+                if ((last.done || last.reps || last.weight) && !confirm(`Remove set ${ex.sets.length} of ${ex.name}? It has data in it.`)) return
+                update(x => void x.exercises[i].sets.pop())
+              }}>− Set</button>}
             </div>
           </section>
         )
