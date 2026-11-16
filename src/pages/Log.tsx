@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
 import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
-import type { ImportWorkout, Muscle } from '../../shared/types'
+import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { clock, duration, num, plural, workoutText } from '../lib/format'
+import { ago, clock, duration, num, plural, workoutText } from '../lib/format'
 import { CopyButton } from '../components/ui'
 import { beep, loadActive, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, type Active } from '../lib/session'
 import { MUSCLES } from '../lib/stats'
@@ -76,6 +76,13 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     return (id && model.exHistory.get(id)?.at(-1)?.sets) || []
   }
   const t = totals(a)
+  const add = (n: string, m?: Muscle) => (update(x => void x.exercises.push(newExercise(n, m))), setName(''))
+  // Search as you type: what you've logged, most recently done first.
+  const q = name.trim().toLowerCase()
+  const matches = q ? data.exercises.filter(e => e.name.toLowerCase().includes(q))
+    .map(e => ({ e, hist: model.exHistory.get(e.id) ?? [] }))
+    .sort((x, y) => (y.hist.at(-1)?.date ?? '').localeCompare(x.hist.at(-1)?.date ?? ''))
+    .slice(0, 6) : []
 
   return (
     <div className="space-y-4">
@@ -153,14 +160,32 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 
       <form className="space-y-2 rounded-2xl border border-dashed border-line p-4" onSubmit={e => {
         e.preventDefault()
-        if (!name.trim()) return
-        update(x => void x.exercises.push(newExercise(known?.name ?? name, known?.muscle ?? (isNew ? muscle : undefined))))
-        setName('')
+        if (name.trim()) add(known?.name ?? name, known?.muscle ?? (isNew ? muscle : undefined))
       }}>
         <div className="flex gap-2">
-          <input className="input" list="log-exercises" placeholder="Add exercise" value={name} onChange={e => setName(e.target.value)} aria-label="Exercise name" />
+          <input className="input" placeholder="Add exercise" value={name} onChange={e => setName(e.target.value)} aria-label="Exercise name" autoComplete="off" />
           <button className="btn" disabled={!name.trim()}>Add</button>
         </div>
+        {matches.length > 0 && (
+          <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface-2" aria-label="Matching exercises">
+            {matches.map(({ e, hist }) => {
+              const last = hist.at(-1)
+              const best = heaviest(hist.flatMap(h => h.sets))
+              return (
+                <li key={e.id}>
+                  <button type="button" className="relative w-full px-3 py-2.5 text-left" onClick={() => add(e.name, e.muscle)}>
+                    <Tap />
+                    <span className="block font-medium">{e.name}</span>
+                    <span className="block text-xs text-muted">
+                      {last ? <>Last {ago(last.date).toLowerCase()}: {setText(heaviest(last.sets))}</> : 'Not done yet'}
+                      {best && <> · Best {setText(best)}</>}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
         {isNew && (
           <label className="flex items-center gap-2 text-sm text-muted">New exercise, works
             <select className="input w-auto" value={muscle} onChange={e => setMuscle(e.target.value as Muscle)}>
@@ -168,7 +193,6 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             </select>
           </label>
         )}
-        <datalist id="log-exercises">{data.exercises.map(e => <option key={e.id} value={e.name} />)}</datalist>
       </form>
 
       <button className="w-full py-3 text-sm text-bad" onClick={() => confirm('Discard this workout? Nothing will be saved.') && set(null)}>Discard workout</button>
@@ -208,3 +232,6 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
     </div>
   )
 }
+
+const heaviest = (sets: WorkoutSet[]) => sets.reduce<WorkoutSet | null>((b, s) => (!b || (s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b), null)
+const setText = (s: WorkoutSet | null) => (s ? `${s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'} × ${s.reps ?? (s.seconds !== null ? `${s.seconds}s` : '–')}` : '–')

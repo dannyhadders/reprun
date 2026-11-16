@@ -10,7 +10,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 ## Logging a workout
 
 - [x] **Export a finished workout**: copy it to the clipboard as plain text to paste into ChatGPT or send to a PT. On the finish screen, every logged workout, and the not-uploaded banner.
-- [ ] **Add exercise picker**: searching shows a dropdown of matches with your previous and best for each.
+- [x] **Add exercise picker**: searching shows a dropdown of matches with your previous and best for each.
 - [ ] **Leave a workout running**: go back to the main menu while a workout is in progress. A banner on every page shows it with the rest timer and opens it again.
 - [ ] **Notes**: on a set and on the whole workout or routine.
 - [x] **Collapse exercises**: accordion per exercise during a workout, with ticked sets still visible when it's closed (e.g. "3/4 ✓").
