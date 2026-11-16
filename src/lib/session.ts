@@ -13,6 +13,7 @@ export type LogExercise = {
   sets: LogSet[]
   target?: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax' | 'note'> // from a routine
   suggest?: { weight: string; reps: string } // progression pick, shown as placeholders
+  collapsed?: boolean // folded away in the logger; ticked count still shows
 }
 export type Active = { clientId: string; startedAt: number; title: string; exercises: LogExercise[]; restEndsAt: number | null }
 

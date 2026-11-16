@@ -13,8 +13,8 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [ ] **Add exercise picker**: searching shows a dropdown of matches with your previous and best for each.
 - [ ] **Leave a workout running**: go back to the main menu while a workout is in progress. A banner on every page shows it with the rest timer and opens it again.
 - [ ] **Notes**: on a set and on the whole workout or routine.
-- [ ] **Collapse exercises**: accordion per exercise during a workout, with ticked sets still visible when it's closed (e.g. "3/4 ✓").
-- [ ] **Tick / untick sets**: already works. Make sure a collapsed exercise shows what's done.
+- [x] **Collapse exercises**: accordion per exercise during a workout, with ticked sets still visible when it's closed (e.g. "3/4 ✓").
+- [x] **Tick / untick sets**: already works. Make sure a collapsed exercise shows what's done.
 - [x] **Confirm removing a set** when it has any data in it.
 
 ## Workouts list

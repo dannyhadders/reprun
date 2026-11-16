@@ -89,16 +89,23 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 
       {a.exercises.map((ex, i) => {
         const prev = previous(ex.name)
+        const done = ex.sets.filter(s => s.done).length
         return (
           <section key={i} className="rounded-2xl border border-line bg-surface p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <h2 className="min-w-0 flex-1 truncate font-semibold">{ex.name}</h2>
+            <div className={`flex items-center gap-2 ${ex.collapsed ? '' : 'mb-3'}`}>
+              <button className="relative flex min-w-0 flex-1 items-center gap-2 text-left" aria-expanded={!ex.collapsed} onClick={() => update(x => void (x.exercises[i].collapsed = !ex.collapsed))}>
+                <Tap />
+                <span className={`text-muted transition ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
+                <h2 className="min-w-0 truncate font-semibold">{ex.name}</h2>
+                <span className={`shrink-0 text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>{done}/{ex.sets.length}{done === ex.sets.length ? ' ✓' : ''}</span>
+              </button>
               <select className="rounded-lg bg-surface-2 px-2 py-1 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
                 onChange={e => (rememberRest(ex.name, +e.target.value), update(x => (x.exercises[i].restS = +e.target.value)))}>
                 {[...new Set([...RESTS, ex.restS])].sort((x, y) => x - y).map(s => <option key={s} value={s}>Rest {clock(s)}</option>)}
               </select>
               <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={() => confirm(`Remove ${ex.name}?`) && update(x => void x.exercises.splice(i, 1))}>✕</button>
             </div>
+            {!ex.collapsed && <>
             {ex.target && (
               <p className="-mt-2 mb-3 text-xs text-muted">
                 Plan {targetText(ex.target)}{ex.suggest ? ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
@@ -139,6 +146,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 update(x => void x.exercises[i].sets.pop())
               }}>− Set</button>}
             </div>
+            </>}
           </section>
         )
       })}
