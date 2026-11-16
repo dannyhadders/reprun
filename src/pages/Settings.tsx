@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { isBackup, toBackup } from '../../shared/backup'
 import type { ImportResult, Profile } from '../../shared/types'
 import { Card, PageHeader, SourceBadge } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { CHANGELOG } from '../lib/changelog'
-import { date as fmtDate, kg, plural, shortDate } from '../lib/format'
+import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/format'
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 
@@ -15,6 +16,7 @@ export default function Settings() {
       <PageHeader title="Settings" sub="Your profile, data sources and imports." />
       <div className="grid gap-5 lg:grid-cols-2">
         <ProfileCard />
+        <BackupCard />
         {!data.demo && <ImportCard />}
         {!data.demo && <StravaCard />}
         <BodyWeightLog />
@@ -51,6 +53,70 @@ function ProfileCard() {
           {saved && <span className="text-sm text-good">Saved</span>}
         </div>
       </form>
+    </Card>
+  )
+}
+
+const LAST_BACKUP = 'reprun.lastBackup' // this device only: when it last saved a backup file
+
+/** Everything to one file and back. Restoring merges, so it never duplicates or overwrites anything. */
+function BackupCard() {
+  const { data, reload } = useData()
+  const [last, setLast] = useState(() => { try { return localStorage.getItem(LAST_BACKUP) } catch { return null } })
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    setMsg(null)
+    const file = new File([JSON.stringify(toBackup(data))], `reprun-backup-${localISO(new Date())}.json`, { type: 'application/json' })
+    try {
+      // iPhone: the share sheet has "Save to Files". Elsewhere: a normal download.
+      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] })
+      else {
+        const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name })
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return // closed the share sheet
+      return setMsg({ ok: false, text: e instanceof Error ? e.message : String(e) })
+    }
+    const now = new Date().toISOString()
+    try { localStorage.setItem(LAST_BACKUP, now) } catch { /* just no reminder */ }
+    setLast(now)
+  }
+
+  const restore = async (file: File) => {
+    setBusy(true)
+    setMsg(null)
+    try {
+      const b: unknown = JSON.parse(await file.text())
+      if (!isBackup(b)) throw new Error('That isn\'t a RepRun backup file.')
+      const r = await api<ImportResult>('POST', 'import', b)
+      await reload()
+      const added = [plural(r.workouts, 'workout'), plural(r.activities, 'activity', 'activities'), plural(r.routines ?? 0, 'routine'), plural(r.bodyWeight ?? 0, 'weigh-in'), plural(r.records + r.goals, 'record or target', 'records and targets')]
+      setMsg({ ok: true, text: `Added ${added.join(', ')}. ${r.skipped.length ? `${plural(r.skipped.length, 'workout')} already here were kept as they are.` : ''}` })
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof SyntaxError ? 'That file isn\'t a RepRun backup.' : e instanceof Error ? e.message : String(e) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card title="Backup" action={<span className="text-xs text-muted">{last ? `Last saved: ${ago(localISO(new Date(last)))}` : 'Not saved on this device yet'}</span>}>
+      <p className="text-sm text-muted">Everything in one file: workouts, runs, routines, body weight and profile. Keep it in Files or iCloud Drive, or use it to move to another copy of RepRun.</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button className="btn" onClick={save}>Save a backup</button>
+        {!data.demo && (
+          <label className={`btn-ghost cursor-pointer ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+            {busy ? 'Restoring…' : 'Restore from a file'}
+            <input type="file" accept=".json,application/json" className="sr-only" onChange={e => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = '' }} />
+          </label>
+        )}
+      </div>
+      {!data.demo && <p className="mt-3 text-xs text-muted">Restoring adds what's missing and never changes or deletes what's already here, so it's safe to restore the same file twice.</p>}
+      {msg && <p className={`mt-3 text-sm ${msg.ok ? 'text-good' : 'text-bad'}`}>{msg.text}</p>}
     </Card>
   )
 }

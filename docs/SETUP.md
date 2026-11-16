@@ -164,8 +164,11 @@ never touched by updates.
 
 ## Backups
 
-D1 keeps 30 days of history. To roll back: **Storage & databases → D1 → reprun → Time Travel**.
-For your own copy: `npx wrangler d1 export reprun --remote --output backup.sql`.
+In the app: **Settings → Backup → Save a backup** gives you one file with everything. **Restore
+from a file** adds what's missing and never overwrites, so it's also how you move to another copy.
+
+D1 also keeps 30 days of history. To roll back: **Storage & databases → D1 → reprun → Time
+Travel**. Or: `npx wrangler d1 export reprun --remote --output backup.sql`.
 
 ## Costs
 

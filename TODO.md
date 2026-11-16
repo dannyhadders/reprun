@@ -37,3 +37,9 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **AI setup guide** (`docs/SETUP-AI.md`) for Claude Code / Cursor.
 - [ ] **Test the Deploy button** on a spare Cloudflare account. Check: does the build get past the database step without adding D1 Edit to its token, do the setup prompts accept empty values, and does the "Almost there" screen show until Access is on. Fix `docs/SETUP.md` with what's actually there.
 - [ ] **Try it with no setup**: install from the demo and keep the data on the phone, with a first-run onboarding (and a way to move to your own copy later).
+
+## Ideas
+
+- [ ] **Feature toggles**: Settings → Features, a switch per optional feature. Off hides its tab, cards and buttons; the data stays. Do this first, then build each idea below behind its own switch.
+- [ ] **Calories**: decide which first. (1) Burned: estimate per workout and run from body weight (MET values), small. (2) Food log: what you ate + calories, daily total vs a target, medium. (3) From a meal photo: needs a paid AI vision API, doesn't fit "free".
+- [ ] **Photos** (progress pics, meals, gym notes): store in R2 (10 GB free), not D1. The app loads all of D1 in one `/api/data` call, so photos there would download every time. Shrink on the phone to ~200 KB first; D1 keeps only the R2 key. Needs an R2 binding, created by the button and `npm run setup` like the database. Local (no-setup) mode would keep them in IndexedDB.

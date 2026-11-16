@@ -71,4 +71,14 @@ export type ImportPayload = {
   records: Omit<RecordRow, 'id'>[]
   goals: Omit<Goal, 'id'>[]
 }
-export type ImportResult = { workouts: number; skipped: string[]; sets: number; activities: number; records: number; goals: number }
+export type ImportResult = { workouts: number; skipped: string[]; sets: number; activities: number; records: number; goals: number; routines?: number; bodyWeight?: number }
+
+// Everything, in one file (Settings → Backup). Restoring it merges: what's already there is kept as it is.
+export type Backup = ImportPayload & {
+  app: 'reprun'
+  version: 1
+  exported: string
+  routines: Pick<Routine, 'name' | 'body'>[]
+  bodyWeight: BodyWeight[]
+  profile: Profile
+}

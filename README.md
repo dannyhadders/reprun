@@ -53,6 +53,7 @@ Everything runs offline. The database is a local SQLite file under `.wrangler/`.
   There's a button there that copies a ready-made prompt for ChatGPT.
 - **Add a past workout or run:** on the phone, More → Add past workout. On a computer, the button
   in the sidebar.
+- **A backup file:** Settings → Backup. Restoring merges, so nothing is duplicated or overwritten.
 - **Strava:** Settings → Connect, then Sync now. The first sync backfills everything.
 - **Spreadsheet:** Settings → Import spreadsheet reads a workbook with `Set Log`,
   `Session Summary`, `Running Log`, `PBs & Benchmarks` and `Progress & Targets` sheets. It's
