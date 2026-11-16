@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../lib/data'
-import { plural } from '../lib/format'
+import { plural, workoutText } from '../lib/format'
+import { outbox } from '../lib/session'
+import { CopyButton } from './ui'
 import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
 
@@ -127,10 +129,12 @@ export function Outbox({ className = '' }: { className?: string }) {
     <div className={`rounded-2xl border border-pb/40 bg-pb/10 p-4 text-sm ${className}`}>
       <p>{plural(pending, 'workout')} saved on this phone, not uploaded yet. It's safe here until it goes up.</p>
       {upload?.error && <p className="mt-1 text-muted">Last try: {upload.error}.</p>}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button className="btn-ghost" disabled={sending} onClick={() => void sync()}>{sending ? 'Uploading…' : 'Try again'}</button>
         {/* A full page load goes through Cloudflare Access, which renews an expired session and comes back here. */}
         <a className="btn-ghost" href={location.pathname}>Sign in again</a>
+        {/* Belt and braces: the workout can always leave the phone by hand. */}
+        <CopyButton text={() => outbox().map(workoutText).join('\n\n')} />
       </div>
     </div>
   )

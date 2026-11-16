@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 
 export function Card({ title, action, children, className = '' }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -80,4 +80,14 @@ export function PageHeader({ title, sub, action }: { title: ReactNode; sub?: Rea
       {action}
     </header>
   )
+}
+
+/** Copies text to the clipboard and says so for a moment. */
+export function CopyButton({ text, label = 'Copy', className = 'btn-ghost' }: { text: () => string; label?: string; className?: string }) {
+  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+  const copy = () => navigator.clipboard.writeText(text()).then(() => 'done' as const, () => 'failed' as const).then(r => {
+    setState(r)
+    setTimeout(() => setState('idle'), 2000)
+  })
+  return <button type="button" className={className} onClick={() => void copy()}>{state === 'done' ? 'Copied ✓' : state === 'failed' ? "Couldn't copy" : label}</button>
 }

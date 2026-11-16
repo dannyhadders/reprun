@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { WorkoutSet } from '../../shared/types'
 import { Icon } from '../components/Layout'
-import { Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
+import { CopyButton, Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
-import { duration, kg, monthLabel, num, plural, weekday, date as fmtDate } from '../lib/format'
+import { duration, kg, monthLabel, num, plural, weekday, workoutText, date as fmtDate } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
 
 const PENCIL = 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
@@ -123,7 +123,8 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
               Timed by {s.activity?.sample ? 'sample ' : ''}Strava ({s.activity?.name}{s.activity?.start ? `, started ${s.activity.start}` : ''}). No sets were logged for this one; once the logging app exists, they will be.
             </p>
           )}
-          <div className="mt-5 flex justify-end">
+          <div className="mt-5 flex justify-end gap-2">
+            {w && groups.length > 0 && <CopyButton label="Copy as text" text={() => workoutText({ ...w, duration_s: s.durationSource === 'estimate' ? null : s.durationS, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) })} />}
             <button className="btn-danger" onClick={remove}><Icon d={BIN} className="h-4 w-4" /> Delete {w ? 'workout' : 'activity'}</button>
           </div>
         </div>

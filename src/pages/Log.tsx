@@ -6,7 +6,8 @@ import { Planner } from '../components/Planner'
 import type { ImportWorkout, Muscle } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { clock, duration, num, plural } from '../lib/format'
+import { clock, duration, num, plural, workoutText } from '../lib/format'
+import { CopyButton } from '../components/ui'
 import { beep, loadActive, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, type Active } from '../lib/session'
 import { MUSCLES } from '../lib/stats'
 
@@ -190,6 +191,7 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
       </div>
       {pbs > 0 && <p className="font-semibold text-pb">🏆 {plural(pbs, 'PB')}</p>}
       {pending ? <Outbox /> : <p className="text-sm text-muted">Uploaded.</p>}
+      <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />
       <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>
     </div>
   )
