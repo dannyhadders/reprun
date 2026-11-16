@@ -14,6 +14,7 @@
     "deploy": "(npm run migrate || true) && wrangler deploy && npm run migrate",
     "migrate": "wrangler d1 migrations apply DB --remote -c dist/reprun/wrangler.json",
     "release": "wrangler d1 migrations apply DB --remote -c dist/reprun/wrangler.json && wrangler deploy",
+    "setup": "node scripts/setup.mjs",
     "import:strava": "tsx scripts/strava-export.ts"
   },
   "dependencies": {
@@ -41,7 +42,7 @@
   "cloudflare": {
     "bindings": {
       "ALLOWED_EMAIL": {
-        "description": "The email you will sign in with. The app refuses everyone else."
+        "description": "The email you log in to Cloudflare with. The app refuses everyone else."
       },
       "ACCESS_TEAM": {
         "description": "Leave empty for now. Filled in when you turn on Cloudflare Access (docs/SETUP.md)."

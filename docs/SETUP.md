@@ -9,6 +9,10 @@ minutes, all on free plans, and no domain needed.
 
 Got a domain and want RepRun on it, e.g. `gym.yourname.com`? Use [Own domain](#own-domain) instead.
 
+**Prefer a terminal?** Clone the repo, run `npm install`, then `npm run setup`. It signs you in to
+Cloudflare, creates the database, deploys, and walks you through the login, the same as steps 1–2
+below. Or ask Claude Code or Cursor: *"Read docs/SETUP-AI.md and set up RepRun for me."*
+
 ---
 
 ## 1. Click the button
@@ -18,7 +22,7 @@ into your GitHub, creates the database, and deploys it. Every push to your copy 
 
 When it asks for values:
 
-- `ALLOWED_EMAIL`: the email you'll sign in with. The app refuses everyone else.
+- `ALLOWED_EMAIL`: the email you log in to Cloudflare with. The app refuses everyone else.
 - Leave the rest empty. You'll fill in the `ACCESS_…` ones in step 2. Strava is optional (step 5).
 
 When it's done you get an address like `reprun.yourname.workers.dev`. Opening it now says
@@ -30,16 +34,19 @@ When it's done you get an address like `reprun.yourname.workers.dev`. Opening it
 
 ## 2. Put a login in front of it
 
-1. Dashboard → **Workers & Pages → reprun → Settings → Domains & Routes**. On the `workers.dev`
-   row, turn on **Cloudflare Access**.
-2. It shows two values. Copy them:
-   - the **Audience (AUD) tag**, a long string of letters and numbers
-   - your **team name**, the part before `.cloudflareaccess.com` in the URL it shows
-3. Same Settings page → **Variables and Secrets → Add**, type **Secret**, twice:
-   `ACCESS_AUD` = the Audience tag, `ACCESS_TEAM` = the team name. Then **Deploy**.
-4. Dashboard → **Zero Trust → Access → Applications** → the new reprun application → check its
-   policy lets in your email (Include → **Emails**). Set **Session duration** to **1 month** so the
-   phone app rarely asks you to sign in again.
+1. Dashboard → **Workers & Pages → reprun** → the **Access** tab → **Protect this Worker behind
+   Access** → **All traffic**.
+2. **Authentication policy:** pick **Cloudflare account** (only people who can log in to your
+   Cloudflare account get in). **Session duration:** **7 days**, the longest it offers. Then
+   **Apply**.
+3. On the right, under **Application values**, copy two things:
+   - the **AUD** tag, a long string of letters and numbers
+   - the **JWKS** link, `https://<team>.cloudflareaccess.com/…`
+4. **Settings → Variables and Secrets → Add**, type **Secret**, twice: `ACCESS_AUD` = the AUD tag,
+   `ACCESS_TEAM` = the JWKS link (or just the `<team>` part). Then **Deploy**.
+
+Want to sign in less often? **Zero Trust → Access → Applications** → the reprun application →
+session duration up to **1 month**.
 
 Check it: open your address in a private window. You should get Cloudflare's sign-in page, then
 your (empty) dashboard.

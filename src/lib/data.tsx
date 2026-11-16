@@ -119,10 +119,10 @@ function FinishSetup() {
             <span className={n}>1</span>
             <span>
               In the <a className="text-accent underline" href="https://dash.cloudflare.com" target="_blank" rel="noreferrer">Cloudflare dashboard</a>,
-              go to <b className="text-ink">Workers &amp; Pages → reprun → Settings → Domains &amp; Routes</b> and turn
-              on <b className="text-ink">Cloudflare Access</b> for <span className={code}>{location.hostname}</span>.
-              Copy the <b className="text-ink">Audience (AUD) tag</b> and your <b className="text-ink">team name</b> (the part
-              before <span className={code}>.cloudflareaccess.com</span>).
+              open <b className="text-ink">Workers &amp; Pages → reprun → Access</b> → <b className="text-ink">Protect this Worker
+              behind Access → All traffic</b>. Policy: <b className="text-ink">Cloudflare account</b>, session
+              <b className="text-ink"> 7 days</b>, Apply. Then copy the <b className="text-ink">AUD</b> tag and
+              the <b className="text-ink">JWKS</b> link from <b className="text-ink">Application values</b>.
             </span>
           </li>
           <li className={step}>
@@ -130,17 +130,10 @@ function FinishSetup() {
             <span>
               Same Settings page → <b className="text-ink">Variables and Secrets</b>. Add three secrets, then Deploy:
               <span className="mt-1.5 block space-y-1">
-                <span className="block"><span className={code}>ALLOWED_EMAIL</span> your email</span>
-                <span className="block"><span className={code}>ACCESS_AUD</span> the Audience tag</span>
-                <span className="block"><span className={code}>ACCESS_TEAM</span> the team name</span>
+                <span className="block"><span className={code}>ALLOWED_EMAIL</span> your Cloudflare login email</span>
+                <span className="block"><span className={code}>ACCESS_AUD</span> the AUD tag</span>
+                <span className="block"><span className={code}>ACCESS_TEAM</span> the JWKS link</span>
               </span>
-            </span>
-          </li>
-          <li className={step}>
-            <span className={n}>3</span>
-            <span>
-              In <b className="text-ink">Zero Trust → Access → Applications → reprun</b>, check the policy lets in your
-              email, and set the session to <b className="text-ink">1 month</b> so your phone rarely asks you to sign in.
             </span>
           </li>
         </ol>

@@ -6,7 +6,7 @@ type Env = {
   DB: D1Database
   ASSETS: Fetcher
   ALLOWED_EMAIL?: string
-  ACCESS_TEAM?: string // the <team> in <team>.cloudflareaccess.com
+  ACCESS_TEAM?: string // the <team> in <team>.cloudflareaccess.com, or any URL on it (e.g. the JWKS link)
   ACCESS_AUD?: string // the Access application's Audience (AUD) tag
   DEMO?: string // "1" on the public demo: no sign-in, made-up data, wiped every night
   STRAVA_CLIENT_ID?: string
@@ -333,7 +333,7 @@ async function stravaToken(env: Env, body: Record<string, string>): Promise<Stra
 let accessKeys: { team: string; at: number; keys: (JsonWebKey & { kid: string })[] } | undefined
 
 async function accessEmail(req: Request, team: string, aud: string): Promise<string | null> {
-  team = team.replace(/\.cloudflareaccess\.com$/, '')
+  team = team.trim().replace(/^https?:\/\//, '').replace(/\.cloudflareaccess\.com.*$/, '')
   const token = req.headers.get('cf-access-jwt-assertion')
   if (!token) return null
   const [h, p, sig] = token.split('.')

@@ -19,7 +19,9 @@ A private gym and running dashboard you host yourself, for free, on Cloudflare.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/dannyhadders/reprun)
 
-Then follow [docs/SETUP.md](docs/SETUP.md) to add the login and put it on your phone.
+Then follow [docs/SETUP.md](docs/SETUP.md) to add the login and put it on your phone. Prefer a
+terminal? `npm run setup` does it from a clone. Or ask Claude Code or Cursor: *"Read
+docs/SETUP-AI.md and set up RepRun for me."*
 
 ## Stack
 
