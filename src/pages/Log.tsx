@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
 import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
@@ -87,6 +87,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   return (
     <div className="space-y-4">
       <header className="sticky top-0 z-10 -mx-4 flex items-center gap-3 border-b border-line bg-bg/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+        {/* The workout stays saved on the phone; a bar on every page brings you back. */}
+        <Link to="/" className="icon-btn -ml-2 text-xl" aria-label="Back to the menu, workout keeps running">‹</Link>
         <div className="min-w-0 flex-1">
           <input className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-ink" placeholder="Workout" value={a.title} onChange={e => update(x => (x.title = e.target.value))} aria-label="Workout name" />
           <p className="text-sm tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · {plural(t.sets, 'set')} · {num(t.volume)} kg</p>

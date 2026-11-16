@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../lib/data'
-import { plural, workoutText } from '../lib/format'
-import { outbox } from '../lib/session'
+import { clock, plural, workoutText } from '../lib/format'
+import { beep, loadActive, outbox, saveActive, totals } from '../lib/session'
 import { CopyButton } from './ui'
 import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
@@ -77,7 +77,7 @@ export function Layout() {
         <p className="mt-auto px-2 text-xs text-muted">Lift. Run. Repeat.</p>
       </aside>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8 md:pb-12 md:pt-10">
+      <main className={`mx-auto w-full max-w-6xl px-4 ${loadActive() ? 'pb-48' : 'pb-28'} pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8 md:pb-12 md:pt-10`}>
         {data.demo && (
           <p className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
             <b>Demo</b> with made-up data: click around, log a workout, break things. It all resets every night.{' '}
@@ -87,6 +87,7 @@ export function Layout() {
         <Outbox className="mb-5" />
         <Outlet />
       </main>
+      <Running />
 
       {more && (
         <div className="fixed inset-0 z-30 bg-black/55 md:hidden" onClick={() => setMore(false)}>
@@ -137,5 +138,35 @@ export function Outbox({ className = '' }: { className?: string }) {
         <CopyButton text={() => outbox().map(workoutText).join('\n\n')} />
       </div>
     </div>
+  )
+}
+
+/** A workout left running: a bar above the tabs with its clock and rest timer. Tap to go back to it. */
+function Running() {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  const a = loadActive() // re-read each tick: the logger saves every change
+  const rest = a?.restEndsAt ? (a.restEndsAt - now) / 1000 : null
+  // The logger isn't mounted to beep, so the bar does it.
+  useEffect(() => {
+    const x = loadActive()
+    if (!x?.restEndsAt || x.restEndsAt > now) return
+    beep()
+    saveActive({ ...x, restEndsAt: null })
+  }, [now])
+  if (!a) return null
+  return (
+    <Link to="/log" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 px-4 py-3 shadow-lg backdrop-blur md:bottom-6 md:left-auto md:right-6 md:w-80">
+      <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-good" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">{a.title || 'Workout'} in progress</span>
+        <span className="block text-xs tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · {plural(totals(a).sets, 'set')}</span>
+      </span>
+      {rest !== null && rest > 0 && <span className="text-2xl font-bold tabular-nums text-accent">{clock(rest)}</span>}
+      <span className="text-muted">›</span>
+    </Link>
   )
 }
