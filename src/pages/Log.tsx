@@ -120,10 +120,15 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         }
         const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : +s.weight, reps: s.reps === '' ? null : +s.reps, done: s.done })))
         const done = ex.sets.filter(s => s.done).length
+        const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
         return (
-          <section key={i} className="rounded-2xl border border-line bg-surface p-4">
-            <div className="flex items-center gap-2">
-              <button className="relative flex min-w-0 flex-1 items-center gap-2 text-left" aria-expanded={!ex.collapsed} onClick={() => update(x => void (x.exercises[i].collapsed = !ex.collapsed))}>
+          // Folded, the whole card opens it; open, the whole header row folds it. The rest picker and ✕ keep their own taps.
+          <section key={i} className={`rounded-2xl border border-line bg-surface p-4 ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
+            <div className="flex cursor-pointer items-center gap-2" onClick={e => {
+              e.stopPropagation() // the card's own handler would undo it
+              toggle()
+            }}>
+              <button className="relative flex min-w-0 flex-1 items-center gap-2 text-left" aria-expanded={!ex.collapsed}>
                 <Tap />
                 <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
                 <h2 className="min-w-0 truncate font-semibold">{ex.name}</h2>
@@ -133,11 +138,12 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 </span>
               </button>
               {/* Finished: no rest picker and no ✕, just a green tick on the right so it reads as done at a glance. */}
-              {done < ex.sets.length && <select className="min-h-11 rounded-lg bg-surface-2 px-2 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
+              {done < ex.sets.length && <select onClick={e => e.stopPropagation()} className="min-h-11 rounded-lg bg-surface-2 px-2 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
                 onChange={e => (rememberRest(ex.name, +e.target.value), update(x => (x.exercises[i].restS = +e.target.value)))}>
                 {[...new Set([...RESTS, ex.restS])].sort((x, y) => x - y).map(s => <option key={s} value={s}>Rest {clock(s)}</option>)}
               </select>}
-              {done < ex.sets.length ? <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={async () => {
+              {done < ex.sets.length ? <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={async e => {
+                e.stopPropagation()
                 if (!await ask(`Remove ${ex.name} from this workout?${done ? ` Its ${plural(done, 'ticked set')} go too.` : ''}`, 'Remove', true)) return
                 update(x => void x.exercises.splice(i, 1))
                 setFx(null) // indices shift: don't let the pop land on another exercise
@@ -151,7 +157,9 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             {/* Folds by animating the row from 1fr to 0fr, so it slides shut instead of snapping. The sets stay mounted
                 (inert while folded); the side padding gives the ✓ pop room inside the clip. */}
             <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${ex.collapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`} inert={ex.collapsed}>
-            <div className="-mx-2 min-h-0 overflow-hidden px-2 pt-3">
+            {/* No vertical padding on the clipping box: padding can't shrink to 0fr, and a strip of the first row showed. */}
+            <div className="-mx-2 min-h-0 overflow-hidden px-2">
+            <div className="pt-3">
             {ex.target && (
               <p className="-mt-2 mb-3 text-xs text-muted">
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
@@ -213,6 +221,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             <div className="mt-3 flex gap-2">
               <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false, note: undefined }))}>+ Set</button>
               {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => void removeSet(ex.sets.length - 1)}>− Set</button>}
+            </div>
             </div>
             </div>
             </div>
