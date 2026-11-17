@@ -36,7 +36,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **`npm run setup`**: one terminal command. Tested end to end on a throwaway Worker, Access login included.
 - [x] **AI setup guide** (`docs/SETUP-AI.md`) for Claude Code / Cursor.
 - [ ] **Test the Deploy button** on a spare Cloudflare account. Check: does the build get past the database step without adding D1 Edit to its token, do the setup prompts accept empty values, and does the "Almost there" screen show until Access is on. Fix `docs/SETUP.md` with what's actually there.
-- [ ] **Onboarding for new users** (self-hosted and phone-only): profile, a first routine, how the logger works. Phone-only shows it after the "start fresh / sample data" welcome; self-hosted after the first sign-in. Design once for both.
+- [x] **Onboarding for new users** (all three copies): five swipeable screens, six in a phone's browser (add to home screen). Goals (up to two), weight, age, sex, all optional; ChatGPT prompt that quizzes first, starter routines by goal, Strava activities.csv import. Skip on every screen; Settings → Profile → Show the intro again.
 - [x] **Try it with no setup**: reprun.danielhadaway.dev keeps everything on the phone, with a welcome screen, sample data, backup reminders, and a backup file to move to your own copy later.
 - [ ] **Phone-only on a real iPhone**: does Safari-tab data carry into the home-screen app (expect not), does Settings → This phone say "Protected", does Save a backup reach Files, and is the data still there after a week and an iOS update.
 

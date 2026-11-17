@@ -192,7 +192,9 @@ function PullToRefresh({ off }: { off: boolean }) {
       return false
     }
     const start = (e: TouchEvent) => {
-      y0 = window.scrollY <= 0 && !document.querySelector('dialog[open]') && !inScrolled(e.target) ? e.touches[0].clientY : null
+      // Not over a dialog or the intro (its own screens swipe sideways and scroll).
+      const overlay = !!document.querySelector('dialog[open]') || (e.target instanceof Element && !!e.target.closest('[role="dialog"]'))
+      y0 = window.scrollY <= 0 && !overlay && !inScrolled(e.target) ? e.touches[0].clientY : null
       x0 = e.touches[0].clientX
       d = 0
     }

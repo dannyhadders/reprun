@@ -1,4 +1,5 @@
 // When the first-run intro (components/Onboarding.tsx) shows, and what it knows about the phone it's on.
+import { useEffect, useState } from 'react'
 // ponytail: a flag in localStorage, per device. A second phone sees the intro once too, which is harmless.
 const DONE = 'reprun.onboarded'
 const AGAIN = 'reprun.introAgain' // Settings → "Show the intro again"
@@ -20,11 +21,27 @@ export function installHint(): 'ios' | 'android' | null {
   return /Android/.test(ua) ? 'android' : null
 }
 
-// Android Chrome offers its own install prompt once; keep it so the intro's Install button can use it.
+// Android Chrome offers its install prompt when it decides to, often after the intro is already up. Keep the latest
+// one and tell whoever's listening. No preventDefault: Chrome's own banner still shows where there's no intro.
 type InstallPrompt = Event & { prompt: () => Promise<void> }
 let deferred: InstallPrompt | null = null
-addEventListener('beforeinstallprompt', e => {
-  e.preventDefault()
-  deferred = e as InstallPrompt
-})
-export const installPrompt = () => (deferred ? () => void deferred?.prompt() : undefined)
+const listeners = new Set<() => void>()
+const changed = () => listeners.forEach(f => f())
+addEventListener('beforeinstallprompt', e => ((deferred = e as InstallPrompt), changed()))
+addEventListener('appinstalled', () => ((deferred = null), changed()))
+
+/** The install button's action once Chrome has offered one, else undefined. Each prompt can only be used once. */
+export function useInstallPrompt() {
+  const [, rerender] = useState(0)
+  useEffect(() => {
+    const f = () => rerender(n => n + 1)
+    listeners.add(f)
+    return () => void listeners.delete(f)
+  }, [])
+  return deferred ? () => {
+    const d = deferred!
+    deferred = null
+    changed()
+    void d.prompt()
+  } : undefined
+}

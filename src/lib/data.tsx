@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Data } from '../../shared/types.ts'
-import { Welcome } from '../components/PhoneOnly.tsx'
+import { useNavigate } from 'react-router-dom'
+import { planPrompt } from '../../shared/plan.ts'
+import { startersFor } from '../../shared/starter.ts'
+import { Onboarding, type Answers } from '../components/Onboarding.tsx'
+import { today } from './format.ts'
+import { installHint, introAgain, introDone, markIntroDone } from './intro.ts'
 import { local, LOCAL, startLocal, started } from './local.ts'
 import { sessionLines } from './motivation.ts'
 import { flush, outbox } from './session.ts'
@@ -100,8 +105,56 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return { data, model, lines: sessionLines(model), reload, pending, upload, sync }
   }, [data, reload, pending, upload, sync])
 
+  // First-run intro, over the app. Phone-only: whenever the phone has no data yet (page 1 picks fresh or sample).
+  // Elsewhere: someone with nothing logged, everyone on the demo, or Settings → "Show the intro again".
+  const navigate = useNavigate()
+  // A phone-only copy with no data always gets it: page 1 is where it starts, or the screen would stay empty.
+  const [intro, setIntro] = useState(() => (LOCAL && !started()) || (!introDone() && (introAgain() || !LOCAL)))
+  const [introMode] = useState<'local' | 'self' | null>(() => (LOCAL ? (started() ? 'self' : 'local') : null))
+  const fresh = !!data && !data.workouts.length && !data.activities.some(a => !a.sample)
+  const showIntro = intro && (LOCAL || introAgain() || data?.demo || fresh) && (LOCAL || !!data)
+  const finishIntro = async (a: Answers | null, then?: 'paste-plan') => {
+    try {
+      if (LOCAL && !started()) await startLocal(false) // skipped before picking: an empty copy
+      if (a && data && !data.demo) { // the demo is one shared database: one visitor's details would show to everyone
+        const p = data.profile
+        await api('PUT', 'profile', { ...p, goals: a.goals.length ? a.goals : p.goals, age: a.age ?? p.age, weight_kg: a.weight_kg ?? p.weight_kg, sex: a.sex ?? p.sex })
+        if (a.weight_kg) await api('POST', 'body-weight', { date: today(), kg: a.weight_kg }).catch(() => {}) // starts the body weight chart
+      }
+    } catch { /* offline or signed out: don't trap them in the intro; Settings → Profile has it all */ }
+    markIntroDone()
+    setIntro(false)
+    await reload()
+    setReady(true)
+    // ponytail: with a workout already running, /log shows that instead of the paste box. Only reachable via "Show the intro again".
+    if (then === 'paste-plan') navigate('/log#import')
+  }
+  // Same place in the tree before and after the phone-only copy starts, so the intro keeps its page and answers.
+  const introEl = showIntro ? (
+    <Onboarding
+      mode={introMode ?? (data?.demo ? 'demo' : 'self')}
+      install={installHint()}
+      stravaConfigured={data?.strava.configured}
+      // Guarded so the phone-only code stays out of every other build (see CLAUDE.md).
+      onData={LOCAL ? async sample => (await startLocal(sample), await reload(), setReady(true)) : undefined}
+      prompt={a => planPrompt(data?.exercises.map(e => e.name) ?? [], a)}
+      onStarters={async a => {
+        const have = new Set(data?.routines.map(r => r.name.toLowerCase()))
+        const add = startersFor(a.goals).filter(r => !have.has(r.name.toLowerCase()))
+        if (add.length) await api('POST', 'routines', { routines: add })
+        await reload()
+      }}
+      onStravaFile={async f => {
+        const msg = await importStravaFile(f)
+        await reload()
+        return msg
+      }}
+      onFinish={(a, then) => void finishIntro(a, then)}
+    />
+  ) : null
+  if (LOCAL && !ready) return <>{null}{introEl}</>
+
   // ponytail: matches the worker's "Almost there" message rather than adding an error code.
-  if (LOCAL && !ready) return <Welcome onStart={async sample => (await startLocal(sample), await reload(), setReady(true))} />
   if (error?.startsWith('Almost there') && !data) return <FinishSetup />
   if (error && !data) {
     return (
@@ -115,7 +168,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
   }
   if (!value) return <Skeleton />
-  return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>
+  // While the intro's up, the app behind it is inert: no focus, taps or screen reader can reach it.
+  return <><div className="contents" inert={!!introEl}><DataCtx.Provider value={value}>{children}</DataCtx.Provider></div>{introEl}</>
 }
 
 export const useData = () => {

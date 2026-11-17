@@ -7,6 +7,9 @@
 // A routine is stored as its text, so the parser can get smarter without migrating data.
 // Self-check: npx tsx scripts/check-plan.ts
 
+import { GOALS, type GoalId } from './rules.ts'
+import type { Profile } from './types.ts'
+
 export type PlanItem = { name: string; sets: number; repsMin: number; repsMax: number; weight: number | null; restS: number | null; note: string | null }
 export type ParsedRoutine = { name: string; items: PlanItem[]; unparsed: string[] }
 
@@ -103,4 +106,20 @@ export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight'>, las
   if (!top) return { weight: null, reps: best + 1 } // bodyweight: just beat last time
   if (atTop.every(s => s.reps! >= p.repsMax)) return { weight: top + (top >= 20 ? 2.5 : 1), reps: p.repsMin }
   return { weight: top, reps: Math.min(best + 1, p.repsMax) }
+}
+
+/**
+ * The ChatGPT prompt (Planner and onboarding): who they are and what they're after, then ask ChatGPT to quiz them
+ * before writing a plan in the format the importer reads. Unknown details are just left out.
+ */
+export function planPrompt(names: string[], me: { goals?: GoalId[]; weight_kg?: number | null; age?: number | null; sex?: Profile['sex'] | null } = {}) {
+  const goals = (me.goals ?? []).map(g => GOALS.find(x => x.id === g)!.label.toLowerCase())
+  const about = [goals.length && `I want to ${goals.join(' and ')}`, me.age && `I'm ${me.age}`, me.weight_kg && `I weigh ${me.weight_kg} kg`, me.sex && `I'm ${me.sex === 'female' ? 'a woman' : 'a man'}`].filter(Boolean)
+  return `Help me plan my gym training. I log it in an app called RepRun, which imports the plan you write.
+${about.length ? `About me: ${about.join(', ')}.\n` : ''}Before you write anything, ask me a few short questions, one at a time: how many days a week I can train, how long a session can be, what equipment I have, any injuries, and how experienced I am.
+Then write my gym plan as plain text, no tables or markdown.
+Start each workout day with its name on its own line, ending with a colon.
+Then one line per exercise, exactly like this:
+Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
+Use kg. Leave out "@ ...kg" for bodyweight exercises.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
 }

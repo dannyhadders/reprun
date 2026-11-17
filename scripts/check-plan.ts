@@ -75,3 +75,11 @@ eq(startersFor().map(r => r.name), ['Push day', 'Pull day', 'Leg day', 'Back day
 eq(startersFor(['lose']).map(r => r.name), ['Full body', 'Conditioning'], 'starters: lose weight')
 eq(startersFor(['strength', 'running']).map(r => r.name), ['Push day', 'Pull day', 'Leg day', 'Full body'], 'starters: two goals, no repeats')
 console.log('starters self-check passed')
+
+// ChatGPT prompt: details only when known, the quiz, and the format.
+const { planPrompt } = await import('../shared/plan.ts')
+const pp = planPrompt(['Squat'], { goals: ['lose', 'strength'], weight_kg: 82, age: null, sex: 'female' })
+assert(pp.includes("About me: I want to lose weight and get stronger, I weigh 82 kg, I'm a woman."), `prompt: about line: ${pp.split('\n')[1]}`)
+assert(pp.includes('ask me a few short questions') && pp.includes('Bicep Curl – 3x8-10 @ 12kg') && pp.endsWith('exact exercise names: Squat.'), 'prompt: quiz, format, names')
+assert(!planPrompt([]).includes('About me') && !planPrompt([]).includes('exact exercise names'), 'prompt: nothing known, nothing said')
+console.log('prompt self-check passed')

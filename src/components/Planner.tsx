@@ -1,9 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { estimateS, formatLine, parsePlan, roughTime, targetText, type PlanItem } from '../../shared/plan'
-import { GOALS, type GoalId } from '../../shared/rules'
+import { estimateS, formatLine, parsePlan, planPrompt, roughTime, targetText, type PlanItem } from '../../shared/plan'
 import { startersFor } from '../../shared/starter'
-import type { Data, Profile, Routine, WorkoutSet } from '../../shared/types'
+import type { Data, Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
 import { Tap } from '../lib/haptic'
@@ -35,7 +34,8 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
       setAdding(false)
     }
   }
-  const [editing, setEditing] = useState<Routine | 'new' | null>(null)
+  // /log#import (the intro's "Paste a plan") opens straight on the paste box.
+  const [editing, setEditing] = useState<Routine | 'new' | null>(() => (location.hash === '#import' ? 'new' : null))
   const [open, setOpen] = useState<string | null>(null) // which row is showing its preview
   const toggle = (k: string) => setOpen(open === k ? null : k)
   const last = (name: string) => lastSets(model, name)
@@ -157,21 +157,6 @@ function Preview({ rows }: { rows: [string, string, string | null][] }) {
   )
 }
 
-/**
- * The ChatGPT prompt (Planner and onboarding): who they are and what they're after, then ask ChatGPT to quiz them
- * before writing a plan in the format the importer reads. Unknown details are just left out.
- */
-export function planPrompt(names: string[], me: { goals?: GoalId[]; weight_kg?: number | null; age?: number | null; sex?: Profile['sex'] | null } = {}) {
-  const goals = (me.goals ?? []).map(g => GOALS.find(x => x.id === g)!.label.toLowerCase())
-  const about = [goals.length && `I want to ${goals.join(' and ')}`, me.age && `I'm ${me.age}`, me.weight_kg && `I weigh ${me.weight_kg} kg`, me.sex && `I'm ${me.sex === 'female' ? 'a woman' : 'a man'}`].filter(Boolean)
-  return `Help me plan my gym training. I log it in an app called RepRun, which imports the plan you write.
-${about.length ? `About me: ${about.join(', ')}.\n` : ''}Before you write anything, ask me a few short questions, one at a time: how many days a week I can train, how long a session can be, what equipment I have, any injuries, and how experienced I am.
-Then write my gym plan as plain text, no tables or markdown.
-Start each workout day with its name on its own line, ending with a colon.
-Then one line per exercise, exactly like this:
-Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
-Use kg. Leave out "@ ...kg" for bodyweight exercises.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
-}
 
 function ImportPlan({ routine, close }: { routine: Routine | null; close: () => void }) {
   const { data, reload } = useData()
