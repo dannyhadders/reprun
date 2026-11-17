@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
 import { Outbox } from '../components/Layout'
@@ -109,6 +109,15 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       {a.exercises.map((ex, i) => {
         const prev = lastSets(model, ex.name)
         const history = model.exHistory.get(matchExercise(ex.name, data.exercises, data.aliases)?.id ?? -1) ?? []
+        // Any set, from − Set (the last) or a swipe (any). Asks first when it has data in it; Undo after.
+        const removeSet = async (j: number) => {
+          const s = ex.sets[j]
+          if ((s.done || s.reps || s.weight || s.note) && !await ask(`Remove set ${j + 1} of ${ex.name}? It has data in it.`, 'Remove', true)) return
+          update(x => void x.exercises[i].sets.splice(j, 1))
+          setFx(null)
+          // ponytail: put back by name, so removing an exercise above it first can't land it on the wrong one. Same name twice: first wins.
+          setUndo({ msg: `Removed set ${j + 1} of ${ex.name}`, put: x => void x.exercises.find(e => e.name === ex.name)?.sets.splice(j, 0, s) })
+        }
         const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : +s.weight, reps: s.reps === '' ? null : +s.reps, done: s.done })))
         const done = ex.sets.filter(s => s.done).length
         return (
@@ -148,15 +157,16 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
                 const hint = ex.suggest ?? { weight: p?.weight_kg?.toString() ?? '', reps: p?.reps?.toString() ?? '' }
                 return [
-                  // Tap the set number for a note on that set.
-                  <button key={`n${j}`} className="relative min-h-11 text-center text-muted" aria-label={`Note for set ${j + 1}`}
+                  <SwipeRow key={`row${j}`} onDelete={ex.sets.length > 1 ? () => void removeSet(j) : undefined}>
+                  {/* Tap the set number for a note on that set. */}
+                  <button className="relative min-h-11 text-center text-muted" aria-label={`Note for set ${j + 1}`}
                     onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
-                  </button>,
-                  <span key={`p${j}`} className="truncate text-muted">{p ? setText(p) : '–'}</span>,
-                  <input key={`w${j}`} className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
-                  <input key={`r${j}`} className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />,
-                  <button key={`d${j}`} aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
+                  </button>
+                  <span className="truncate text-muted">{p ? setText(p) : '–'}</span>
+                  <input className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />
+                  <input className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />
+                  <button aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
                     className={`press relative h-11 rounded-xl text-lg font-bold ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'} ${s.done && fx?.i === i && fx.j === j ? 'animate-pop' : ''}`}
                     onClick={async () => {
                       unlockAudio()
@@ -184,7 +194,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         x.restEndsAt = finished ? null : y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
                         if (y.done) x.restFrom = Date.now()
                       })
-                    }}><Tap />✓{j === pbAt && <span className="absolute -right-1.5 -top-2 animate-pop text-sm" role="img" aria-label="PB">🏆</span>}</button>,
+                    }}><Tap />✓{j === pbAt && <span className="absolute right-0.5 top-0 animate-pop text-xs" role="img" aria-label="PB">🏆</span>}</button>
+                  </SwipeRow>,
                   s.note !== undefined && (
                     <input key={`t${j}`} className="input col-span-5 py-2" placeholder={`Note for set ${j + 1}, e.g. felt easy, left shoulder`} aria-label={`Set ${j + 1} note`}
                       autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))} />
@@ -194,13 +205,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             </div>
             <div className="mt-3 flex gap-2">
               <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false, note: undefined }))}>+ Set</button>
-              {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={async () => {
-                const last = ex.sets[ex.sets.length - 1]
-                if ((last.done || last.reps || last.weight || last.note) && !await ask(`Remove set ${ex.sets.length} of ${ex.name}? It has data in it.`, 'Remove', true)) return
-                update(x => void x.exercises[i].sets.pop())
-                // ponytail: put back by name, so removing an exercise above it first can't land it on the wrong one. Same name twice: first wins.
-                setUndo({ msg: `Removed set ${ex.sets.length} of ${ex.name}`, put: x => void x.exercises.find(e => e.name === ex.name)?.sets.splice(ex.sets.length - 1, 0, last) })
-              }}>− Set</button>}
+              {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => void removeSet(ex.sets.length - 1)}>− Set</button>}
             </div>
             </>}
           </section>
@@ -273,6 +278,49 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           </div>
         </div>
       )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * One set's row, swipeable left to delete like an iOS list. Spans the set grid via subgrid so the columns still line up.
+ * No onDelete (an exercise's only set): a plain row. Styles set directly while dragging, so no re-render per touchmove.
+ */
+function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: ReactNode }) {
+  const row = useRef<HTMLDivElement>(null)
+  const t = useRef<{ x: number; y: number; dx: number; lock?: 'x' | 'y' } | null>(null)
+  const slide = (dx: number, ease: boolean) => {
+    const el = row.current!
+    el.style.transition = ease ? 'transform 0.2s ease-out' : 'none'
+    el.style.transform = dx ? `translateX(${dx}px)` : ''
+  }
+  const cells = 'col-span-5 grid grid-cols-subgrid items-center'
+  if (!onDelete) return <div className={cells}>{children}</div>
+  return (
+    // Clipped on the left only (where the row slides out), so the ✓'s pop and 🏆 aren't cut off.
+    <div className={`relative [clip-path:inset(-8px_-8px_-8px_0)] ${cells}`}>
+      <div className="absolute inset-0 flex items-center justify-end rounded-xl bg-bad pr-4 text-sm font-semibold text-white" aria-hidden>Delete</div>
+      <div ref={row} className={`relative bg-surface ${cells} touch-pan-y`}
+        onTouchStart={e => void (t.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0 })}
+        onTouchMove={e => {
+          const c = t.current
+          if (!c) return
+          const dx = e.touches[0].clientX - c.x, dy = e.touches[0].clientY - c.y
+          c.lock ??= Math.abs(dx) > 8 ? 'x' : Math.abs(dy) > 8 ? 'y' : undefined // decide once: a scroll never turns into a swipe
+          if (c.lock !== 'x') return
+          c.dx = Math.min(0, dx)
+          slide(c.dx, false)
+        }}
+        onTouchEnd={() => {
+          const c = t.current
+          t.current = null
+          if (c && c.dx < -90) {
+            slide(0, false)
+            onDelete()
+          } else slide(0, true)
+        }}>
+        {children}
       </div>
     </div>
   )
