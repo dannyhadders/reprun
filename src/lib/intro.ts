@@ -45,3 +45,13 @@ export function useInstallPrompt() {
     void d.prompt()
   } : undefined
 }
+
+/** "Safari", "Chrome"… for the install how-to, or "your browser" when the user agent doesn't say. */
+export function browserName() {
+  const ua = navigator.userAgent
+  const known: [RegExp, string][] = [
+    [/EdgiOS|EdgA|Edg\//, 'Edge'], [/FxiOS|Firefox/, 'Firefox'], [/OPiOS|OPT\/|OPR\//, 'Opera'], [/SamsungBrowser/, 'Samsung Internet'],
+    [/DuckDuckGo/, 'DuckDuckGo'], [/GSA\//, 'the Google app'], [/CriOS|Chrome\//, 'Chrome'], [/Version\/[\d.]+.*Safari\//, 'Safari'],
+  ]
+  return known.find(([re]) => re.test(ua))?.[1] ?? 'your browser'
+}

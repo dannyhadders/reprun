@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { GOALS, type GoalId } from '../../shared/rules'
 import type { Profile } from '../../shared/types'
 import { Tap } from '../lib/haptic'
-import { useInstallPrompt } from '../lib/intro'
+import { browserName, useInstallPrompt } from '../lib/intro'
 import { CopyButton, Icon } from './ui'
 
 export type Answers = { goals: GoalId[]; weight_kg: number | null; age: number | null; sex: Profile['sex'] | null }
@@ -42,6 +42,7 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
   const track = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
   const onInstall = useInstallPrompt() // Android: Chrome's own install prompt, once it offers one
+  const browser = browserName()
   // A dialog over the app: focus starts inside it (the app behind is inert, see DataProvider).
   const root = useRef<HTMLDivElement>(null)
   useEffect(() => root.current?.focus(), [])
@@ -107,7 +108,7 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
             <p className="mt-2 text-muted">Then RepRun opens like an app: full screen, one tap away, and it still works when the gym has no signal.</p>
             <ol className="mt-7 w-full space-y-3 text-left">
               {(install === 'ios'
-                ? [[I.share, <>Tap <b>Share</b> in Safari's toolbar (or <b>•••</b>, then Share)</>], [I.add, <>Scroll down and tap <b>Add to Home Screen</b></>], [I.home, <>Tap <b>Add</b>, then open RepRun from your home screen</>]]
+                ? [[I.share, <>Tap <b>Share</b> in {browser === 'your browser' ? 'your browser' : `${browser}'s`} toolbar (or <b>•••</b>, then Share)</>], [I.add, <>Scroll down and tap <b>Add to Home Screen</b></>], [I.home, <>Tap <b>Add</b>, then open RepRun from your home screen</>]]
                 : [[I.dots, <>Tap <b>⋮</b> at the top right of Chrome</>], [I.add, <>Tap <b>Install app</b> (or <b>Add to home screen</b>)</>], [I.home, <>Open RepRun from your home screen</>]]
               ).map(([icon, text], i) => (
                 <li key={i} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
@@ -117,7 +118,7 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
               ))}
             </ol>
             {install === 'android' && onInstall && <button className="btn relative mt-4 w-full py-3 text-base" onClick={onInstall}><Tap />Install RepRun</button>}
-            {mode === 'local' && <p className="mt-4 text-sm text-muted">Do this before adding anything: the home-screen app keeps its own copy, separate from {install === 'ios' ? 'Safari' : 'the browser'}.</p>}
+            {mode === 'local' && <p className="mt-4 text-sm text-muted">Do this before adding anything: the home-screen app keeps its own copy, separate from {browser}.</p>}
           </Page>
         )}
 
