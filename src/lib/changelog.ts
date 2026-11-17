@@ -4,7 +4,6 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
-      'Opening the no-setup version (app.reprun.co.uk) on a computer shows it phone-sized in the middle of the screen.',
       'The add-to-home-screen steps name the browser you\'re using (Chrome, Firefox, Edge…) instead of always saying Safari.',
       'The no-setup phone version has its own address: app.reprun.co.uk.',
       'A short intro for new people: what RepRun does, how to add it to your home screen, your goals and details (all optional), and a quick way in with ChatGPT, starter routines or your Strava history. Skip it any time.',
