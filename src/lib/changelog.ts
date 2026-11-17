@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'When a workout that was waiting on this phone reaches the server, a short "uploaded" message says so.',
       'Pull down at the top of a page to refresh: it sends anything waiting, syncs Strava if it\'s connected, and reloads.',
       'Home\'s weekly numbers count up when you open the app.',
       'Home shows the routine that\'s due next, with a Start button.',

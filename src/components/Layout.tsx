@@ -116,6 +116,7 @@ export function Layout() {
       </main>
       <Running />
       <PullToRefresh off={more} />
+      <Uploaded />
 
       {more && (
         <div className="fixed inset-0 z-30 animate-fade-in bg-black/55 md:hidden" onClick={() => setMore(false)}>
@@ -145,6 +146,30 @@ export function Layout() {
           More
         </button>
       </nav>
+    </div>
+  )
+}
+
+/** A moment of "it's safe now" when waiting workouts reach the server, instead of the banner just vanishing. */
+function Uploaded() {
+  const { pending, upload } = useData()
+  const prev = useRef(pending)
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    if (!LOCAL && prev.current > 0 && pending === 0 && !upload.error) setN(prev.current) // phone-only: nothing goes anywhere
+    prev.current = pending
+  }, [pending, upload.error])
+  useEffect(() => {
+    if (!n) return
+    const t = setTimeout(() => setN(0), 3000)
+    return () => clearTimeout(t)
+  }, [n])
+  if (!n) return null
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status">
+      <p className="flex animate-toast-in items-center gap-2 rounded-full border border-good/40 bg-surface px-4 py-2 text-sm font-medium shadow-lg">
+        <Icon d="M5 12.5 10 17.5 19 7" className="h-4 w-4 text-good" />{plural(n, 'workout')} uploaded
+      </p>
     </div>
   )
 }
