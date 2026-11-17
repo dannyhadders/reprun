@@ -13,7 +13,7 @@ export type LogExercise = {
   restS: number
   sets: LogSet[]
   target?: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax' | 'note'> // from a routine
-  suggest?: { weight: string; reps: string } // progression pick, shown as placeholders
+  suggest?: { weight: string; reps: string; fresh?: boolean } // progression pick, shown as placeholders; fresh = no history and no weight in the plan
   collapsed?: boolean // folded away in the logger; ticked count still shows
 }
 export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null }
@@ -71,7 +71,7 @@ export function fromRoutine(r: Routine, known: Exercise[], last: Last): Active {
       ...e,
       restS: p.restS ?? e.restS,
       target: { sets: p.sets, repsMin: p.repsMin, repsMax: p.repsMax, note: p.note },
-      suggest: { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps) },
+      suggest: { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last(e.name).length },
     }
   }))
 }

@@ -42,6 +42,8 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 
 ## Ideas
 
+- [ ] **Edit an exercise**: on its page, rename it (typos), change its muscle, or merge it into another (all sets move over, the duplicate goes, PBs and suggestions recalculate). Renaming onto an existing name offers to merge. New Worker routes plus local.ts twins; back up prod before shipping, since merge rewrites history.
+
 - [ ] **Feature toggles**: Settings → Features, a switch per optional feature. Off hides its tab, cards and buttons; the data stays. Do this first, then build each idea below behind its own switch.
 - [ ] **Calories**: decide which first. (1) Burned: estimate per workout and run from body weight (MET values), small. (2) Food log: what you ate + calories, daily total vs a target, medium. (3) From a meal photo: needs a paid AI vision API, doesn't fit "free".
 - [ ] **Photos** (progress pics, meals, gym notes): store in R2 (10 GB free), not D1. The app loads all of D1 in one `/api/data` call, so photos there would download every time. Shrink on the phone to ~200 KB first; D1 keeps only the R2 key. Needs an R2 binding, created by the button and `npm run setup` like the database. Local (no-setup) mode would keep them in IndexedDB.

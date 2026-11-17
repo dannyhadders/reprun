@@ -29,7 +29,8 @@ add(['cross-body hammer curl'], { name: 'Cross-body Hammer Curl', muscle: 'arms'
 add(['triceps pushdown', 'tricep pushdown'], { name: 'Triceps Pushdown', muscle: 'arms' })
 add(['overhead triceps extension', 'overhead triceps extension (drop set)'], { name: 'Overhead Triceps Extension', muscle: 'arms' })
 add(['skull crushers'], { name: 'Skull Crusher', muscle: 'arms' })
-add(['incline leg press', 'incline leg press (earlier comparison)', 'leg press'], { name: 'Incline Leg Press', muscle: 'legs' })
+add(['incline leg press', 'incline leg press (earlier comparison)', 'leg press'], { name: 'Incline Leg Press', muscle: 'legs' }) // plain "leg press" = the incline machine in older logs
+add(['seated leg press', 'horizontal leg press'], { name: 'Seated Leg Press', muscle: 'legs' }) // a different machine: its own history
 add(['leg extension'], { name: 'Leg Extension', muscle: 'legs' })
 add(['prone leg curl'], { name: 'Lying Leg Curl', muscle: 'legs' })
 add(['romanian deadlift'], { name: 'Romanian Deadlift', muscle: 'legs' })
@@ -43,6 +44,16 @@ add(['suitcase crunches'], { name: 'Suitcase Crunch', muscle: 'core' })
 add(['weighted sit-up', 'sit-up'], { name: 'Sit-up', muscle: 'core' })
 add(['russian twist', 'weighted russian twists'], { name: 'Russian Twist', muscle: 'core' })
 add(['plank'], { name: 'Plank', muscle: 'core' })
+// Used by the starter routines (shared/starter.ts).
+add(['face pull', 'face pulls'], { name: 'Face Pull', muscle: 'shoulders' })
+add(['barbell curl', 'barbell curls'], { name: 'Barbell Curl', muscle: 'arms' })
+add(['cable curl', 'cable curls'], { name: 'Cable Curl', muscle: 'arms' })
+add(['incline dumbbell curl', 'incline curl'], { name: 'Incline Dumbbell Curl', muscle: 'arms' })
+add(['close-grip bench press', 'close grip bench press'], { name: 'Close-grip Bench Press', muscle: 'arms' })
+add(['leg curl', 'seated leg curl', 'hamstring curl'], { name: 'Leg Curl', muscle: 'legs' })
+add(['barbell row', 'bent-over row', 'bent over row'], { name: 'Barbell Row', muscle: 'back' })
+add(['pull-up', 'pull-ups', 'pull up', 'pullups'], { name: 'Pull-up', muscle: 'back' })
+add(['single-arm dumbbell row', 'one-arm dumbbell row'], { name: 'Single-arm Dumbbell Row', muscle: 'back' })
 add(['side plank'], { name: 'Side Plank', muscle: 'core' })
 
 export function resolveExercise(raw: string, weightKg: number | null): Entry {

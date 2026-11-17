@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { estimateS, formatLine, parsePlan, roughTime, targetText, type PlanItem } from '../../shared/plan'
+import { STARTER_ROUTINES } from '../../shared/starter'
 import type { Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
@@ -11,7 +12,21 @@ import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../
 
 /** The logger's start screen: next routine up, all routines, recent workouts to repeat, or an empty one. */
 export function Planner({ begin, children }: { begin: (a: Active) => void; children?: ReactNode }) {
-  const { data, model } = useData()
+  const { data, model, reload } = useData()
+  const [adding, setAdding] = useState(false)
+  const [added, setAdded] = useState(false) // hides the button once saved, even if the reload after it fails
+  const addStarters = async () => {
+    setAdding(true)
+    try {
+      await api('POST', 'routines', { routines: STARTER_ROUTINES })
+      setAdded(true)
+      await reload()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e))
+    } finally {
+      setAdding(false)
+    }
+  }
   const [editing, setEditing] = useState<Routine | 'new' | null>(null)
   const [open, setOpen] = useState<string | null>(null) // which row is showing its preview
   const toggle = (k: string) => setOpen(open === k ? null : k)
@@ -68,7 +83,14 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
               </li>
             ))}
           </ul>
-        ) : <p className="rounded-2xl border border-dashed border-line p-4 text-sm text-muted">No routines yet. Import a plan from your PT or ChatGPT: paste the text and each day becomes a routine.</p>}
+        ) : (
+          <div className="rounded-2xl border border-dashed border-line p-4 text-sm text-muted">
+            <p>No routines yet. Start with ours, or import a plan from your PT or ChatGPT: paste the text and each day becomes a routine.</p>
+            {added ? <p className="mt-3 text-good">Added. They'll show here once the page refreshes.</p>
+              : <button className="relative btn mt-3 w-full" disabled={adding} onClick={addStarters}><Tap />{adding ? 'Adding…' : 'Add starter routines'}</button>}
+            <p className="mt-2 text-xs">{STARTER_ROUTINES.map(r => r.name).join(' · ')}. Edit or delete them any time.</p>
+          </div>
+        )}
       </section>
 
       {recent.length > 0 && (

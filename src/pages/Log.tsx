@@ -111,7 +111,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             {!ex.collapsed && <>
             {ex.target && (
               <p className="-mt-2 mb-3 text-xs text-muted">
-                Plan {targetText(ex.target)}{ex.suggest ? ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
+                Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
             )}
             <div className="grid grid-cols-[1.5rem_1fr_4.5rem_4.5rem_2.75rem] items-center gap-2 text-sm">
@@ -127,13 +127,16 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>,
                   <span key={`p${j}`} className="truncate text-muted">{p ? setText(p) : '–'}</span>,
-                  <input key={`w${j}`} className="input px-2 text-center" type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || 'BW'} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
+                  <input key={`w${j}`} className="input px-2 text-center" type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
                   <input key={`r${j}`} className="input px-2 text-center" type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />,
                   <button key={`d${j}`} aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
                     className={`relative h-10 rounded-xl text-lg font-bold transition ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'}`}
                     onClick={() => {
                       unlockAudio()
+                      // First time with no weight in the plan: a blank weight would save as bodyweight, so ask once.
+                      if (!s.done && s.weight === '' && ex.suggest?.fresh && !confirm(`No weight entered for ${ex.name}. Log it as bodyweight?`)) return
                       update(x => {
+                        if (x.exercises[i].suggest) x.exercises[i].suggest.fresh = false // asked once is enough
                         const y = x.exercises[i].sets[j]
                         // Hevy-style: ticking an empty set takes the placeholder numbers.
                         if (!y.done && y.reps === '' && hint.reps) y.reps = hint.reps

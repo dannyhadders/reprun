@@ -2,6 +2,13 @@
 // Every user-facing change adds a line under today's date (see CLAUDE.md).
 export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
+    date: '2026-11-17',
+    changes: [
+      'Starter routines: Push, Pull, Leg, Back and Arms days in one tap when you have none yet.',
+      'First time doing an exercise from a routine: it asks for a weight instead of assuming bodyweight.',
+    ],
+  },
+  {
     date: '2026-11-16',
     changes: [
       'RepRun with no setup: reprun.danielhadaway.dev keeps everything on your phone, with a reminder to back up after each workout.',

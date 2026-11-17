@@ -1,5 +1,7 @@
 // Self-check for the plan parser and progression rule: npx tsx scripts/check-plan.ts
 import { estimateS, formatLine, parseLine, parsePlan, roughTime, suggest } from '../shared/plan.ts'
+import { resolveExercise } from '../shared/catalogue.ts'
+import { STARTER_ROUTINES } from '../shared/starter.ts'
 
 const assert = (c: unknown, msg: string) => { if (!c) throw new Error(msg) }
 const eq = (a: unknown, b: unknown, msg: string) => assert(JSON.stringify(a) === JSON.stringify(b), `${msg}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`)
@@ -28,4 +30,10 @@ eq(suggest({ repsMin: 10, repsMax: 12, weight: null }, [{ weight_kg: null, reps:
 eq(estimateS([{ sets: 3, restS: 60 }]), 360, 'estimate: 3 x (40 + 60) + 60')
 eq(estimateS([{ sets: 3, restS: null }]), 450, 'estimate: default rest 90 s')
 eq([roughTime(2700), roughTime(3600), roughTime(4500), roughTime(60)], ['45 min', '1 hr', '1 hr 15 min', '5 min'], 'roughTime')
+// Starter routines: every line parses, and every exercise is in the catalogue (not "other").
+for (const r of STARTER_ROUTINES) {
+  const items = parsePlan(r.body).flatMap(x => x.items)
+  eq(items.length, r.body.split('\n').length, `${r.name}: every line parses`)
+  for (const it of items) assert(resolveExercise(it.name, null).muscle !== 'other', `${r.name}: ${it.name} is in the catalogue`)
+}
 console.log('plan.ts self-check passed')
