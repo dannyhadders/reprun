@@ -154,7 +154,7 @@
     /* Icon and number side by side, caption underneath. */
     .stats div { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 10px; row-gap: 4px; text-align: center; padding: 26px 16px; border-left: 1px solid var(--line); }
     .stats div:first-child { border-left: 0; }
-    .stats .i { width: 26px; height: 26px; stroke: url(#grad); }
+    .stats .i { width: clamp(26px, 3.6vw, 38px); height: clamp(26px, 3.6vw, 38px); stroke: url(#grad); } /* same size as the number */
     .stats span { flex-basis: 100%; }
     .stats b { font-size: clamp(26px, 3.6vw, 38px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
     .stats span { color: var(--muted); font-size: 14.5px; }
@@ -168,9 +168,9 @@
     .card::after { content: ""; position: absolute; inset: 0; background: radial-gradient(400px circle at var(--x, 50%) var(--y, 0%), rgba(129, 140, 248, 0.12), transparent 60%); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
     .card:hover::after { opacity: 1; }
     /* Icon and title side by side, the text underneath. */
-    .feature { text-align: center; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; align-content: flex-start; gap: 12px; }
-    .feature .ico { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--surface-2); }
-    .feature .ico .i { width: 20px; height: 20px; stroke: url(#grad); }
+    .feature { text-align: center; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; align-content: flex-start; column-gap: 9px; row-gap: 10px; }
+    .feature .ico { display: contents; }
+    .feature .ico .i { width: 20px; height: 20px; stroke: url(#grad); } /* same size as the title */
     .feature h3 { font-size: 18px; letter-spacing: -0.02em; white-space: nowrap; }
     .feature p { flex-basis: 100%; color: var(--muted); font-size: 15px; }
 
@@ -285,7 +285,6 @@
     <symbol id="footprints" viewBox="0 0 24 24"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></symbol>
     <symbol id="lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol>
     <symbol id="download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" /></symbol>
-    <symbol id="pound-sterling" viewBox="0 0 24 24"><path d="M18 7c0-5.333-8-5.333-8 0" /><path d="M10 7v14" /><path d="M6 21h12" /><path d="M6 13h10" /></symbol>
     <symbol id="user-x" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="m17 8 5 5" /><path d="m22 8-5 5" /></symbol>
     <symbol id="wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01" /><path d="M8.5 16.429a5 5 0 0 1 7 0" /><path d="M5 12.859a10 10 0 0 1 5.17-2.69" /><path d="M19 12.859a10 10 0 0 0-2.007-1.523" /><path d="M2 8.82a15 15 0 0 1 4.177-2.643" /><path d="M22 8.82a15 15 0 0 0-11.288-3.764" /><path d="m2 2 20 20" /></symbol>
     <symbol id="timer" viewBox="0 0 24 24"><path d="M10 2h4" /><path d="m12 14 3-3" /><circle cx="12" cy="14" r="8" /></symbol>
@@ -356,7 +355,7 @@
 
     <div class="wrap reveal">
       <div class="stats">
-        <div><svg class="i" aria-hidden="true"><use href="#pound-sterling" /></svg><b class="g">£0</b><span>a month, for good</span></div>
+        <div><b class="g">£0</b><span>a month, for good</span></div>
         <div><svg class="i" aria-hidden="true"><use href="#user-x" /></svg><b>0</b><span>accounts to make</span></div>
         <div><svg class="i" aria-hidden="true"><use href="#wifi-off" /></svg><b>Offline</b><span>works with no signal</span></div>
         <div><svg class="i" aria-hidden="true"><use href="#timer" /></svg><b>~10 min</b><span>to host your own</span></div>
