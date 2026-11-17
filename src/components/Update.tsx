@@ -29,7 +29,10 @@ export function UpdateBanner() {
   if (!waiting || hidden) return null
   return (
     <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 mx-auto flex max-w-md animate-toast-in items-center gap-3 rounded-2xl border border-accent/50 bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg" role="status">
-      <span className="flex-1 text-sm">New version ready.</span>
+      <span className="flex-1 text-sm">
+        <span className="block font-semibold">New version ready</span>
+        <span className="block text-muted">Updating restarts RepRun. Your data is safe, even a workout in progress.</span>
+      </span>
       <button className="relative btn min-h-11" onClick={() => waiting.postMessage('update')}><Tap />Update</button>
       <button className="icon-btn" onClick={() => setHidden(true)} aria-label="Later">✕</button>
     </div>
