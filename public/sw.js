@@ -3,7 +3,9 @@
 // ponytail: the cache is never pruned; old hashed assets pile up slowly. Prune on activate if it ever matters.
 const CACHE = 'reprun-v1'
 
-self.addEventListener('install', () => self.skipWaiting())
+// A new version waits until the app says go (the "New version" banner), so it never swaps files under an open page.
+// The very first install has nothing to wait for and takes over straight away.
+self.addEventListener('message', e => e.data === 'update' && self.skipWaiting())
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()))
 
 self.addEventListener('fetch', e => {

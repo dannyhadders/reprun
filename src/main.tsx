@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { UpdateBanner } from './components/Update'
 import { DataProvider } from './lib/data'
 import Exercise from './pages/Exercise'
 import Exercises from './pages/Exercises'
@@ -13,7 +14,6 @@ import Workouts from './pages/Workouts'
 import Year from './pages/Year'
 import './index.css'
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js')
 // iOS Safari only applies :active (the pressed states in index.css) once the page listens for touches.
 document.addEventListener('touchstart', () => {}, { passive: true })
 
@@ -21,6 +21,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <DataProvider>
+        <UpdateBanner />
         <Routes>
           <Route path="log" element={<Log />} />
           <Route element={<Layout />}>

@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'When a new version of RepRun is out, a banner at the top says so. Tap Update to switch straight away (a workout in progress stays as it is), or ✕ to get it next time you open the app.',
       'When rest is over RepRun says what\'s next out loud ("Rest over. Next: Squat, 100 kilos, 5 reps"), great with AirPods. The speaker button at the top of a workout mutes it; the beep stays.',
       'A number on the app icon shows workouts saved on this phone but not uploaded yet. On iPhone turn it on in Settings → Badge on the app icon.',
       'Finishing a workout shows any milestones it just reached.',

@@ -77,7 +77,7 @@ What else a home-screen web app can do on iPhone, picked 2026-11-17.
 - [x] **App icon badge** (`navigator.setAppBadge`): number of workouts waiting to upload; clears when they're sent. iPhone needs notifications allowed: Settings → Badge on the app icon → Turn on.
 - [x] **Spoken cues** (`speechSynthesis`, works through AirPods while the app is open): "Rest over. Next: squat, 100 kilos, 5 reps." On by default; speaker button in the logger header mutes it (the beep stays).
 - [ ] **Page transitions** (View Transitions API, Safari 18+): slide/fade between pages instead of a flash. Skip where the browser doesn't have it.
-- [ ] **"New version" prompt**: `sw.js` takes over silently (`skipWaiting`). Instead, wait, show "New version, tap to reload", then switch. Also prune old caches on activate.
+- [x] **"New version" prompt**: a new `sw.js` waits; a banner says "New version ready", Update switches and reloads once (a running workout survives), ✕ leaves it for the next cold start. Checks for a new version each time the app comes to the front. Not done: pruning old cached files.
 
 ## Later: desktop
 
