@@ -6,6 +6,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
     changes: [
       'Share a workout and you see the picture first, like Strava, then Share it or press and hold to save it to Photos.',
       'Rate how hard each exercise felt once its sets are ticked (Easy, Good, Hard, Max). After a Hard or Max session RepRun keeps the same weight next time instead of adding more, and the copied text says how it felt.',
+      'Press and hold an exercise in a workout (or tap "Last time") to see its last five sessions and estimated 1RM trend without leaving the workout.',
       'Finishing the intro plays a short logo animation, then your dashboard builds itself in.',
       'The intro screens stay a readable width on a computer instead of stretching across the whole screen.',
       'The add-to-home-screen steps name the browser you\'re using (Chrome, Firefox, Edge…) instead of always saying Safari.',

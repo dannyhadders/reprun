@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
 import { Outbox } from '../components/Layout'
@@ -8,11 +8,12 @@ import { LOCAL } from '../lib/local'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { ago, clock, duration, EFFORT, num, plural, setText, workoutText } from '../lib/format'
-import { ask, Burst, CopyButton, Icon, ShareButton, useCountUp } from '../components/ui'
+import { ago, clock, duration, EFFORT, effort, kg, num, plural, setText, workoutText } from '../lib/format'
+import { ask, Burst, CopyButton, Empty, Icon, PbBadge, ShareButton, Sheet, useCountUp } from '../components/ui'
+import { Chart, sparkConfig } from '../components/Chart'
 import { workoutLine } from '../lib/motivation'
 import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
-import { lastSets, livePb, MUSCLES } from '../lib/stats'
+import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
@@ -65,6 +66,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   // The set just ticked (it pops) and whether that finished the exercise (it bursts). Set by the tap, so reopening the logger doesn't replay it.
   const [fx, setFx] = useState<{ i: number; j: number; all: boolean; t: number } | null>(null)
   useEffect(() => () => clearTimeout(foldTimer), []) // logger closed first: don't fold or scroll anything
+  const [peek, setPeek] = useState<string | null>(null) // exercise whose history sheet is open
+  const closePeek = useCallback(() => setPeek(null), [])
 
 
   // Keep the screen on for the whole workout, so the rest timer stays visible and audible.
@@ -79,7 +82,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   // Rest over: beep and clear. A negative delay (app reopened after the rest ended) fires straight away.
   useEffect(() => {
     if (!a.restEndsAt) return
-    const t = setTimeout(() => (restOver(loadActive() ?? a), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
+    const t = setTimeout(() => (beep(), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
     return () => clearTimeout(t)
   })
 
@@ -124,11 +127,13 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         return (
           // Folded, the whole card opens it; open, the whole header row folds it. The rest picker and ✕ keep their own taps.
           <section key={i} className={`rounded-2xl border border-line bg-surface p-4 ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
+            {/* Press and hold the name for this exercise's history; a plain tap folds it. */}
             <div className="flex cursor-pointer items-center gap-2" onClick={e => {
               e.stopPropagation() // the card's own handler would undo it
               toggle()
             }}>
-              <button className="relative flex min-w-0 flex-1 items-center gap-2 text-left" aria-expanded={!ex.collapsed}>
+              {/* Only the name holds: holding ✕ or the rest picker mustn't open history too. */}
+              <button className="relative flex min-w-0 flex-1 select-none items-center gap-2 text-left [-webkit-touch-callout:none]" aria-expanded={!ex.collapsed} {...hold(() => setPeek(ex.name))}>
                 <Tap />
                 <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
                 <h2 className="min-w-0 truncate font-semibold">{ex.name}</h2>
@@ -181,7 +186,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               </p>
             )}
             <div className="grid grid-cols-[1.5rem_1fr_4.5rem_4.5rem_2.75rem] items-center gap-2 text-sm">
-              <span className="text-xs text-muted">Set</span><span className="text-xs text-muted">Last time</span><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
+              <span className="text-xs text-muted">Set</span><button type="button" className="-my-2 py-2 text-left text-xs text-muted underline decoration-dotted underline-offset-4" onClick={() => setPeek(ex.name)}>Last time</button><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
               {ex.sets.map((s, j) => {
                 const p = prev[j] ?? prev.at(-1)
                 // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
@@ -285,6 +290,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         value={a.notes ?? ''} onChange={e => update(x => void (x.notes = e.target.value))} />
 
       <button className="w-full py-3 text-sm text-bad" onClick={() => void ask('Discard this workout? Nothing will be saved.', 'Discard', true).then(ok => ok && set(null))}>Discard workout</button>
+
+      {peek && <History name={peek} close={closePeek} />}
 
       {/* One dock at the bottom: Undo stacks on top of the rest timer, so neither can cover the other. */}
       <div className="fixed inset-x-0 bottom-0 z-20">
@@ -424,3 +431,56 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
 
 const heaviest = (sets: WorkoutSet[]) => sets.reduce<WorkoutSet | null>((b, s) => (!b || (s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b), null)
 
+/**
+ * Press and hold. `hold(onHold)` gives one element's handlers: holding 450ms runs onHold, and the click that still follows
+ * the release is swallowed; a plain click bubbles as usual. Moving more than 10px cancels: it's a scroll.
+ * ponytail: module-level, like foldTimer: one finger, one logger.
+ */
+const press = { timer: 0, x: 0, y: 0, fired: false }
+const stopPress = () => clearTimeout(press.timer)
+const hold = (onHold: () => void) => ({
+  onPointerDown: (e: React.PointerEvent) => {
+    stopPress()
+    Object.assign(press, { x: e.clientX, y: e.clientY, fired: false, timer: window.setTimeout(() => ((press.fired = true), navigator.vibrate?.(15), onHold()), 450) })
+  },
+  onPointerMove: (e: React.PointerEvent) => void (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10 && stopPress()),
+  onPointerUp: stopPress,
+  onPointerCancel: stopPress,
+  onContextMenu: (e: React.MouseEvent) => e.preventDefault(), // Android's long-press menu
+  onClick: (e: React.MouseEvent) => void (press.fired && ((press.fired = false), e.stopPropagation())), // a plain tap bubbles on to fold
+})
+
+/** An exercise's last few sessions and its estimated-1RM trend, without leaving the workout. */
+function History({ name, close }: { name: string; close: () => void }) {
+  const { data, model } = useData()
+  const ex = matchExercise(name, data.exercises, data.aliases)
+  const hist: ExerciseSession[] = (ex && model.exHistory.get(ex.id)) || []
+  const trend = hist.map(h => Math.max(0, ...h.sets.map(s => e1rm(s) ?? 0))).filter(Boolean)
+  return (
+    <Sheet close={close} label={`${name} history`}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="truncate text-lg font-bold">{name}</h2>
+        {trend.length > 0 && <span className="shrink-0 text-sm text-muted">Est. 1RM <b className="text-ink tabular-nums">{kg(Math.round(trend.at(-1)! * 2) / 2)}</b></span>}
+      </div>
+      {trend.length > 1 && <div className="mt-3 h-14"><Chart height={56} label={`${name} estimated 1RM trend`} config={sparkConfig(trend.slice(-20))} /></div>}
+      {hist.length ? (
+        <ul className="mt-3 divide-y divide-line">
+          {hist.slice(-5).reverse().map(h => {
+            const f = effort(h.sets.find(s => s.rpe)?.rpe)
+            return (
+              <li key={h.workoutId} className="py-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-semibold">{ago(h.date)}</span>
+                  {f && <span className="text-xs text-muted">{f.emoji} {f.label}</span>}
+                  <span className="ml-auto">{h.sets.map(s => <PbBadge key={s.id} kinds={model.pbs.get(s.id)} />)}</span>
+                </div>
+                <p className="mt-0.5 text-sm text-muted">{h.sets.map(setText).join(' · ')}</p>
+              </li>
+            )
+          })}
+        </ul>
+      ) : <Empty>Not done before. Today sets the baseline.</Empty>}
+      {ex && hist.length > 0 && <Link to={`/exercises/${ex.id}`} className="mt-1 block py-2 text-center text-sm text-accent">Full history ›</Link>}
+    </Sheet>
+  )
+}
