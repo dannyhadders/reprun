@@ -1,0 +1,10 @@
+{
+  // The website at reprun.co.uk: plain static files, no build step, nothing shared with the app's build.
+  // The app itself is app.reprun.co.uk (the main wrangler.jsonc, env.local).
+  // Workers Builds: deploy command `npx wrangler deploy -c site/wrangler.jsonc`, no build command.
+  "name": "reprun-site",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public" },
+  "workers_dev": false,
+  "routes": [{ "pattern": "reprun.co.uk", "custom_domain": true }]
+}
