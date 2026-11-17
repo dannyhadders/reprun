@@ -27,6 +27,27 @@ export type Session = {
 }
 export type ExerciseSession = { date: string; workoutId: number; sets: WorkoutSet[] }
 
+type LiveSet = Pick<WorkoutSet, 'weight_kg' | 'reps'> & { done: boolean }
+/**
+ * The logger's live PB: which ticked set (index) would count as today's PB against past sessions,
+ * by the same rule as buildModel: heaviest weight, else best e1RM, else most bodyweight reps, one per
+ * exercise, and nothing until there's a past session to beat. -1 for none.
+ */
+export function livePb(history: ExerciseSession[], sets: LiveSet[]): number {
+  const past = history.flatMap(h => h.sets)
+  const max = (f: (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => number) => Math.max(0, ...past.map(f))
+  // Only sets that will be saved: toImport drops a ticked set with no reps.
+  const pick = (f: (s: LiveSet) => number) => sets.reduce((b, s, i) => (s.done && (s.reps ?? 0) > 0 && f(s) > 0 && (b < 0 || f(s) > f(sets[b])) ? i : b), -1)
+  const weight = (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => s.weight_kg ?? 0
+  const est = (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => e1rm(s) ?? 0
+  const bwReps = (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => (s.weight_kg ? 0 : s.reps ?? 0)
+  for (const f of [weight, est, bwReps]) {
+    const before = max(f), at = pick(f)
+    if (at >= 0 && before > 0 && f(sets[at]) > before) return at
+  }
+  return -1
+}
+
 export type Model = ReturnType<typeof buildModel>
 
 export function buildModel(data: Data) {

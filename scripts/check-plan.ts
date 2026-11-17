@@ -2,6 +2,7 @@
 import { estimateS, formatLine, parseLine, parsePlan, roughTime, suggest } from '../shared/plan.ts'
 import { resolveExercise } from '../shared/catalogue.ts'
 import { STARTER_ROUTINES } from '../shared/starter.ts'
+import { livePb, type ExerciseSession } from '../src/lib/stats.ts'
 
 const assert = (c: unknown, msg: string) => { if (!c) throw new Error(msg) }
 const eq = (a: unknown, b: unknown, msg: string) => assert(JSON.stringify(a) === JSON.stringify(b), `${msg}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`)
@@ -37,3 +38,15 @@ for (const r of STARTER_ROUTINES) {
   for (const it of items) assert(resolveExercise(it.name, null).muscle !== 'other', `${r.name}: ${it.name} is in the catalogue`)
 }
 console.log('plan.ts self-check passed')
+
+// Live PB in the logger: same rule as buildModel's PBs.
+const past = (sets: [number | null, number][]) => [{ date: '2026-01-01', workoutId: 1, sets: sets.map(([w, r], id) => ({ id, workout_id: 1, exercise_id: 1, set_no: id + 1, weight_kg: w, reps: r, seconds: null, notes: null })) }] as unknown as ExerciseSession[] // only weight and reps matter here
+const live = (sets: [number | null, number, boolean][]) => sets.map(([weight_kg, reps, done]) => ({ weight_kg, reps, done }))
+eq(livePb([], live([[100, 5, true]])), -1, 'pb: first session is the baseline')
+eq(livePb(past([[80, 5]]), live([[85, 5, true], [90, 3, false]])), 0, 'pb: heaviest ticked set')
+eq(livePb(past([[80, 5]]), live([[85, 5, true], [90, 3, true]])), 1, 'pb: moves to the heavier set')
+eq(livePb(past([[80, 5]]), live([[80, 8, true]])), 0, 'pb: same weight, more reps = e1RM')
+eq(livePb(past([[80, 5]]), live([[70, 5, true]])), -1, 'pb: lighter is no PB')
+eq(livePb(past([[null, 10]]), live([[null, 12, true]])), 0, 'pb: bodyweight reps')
+eq(livePb(past([[80, 5]]), live([[85, 5, false]])), -1, 'pb: not until ticked')
+eq(livePb(past([[80, 5]]), live([[85, 0, true]])), -1, 'pb: no reps, not saved, no PB')

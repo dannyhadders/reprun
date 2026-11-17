@@ -11,7 +11,7 @@ import { Tap } from '../lib/haptic'
 import { ago, clock, duration, num, plural, setText, workoutText } from '../lib/format'
 import { ask, Burst, CopyButton, useCountUp } from '../components/ui'
 import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
-import { lastSets, MUSCLES } from '../lib/stats'
+import { lastSets, livePb, MUSCLES } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
@@ -107,6 +107,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 
       {a.exercises.map((ex, i) => {
         const prev = lastSets(model, ex.name)
+        const history = model.exHistory.get(matchExercise(ex.name, data.exercises, data.aliases)?.id ?? -1) ?? []
+        const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : +s.weight, reps: s.reps === '' ? null : +s.reps, done: s.done })))
         const done = ex.sets.filter(s => s.done).length
         return (
           <section key={i} className="rounded-2xl border border-line bg-surface p-4">
@@ -181,7 +183,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         x.restEndsAt = finished ? null : y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
                         if (y.done) x.restFrom = Date.now()
                       })
-                    }}><Tap />✓</button>,
+                    }}><Tap />✓{j === pbAt && <span className="absolute -right-1.5 -top-2 animate-pop text-sm" role="img" aria-label="PB">🏆</span>}</button>,
                   s.note !== undefined && (
                     <input key={`t${j}`} className="input col-span-5 py-2" placeholder={`Note for set ${j + 1}, e.g. felt easy, left shoulder`} aria-label={`Set ${j + 1} note`}
                       autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))} />

@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'A 🏆 appears on a set the moment you tick a PB, not just on the finish screen.',
       'The rest timer has a bar that drains, the numbers turn green for the last 10 seconds, and Android phones buzz at the end.',
       'Tick the last set of an exercise and it folds away.',
       'Buttons dip when you tap them, and the small ones (✕, ✓, rest timer) are easier to hit.',
