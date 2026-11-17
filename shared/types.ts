@@ -14,6 +14,7 @@ export type WorkoutSet = {
   reps: number | null
   seconds: number | null
   notes: string | null
+  rpe?: number | null // how hard the exercise felt, 1-10; older sets and imports have none
 }
 
 export type Workout = {

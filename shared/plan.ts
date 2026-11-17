@@ -95,16 +95,20 @@ export const targetText = (p: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax'>) =>
 
 /**
  * Double progression: hit the top of the rep range on every set at your working weight and the
- * weight goes up (+2.5 kg, or +1 kg under 20 kg); otherwise same weight, one more rep.
+ * weight goes up (+2.5 kg, or +1 kg under 20 kg); otherwise same weight, one more rep. Rated 9-10 for effort last
+ * time (hard or all-out): the weight holds even at the top of the range, and `held` says why.
  */
-export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight'>, last: { weight_kg: number | null; reps: number | null }[]) {
+export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight'>, last: { weight_kg: number | null; reps: number | null; rpe?: number | null }[]): { weight: number | null; reps: number; held?: true } {
   const done = last.filter(s => s.reps)
   if (!done.length) return { weight: p.weight, reps: p.repsMin }
   const top = Math.max(...done.map(s => s.weight_kg ?? 0))
   const atTop = done.filter(s => (s.weight_kg ?? 0) === top)
   const best = Math.max(...atTop.map(s => s.reps!))
   if (!top) return { weight: null, reps: best + 1 } // bodyweight: just beat last time
-  if (atTop.every(s => s.reps! >= p.repsMax)) return { weight: top + (top >= 20 ? 2.5 : 1), reps: p.repsMin }
+  if (atTop.every(s => s.reps! >= p.repsMax)) {
+    if (done.some(s => (s.rpe ?? 0) >= 9)) return { weight: top, reps: p.repsMax, held: true }
+    return { weight: top + (top >= 20 ? 2.5 : 1), reps: p.repsMin }
+  }
   return { weight: top, reps: Math.min(best + 1, p.repsMax) }
 }
 

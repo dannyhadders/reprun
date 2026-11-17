@@ -12,6 +12,9 @@ export function setNumbers(b: { weight_kg?: unknown; reps?: unknown; seconds?: u
   return v.some(x => Number.isNaN(x) || (x !== null && x < 0)) ? 'Weight, reps and seconds must be positive numbers' : (v as [number | null, number | null, number | null])
 }
 
+/** An effort rating from outside (upload, backup): a whole number 1-10, anything else none. */
+export const rpe = (v: unknown) => (Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 10 ? (v as number) : null)
+
 /** What someone's training for, asked in onboarding (pick up to two) and kept on the profile for plans and prompts. */
 export const GOALS = [
   { id: 'strength', label: 'Get stronger', emoji: '💪' },

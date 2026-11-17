@@ -8,7 +8,7 @@ import { LOCAL } from '../lib/local'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { ago, clock, duration, num, plural, setText, workoutText } from '../lib/format'
+import { ago, clock, duration, EFFORT, num, plural, setText, workoutText } from '../lib/format'
 import { ask, Burst, CopyButton, Icon, ShareButton, useCountUp } from '../components/ui'
 import { workoutLine } from '../lib/motivation'
 import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
@@ -79,7 +79,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   // Rest over: beep and clear. A negative delay (app reopened after the rest ended) fires straight away.
   useEffect(() => {
     if (!a.restEndsAt) return
-    const t = setTimeout(() => (beep(), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
+    const t = setTimeout(() => (restOver(loadActive() ?? a), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
     return () => clearTimeout(t)
   })
 
@@ -154,6 +154,21 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 </span>
               )}
             </div>
+            {ex.sets.length > 0 && done === ex.sets.length && (
+              // Rated once it's done, and still there folded. Holds next time's weight when it was hard (shared/plan.ts).
+              <div className="mt-2 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                <span className="mr-0.5 shrink-0 text-xs text-muted">Effort</span>
+                {EFFORT.map(f => {
+                  const on = ex.rpe === f.rpe
+                  return (
+                    <button key={f.rpe} type="button" aria-pressed={on} onClick={() => update(x => void (x.exercises[i].rpe = on ? undefined : f.rpe))}
+                      className={`press relative min-h-9 min-w-0 flex-1 whitespace-nowrap rounded-full border px-1 text-xs font-medium ${on ? 'border-accent bg-accent/15 text-ink' : 'border-line text-muted'}`}>
+                      <Tap />{f.emoji} {f.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             {/* Folds by animating the row from 1fr to 0fr, so it slides shut instead of snapping. The sets stay mounted
                 (inert while folded); the side padding gives the ✓ pop room inside the clip. */}
             <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${ex.collapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`} inert={ex.collapsed}>
@@ -162,7 +177,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             <div className="pt-3">
             {ex.target && (
               <p className="-mt-2 mb-3 text-xs text-muted">
-                Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
+                Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
             )}
             <div className="grid grid-cols-[1.5rem_1fr_4.5rem_4.5rem_2.75rem] items-center gap-2 text-sm">
@@ -408,3 +423,4 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
 }
 
 const heaviest = (sets: WorkoutSet[]) => sets.reduce<WorkoutSet | null>((b, s) => (!b || (s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b), null)
+

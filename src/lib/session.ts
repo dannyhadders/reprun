@@ -15,8 +15,9 @@ export type LogExercise = {
   restS: number
   sets: LogSet[]
   target?: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax' | 'note'> // from a routine
-  suggest?: { weight: string; reps: string; fresh?: boolean } // progression pick, shown as placeholders; fresh = no history and no weight in the plan
+  suggest?: { weight: string; reps: string; fresh?: boolean; held?: boolean } // progression pick, shown as placeholders; fresh = no history and no weight in the plan; held = weight kept because last time felt hard
   collapsed?: boolean // folded away in the logger; ticked count still shows
+  rpe?: number // how hard it felt, rated once it's done; saved on each of its sets
 }
 export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null } // restFrom: when the rest began, for the timer bar
 
@@ -68,7 +69,7 @@ export function fromRoutine(r: Routine, known: Exercise[], last: Last, aliases: 
       ...e,
       restS: p.restS ?? e.restS,
       target: { sets: p.sets, repsMin: p.repsMin, repsMax: p.repsMax, note: p.note },
-      suggest: { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last(e.name).length },
+      suggest: { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last(e.name).length, held: s.held },
     }
   }))
 }
@@ -106,7 +107,7 @@ export function toImport(a: Active, endedAt = Date.now()): ImportWorkout {
       const lift = resolveExercise(e.name, null).lift ?? null
       return e.sets.filter(validSet).map(s => ({
         exercise: e.name, muscle: e.muscle, lift, position: position++,
-        weight_kg: s.weight === '' ? null : +s.weight, reps: +s.reps, seconds: null, notes: s.note?.trim() || null,
+        weight_kg: s.weight === '' ? null : +s.weight, reps: +s.reps, seconds: null, notes: s.note?.trim() || null, rpe: e.rpe ?? null,
       }))
     }),
   }
@@ -154,35 +155,6 @@ let ctx: AudioContext | null = null
 export const unlockAudio = () => {
   ctx ??= new AudioContext()
   void ctx.resume()
-  // iOS speaks later only if speech was started once inside a tap: a silent, empty line does it.
-  if (!spoke && 'speechSynthesis' in window) speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(''), { volume: 0 }))
-  spoke = true
-}
-let spoke = false
-
-// ---------- spoken cues ----------
-const VOICE = 'reprun.voice'
-export const voiceOn = () => read(VOICE, true)
-export const setVoice = (on: boolean) => (write(VOICE, on), on || speechSynthesis?.cancel())
-
-/** The first set not ticked yet, in plain words: "Squat, 100 kilos, 5 reps". Falls back to the suggested weight/reps. */
-export function nextUp(a: Active) {
-  for (const ex of a.exercises) {
-    const s = ex.sets.find(x => !x.done)
-    if (!s) continue
-    const w = s.weight || ex.suggest?.weight
-    const r = s.reps || ex.suggest?.reps
-    return [ex.name, w && `${w} kilos`, r && `${r} reps`].filter(Boolean).join(', ')
-  }
-  return null
-}
-
-/** Rest over: beep, then say what's next unless the voice is muted. */
-export function restOver(a: Active) {
-  beep()
-  if (!voiceOn() || !('speechSynthesis' in window)) return
-  const n = nextUp(a)
-  speechSynthesis.speak(new SpeechSynthesisUtterance(n ? `Rest over. Next: ${n}.` : 'Rest over.'))
 }
 export function beep() {
   navigator.vibrate?.([200, 100, 200]) // Android; iPhone has no vibrate API, so it only beeps

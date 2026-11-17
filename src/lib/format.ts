@@ -59,7 +59,12 @@ export const greeting = () => {
 export const setText = (s: { weight_kg: number | null; reps: number | null; seconds: number | null }) =>
   `${s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'} × ${s.reps !== null ? num(s.reps) : s.seconds !== null ? `${num(s.seconds)}s` : '–'}`
 
-type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null }
+/** The logger's four effort choices, stored as RPE so a 1-10 rating from anywhere else still reads. */
+export const EFFORT = [{ rpe: 6, emoji: '😌', label: 'Easy' }, { rpe: 8, emoji: '🙂', label: 'Good' }, { rpe: 9, emoji: '😤', label: 'Hard' }, { rpe: 10, emoji: '🥵', label: 'Max' }] as const
+/** The nearest choice at or above a rating: 7 reads as Good, 5 as Easy. */
+export const effort = (rpe: number | null | undefined) => (rpe ? EFFORT.find(e => rpe <= e.rpe) ?? EFFORT[3] : null)
+
+type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null; rpe?: number | null }
 /** A workout as plain text, one line per exercise, for pasting into ChatGPT or sending to a PT. */
 export function workoutText(w: { date: string; title: string | null; duration_s?: number | null; notes?: string | null; sets: TextSet[] }) {
   const byEx = new Map<string, TextSet[]>()
@@ -71,6 +76,6 @@ export function workoutText(w: { date: string; title: string | null; duration_s?
     `${plural(w.sets.length, 'set')}, ${num(volume)} kg total volume`,
     ...(w.notes ? ['', w.notes] : []),
     '',
-    ...[...byEx].map(([name, sets]) => `${name}: ${sets.map(set).join(', ')}`),
+    ...[...byEx].map(([name, sets]) => `${name}: ${sets.map(set).join(', ')}${effort(sets[0].rpe) ? ` (felt ${effort(sets[0].rpe)!.label.toLowerCase()})` : ''}`),
   ].join('\n')
 }
