@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useData } from '../lib/data'
 import { isSample, LOCAL, startLocal } from '../lib/local'
@@ -33,6 +33,26 @@ export function Layout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [more, setMore] = useState(false)
+  // Drag the More sheet down to close it, like an iOS sheet. Styles set directly: no re-render per touchmove.
+  const drag = useRef<{ y: number; dy: number } | null>(null)
+  const sheet = {
+    onTouchStart: (e: React.TouchEvent<HTMLDivElement>) => void (drag.current = { y: e.touches[0].clientY, dy: 0 }),
+    onTouchMove: (e: React.TouchEvent<HTMLDivElement>) => {
+      if (!drag.current) return
+      drag.current.dy = Math.max(0, e.touches[0].clientY - drag.current.y)
+      e.currentTarget.style.transition = 'none'
+      e.currentTarget.style.transform = `translateY(${drag.current.dy}px)`
+    },
+    onTouchEnd: (e: React.TouchEvent<HTMLDivElement>) => {
+      const el = e.currentTarget
+      if ((drag.current?.dy ?? 0) > 80) setMore(false)
+      else {
+        el.style.transition = 'transform 0.2s ease-out'
+        el.style.transform = ''
+      }
+      drag.current = null
+    },
+  }
   const { data, reload } = useData()
   const on = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
   // Like Link: tapping where you already are doesn't stack another back-swipe.
@@ -97,8 +117,8 @@ export function Layout() {
       <Running />
 
       {more && (
-        <div className="fixed inset-0 z-30 bg-black/55 md:hidden" onClick={() => setMore(false)}>
-          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-line bg-surface px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-2.5" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-30 animate-fade-in bg-black/55 md:hidden" onClick={() => setMore(false)}>
+          <div className="absolute inset-x-0 bottom-0 animate-sheet-in rounded-t-2xl border-t border-line bg-surface px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-2.5" onClick={e => e.stopPropagation()} {...sheet}>
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-line" />
             {NAV.filter(n => !TABS.includes(n.to)).map(n => (
               <button key={n.to} onClick={() => (go(n.to), setMore(false))} className="row-press relative flex w-full items-center gap-3 border-b border-line px-1 py-3.5 text-left text-[15px]">
