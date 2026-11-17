@@ -122,10 +122,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         const done = ex.sets.filter(s => s.done).length
         return (
           <section key={i} className="rounded-2xl border border-line bg-surface p-4">
-            <div className={`flex items-center gap-2 ${ex.collapsed ? '' : 'mb-3'}`}>
+            <div className="flex items-center gap-2">
               <button className="relative flex min-w-0 flex-1 items-center gap-2 text-left" aria-expanded={!ex.collapsed} onClick={() => update(x => void (x.exercises[i].collapsed = !ex.collapsed))}>
                 <Tap />
-                <span className={`text-muted transition ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
+                <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
                 <h2 className="min-w-0 truncate font-semibold">{ex.name}</h2>
                 <span key={done} className={`relative inline-block shrink-0 animate-bump text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>
                   {done}/{ex.sets.length}{done === ex.sets.length ? ' ✓' : ''}
@@ -144,7 +144,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 setUndo({ msg: `Removed ${ex.name}`, put: x => void x.exercises.splice(Math.min(i, x.exercises.length), 0, ex) })
               }}>✕</button> : <span className="size-11 shrink-0" />}
             </div>
-            {!ex.collapsed && <>
+            {/* Folds by animating the row from 1fr to 0fr, so it slides shut instead of snapping. The sets stay mounted
+                (inert while folded); the side padding gives the ✓ pop room inside the clip. */}
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-out ${ex.collapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'}`} inert={ex.collapsed}>
+            <div className="-mx-2 min-h-0 overflow-hidden px-2 pt-3">
             {ex.target && (
               <p className="-mt-2 mb-3 text-xs text-muted">
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
@@ -207,7 +210,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false, note: undefined }))}>+ Set</button>
               {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => void removeSet(ex.sets.length - 1)}>− Set</button>}
             </div>
-            </>}
+            </div>
+            </div>
           </section>
         )
       })}
