@@ -54,7 +54,7 @@ UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pas
 
 - [ ] **Tap "Last time" to copy it** into that set's kg and reps.
 - [ ] **− / + on kg (±2.5) and reps (±1)**, or swipe up/down on the field: less typing with sweaty hands.
-- [ ] **Fold a finished exercise** automatically once every set is ticked, and scroll to the next one.
+- [x] **Fold a finished exercise** automatically once every set is ticked. (No auto-scroll: tried it, it jumped the page.)
 - [ ] **Rest timer bar** that drains, with the numbers going green near the end and a buzz (Android) at 0.
 - [ ] **PB badge on the set** the moment it's ticked, not only on the finish screen.
 - [ ] **`enterKeyHint="next"`** on kg/reps so Return moves kg → reps → next set.

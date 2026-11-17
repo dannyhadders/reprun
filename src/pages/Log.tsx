@@ -13,6 +13,7 @@ import { ask, Burst, CopyButton, useCountUp } from '../components/ui'
 import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
 import { lastSets, MUSCLES } from '../lib/stats'
 
+let foldTimer = 0 // ponytail: module-level, there's only ever one logger
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
 
 export default function Log() {
@@ -46,7 +47,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [muscle, setMuscle] = useState<Muscle>('other')
   const update = (f: (x: Active) => void) => {
     // From storage, not the render's `a`: after an awaited "Are you sure?" the rest timer may have changed it meanwhile.
-    const next = structuredClone(loadActive() ?? a)
+    // Nothing there (finished or discarded meanwhile) or a different workout: leave it, never bring an old one back.
+    const cur = loadActive()
+    if (cur?.clientId !== a.clientId) return
+    const next = structuredClone(cur)
     f(next)
     set(next)
   }
@@ -59,6 +63,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   }, [undo])
   // The set just ticked (it pops) and whether that finished the exercise (it bursts). Set by the tap, so reopening the logger doesn't replay it.
   const [fx, setFx] = useState<{ i: number; j: number; all: boolean; t: number } | null>(null)
+  useEffect(() => () => clearTimeout(foldTimer), []) // logger closed first: don't fold or scroll anything
 
 
   // Keep the screen on for the whole workout, so the rest timer stays visible and audible.
@@ -156,7 +161,14 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                       if (!s.done && s.weight === '' && ex.suggest?.fresh && !await ask(`No weight entered for ${ex.name}. Log it as bodyweight?`, 'Bodyweight')) return
                       const all = !s.done && done + 1 === ex.sets.length
                       setFx(s.done ? null : { i, j, all, t: Date.now() })
-                      if (all) navigator.vibrate?.([15, 60, 15])
+                      if (all) {
+                        navigator.vibrate?.([15, 60, 15])
+                        // Let the burst play, then fold this one away. No scrolling: the page stays where you are.
+                        clearTimeout(foldTimer)
+                        foldTimer = window.setTimeout(() => {
+                          update(x => void (x.exercises[i]?.sets.every(z => z.done) && (x.exercises[i].collapsed = true))) // unticked meanwhile: leave it open
+                        }, 700)
+                      }
                       update(x => {
                         if (x.exercises[i].suggest) x.exercises[i].suggest.fresh = false // asked once is enough
                         const y = x.exercises[i].sets[j]
