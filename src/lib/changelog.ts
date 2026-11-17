@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'Finish screen: share the workout as a picture (time, sets, volume, PBs, each exercise\'s best set) to Instagram, WhatsApp or anywhere.',
       'Opening the app shows your last data straight away while it refreshes, and the very first open shows placeholders instead of "Loading…".',
       'When a workout that was waiting on this phone reaches the server, a short "uploaded" message says so.',
       'Pull down at the top of a page to refresh: it sends anything waiting, syncs Strava if it\'s connected, and reloads.',

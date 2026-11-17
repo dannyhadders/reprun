@@ -65,7 +65,7 @@ UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pas
 - [x] **Pull to refresh**: reloads, sends anything waiting, and syncs Strava when it's connected.
 - [x] **"Uploaded ✓" message** when a waiting workout reaches the server.
 - [x] **Loading placeholders** on the very first load instead of "Loading…"; after that, open on the last copy straight away.
-- [ ] **Share card**: the finish screen makes an image (time, sets, volume, PBs) to post or send.
+- [x] **Share card**: the finish screen makes an image (time, sets, volume, PBs) to post or send.
 - [ ] **Swipe a set left to delete it**, any set, not just the last.
 - Not doable: a lock-screen rest alert. iOS pauses a web app's timers once the screen is off; the wake lock above is the workaround.
 
