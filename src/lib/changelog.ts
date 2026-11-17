@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'Pages with nothing on them yet say so instead of showing empty charts.',
       'Edit an exercise: rename it, change its muscle, or merge a typo into the right one. Routines and targets follow.',
       'Starter routines: Push, Pull, Leg, Back and Arms days in one tap when you have none yet.',
       'First time doing an exercise from a routine: it asks for a weight instead of assuming bodyweight.',

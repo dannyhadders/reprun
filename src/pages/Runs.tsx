@@ -53,6 +53,7 @@ export default function Runs() {
         </div>
       )}
 
+      {!model.runs.length ? <Card><Empty>No runs yet.{data.strava.configured && !data.strava.connected ? ' Connect Strava in Settings to bring them in.' : ' Add one with + Add past workout.'}</Empty></Card> : <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card><Stat accent value={km(bests.totalM, 0)} label={`${plural(runs.length, 'run')}`} /></Card>
         <Card><Stat accent value={duration(bests.totalS)} label="Time running" /></Card>
@@ -64,6 +65,7 @@ export default function Runs() {
         <Card title="Weekly distance"><Chart height={220} label="Kilometres per week" config={kmChart} /></Card>
         <Card title="Pace over time">{paceRuns.length > 1 ? <Chart height={220} label="Average pace per run" config={paceChart} /> : <Empty>Need a couple more runs for a trend.</Empty>}</Card>
       </div>
+      </>}
 
       {records.length > 0 && (
         <Card title="Records & benchmarks" action={<SourceBadge source="sheet" />}>

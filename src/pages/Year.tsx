@@ -108,8 +108,9 @@ export default function Year() {
           </ol>
           {!y.topExercises.length && <Empty>No sets logged this year.</Empty>}
         </Card>
-        <Card title="Muscle split"><Chart height={240} label="Sets per muscle group this year" config={muscleChart} /></Card>
+        <Card title="Muscle split">{MUSCLES.some(m => y.muscles[m]) ? <Chart height={240} label="Sets per muscle group this year" config={muscleChart} /> : <Empty>No gym sets this year.</Empty>}</Card>
         <Card title="Running">
+          {!y.run.totalM ? <Empty>No runs this year.</Empty> : <>
           <ul className="space-y-3 text-sm">
             <li className="flex justify-between"><span className="text-muted">Distance</span><span className="font-semibold">{km(y.run.totalM, 1)}</span></li>
             <li className="flex justify-between"><span className="text-muted">Time</span><span className="font-semibold">{duration(y.run.totalS)}</span></li>
@@ -117,6 +118,7 @@ export default function Year() {
             <li className="flex justify-between"><span className="text-muted">Fastest 5K+</span><span className="font-semibold">{y.run.fastest5k ? pace(runPace(y.run.fastest5k)) : '–'}</span></li>
           </ul>
           {y.run.totalM > 42195 && <div className="mt-4"><Line>{num(y.run.totalM / 42195, 1)} marathons, one sensible chunk at a time.</Line></div>}
+          </>}
         </Card>
       </div>
 

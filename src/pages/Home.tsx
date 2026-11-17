@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ACCENT, ACCENT_2, Chart, sparkConfig, STRAVA } from '../components/Chart'
 import { BodyMap } from '../components/BodyMap'
-import { Card, Line, SourceBadge, Stat, Tabs } from '../components/ui'
+import { Card, Empty, Line, SourceBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { ago, daysAgo, duration, greeting, kg, km, num, pace, plural, shortDate, today, weekStart } from '../lib/format'
 import { overallLine } from '../lib/motivation'
@@ -91,10 +91,10 @@ export default function Home() {
                       <div className="truncate font-semibold">{x.exercise.name}</div>
                       <div className="text-xs text-muted"><span className="capitalize">{x.exercise.muscle}</span> · {plural(x.sets, 'set')}</div>
                     </div>
-                    <div className="hidden h-9 w-28 sm:block"><Chart height={36} label={`${x.exercise.name} trend`} config={sparkConfig(x.series.map(p => p.value))} /></div>
+                    <div className={`hidden h-9 w-28 ${x.series.length > 1 ? 'sm:block' : ''}`}><Chart height={36} label={`${x.exercise.name} trend`} config={sparkConfig(x.series.map(p => p.value))} /></div>
                     <div className="w-24 text-right">
                       <div className="font-semibold tabular-nums">{x.best ? kg(x.best) : '–'}</div>
-                      <div className={`text-xs tabular-nums ${x.change > 0 ? 'text-good' : x.change < 0 ? 'text-bad' : 'text-muted'}`}>{x.change > 0 ? '▲ ' : x.change < 0 ? '▼ ' : ''}{x.change ? kg(Math.abs(x.change)) : 'steady'}</div>
+                      <div className={`text-xs tabular-nums ${x.change > 0 ? 'text-good' : x.change < 0 ? 'text-bad' : 'text-muted'}`}>{x.change > 0 ? '▲ ' : x.change < 0 ? '▼ ' : ''}{x.change ? kg(Math.abs(x.change)) : x.points < 2 ? 'new' : 'steady'}</div>
                     </div>
                   </Link>
                 </li>
@@ -103,12 +103,13 @@ export default function Home() {
           ) : <p className="text-sm text-muted">No gym sessions in this period.</p>}
         </Card>
         <Card className="lg:col-span-2" title="Muscle distribution" action={<Tabs size="sm" value={muscleView} onChange={pickMuscleView} options={[{ value: 'body', label: 'Body' }, { value: 'radar', label: 'Radar' }]} />}>
-          {muscleView === 'body' ? <BodyMap {...split} /> : <Chart height={280} label="Sets per muscle group" config={radar} />}
+          {MUSCLES.every(m => !split.now[m] && !split.before[m]) ? <Empty>No gym sets in the last {n} days.</Empty>
+            : muscleView === 'body' ? <BodyMap {...split} /> : <Chart height={280} label="Sets per muscle group" config={radar} />}
         </Card>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-5">
-        <Card className="lg:col-span-3" title="Last 12 weeks"><Chart height={220} label="Sessions per week" config={weekChart} /></Card>
+        <Card className="lg:col-span-3" title="Last 12 weeks">{weeks.some(w => w.gym || w.runs) ? <Chart height={220} label="Sessions per week" config={weekChart} /> : <Empty>Nothing in the last 12 weeks yet.</Empty>}</Card>
         <Card className="lg:col-span-2" title="Recent" action={<Link to="/workouts" className="text-sm text-accent hover:underline">All</Link>}>
           <ul className="space-y-3">
             {recent.map(x => (
@@ -126,6 +127,7 @@ export default function Home() {
               </li>
             ))}
           </ul>
+          {!recent.length && <Empty>Log your first workout with the + button{data.strava.configured && !data.strava.connected ? ', or connect Strava in Settings' : ''}.</Empty>}
         </Card>
       </div>
 

@@ -187,7 +187,7 @@ export function mainExercises(m: Model, days = 30, limit = 5) {
     .map(([id, sets]) => {
       const series = exerciseSeries(m, id, 'heaviest', 'All')
       const recent = series.filter(p => p.date >= from)
-      return { exercise: m.exById.get(id)!, sets, series, best: Math.max(0, ...recent.map(p => p.value)), change: recent.length > 1 ? recent.at(-1)!.value - recent[0].value : 0 }
+      return { exercise: m.exById.get(id)!, sets, series, best: Math.max(0, ...recent.map(p => p.value)), change: recent.length > 1 ? recent.at(-1)!.value - recent[0].value : 0, points: m.exHistory.get(id)?.length ?? 0 } // sessions ever, so 'new' means new, not 'quiet this month'
     })
 }
 

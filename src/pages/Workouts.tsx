@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { WorkoutSet } from '../../shared/types'
 import { Icon } from '../components/Layout'
-import { CopyButton, Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
+import { CopyButton, Empty, Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { duration, kg, monthLabel, plural, setText, weekday, workoutText, date as fmtDate } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
@@ -46,6 +46,7 @@ export default function Workouts() {
             </div>
           </section>
         ))}
+        {!months.length && <Empty>{model.sessions.length ? 'Nothing for this filter.' : 'No workouts yet. Tap + to log your first.'}</Empty>}
       </div>
     </div>
   )

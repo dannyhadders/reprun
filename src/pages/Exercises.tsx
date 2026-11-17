@@ -43,7 +43,7 @@ export default function Exercises() {
               </Link>
             </li>
           ))}
-          {!shown.length && <li className="p-6 text-center text-sm text-muted">Nothing matches.</li>}
+          {!shown.length && <li className="p-6 text-center text-sm text-muted">{rows.length ? 'Nothing matches.' : 'No exercises yet. They show up here after your first workout.'}</li>}
         </ul>
       </div>
     </div>
