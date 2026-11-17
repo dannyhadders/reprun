@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { useData } from '../lib/data'
+import { api, useData } from '../lib/data'
 import { isSample, LOCAL, startLocal } from '../lib/local'
 import { clock, plural, workoutText } from '../lib/format'
 import { beep, loadActive, outbox, saveActive, totals, useNow } from '../lib/session'
@@ -115,6 +115,7 @@ export function Layout() {
         <div key={pathname} className="animate-page-in"><Outlet /></div>
       </main>
       <Running />
+      <PullToRefresh off={more} />
 
       {more && (
         <div className="fixed inset-0 z-30 animate-fade-in bg-black/55 md:hidden" onClick={() => setMore(false)}>
@@ -144,6 +145,75 @@ export function Layout() {
           More
         </button>
       </nav>
+    </div>
+  )
+}
+
+/**
+ * Pull down at the top of a page to refresh: send anything waiting, sync Strava if it's connected, reload.
+ * Window-level touch listeners, so pages need nothing; the native bounce is off (index.css) so the two don't fight.
+ */
+function PullToRefresh({ off }: { off: boolean }) {
+  const { data, reload, sync } = useData()
+  const [pull, setPull] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const strava = data.strava.connected
+  useEffect(() => {
+    if (off || busy) return
+    let y0: number | null = null, x0 = 0, d = 0
+    // A list scrolled down inside the page (Settings' update log) is scrolling back up, not pulling.
+    const inScrolled = (el: EventTarget | null) => {
+      for (let n = el instanceof Element ? el : null; n; n = n.parentElement) if (n.scrollTop > 0) return true
+      return false
+    }
+    const start = (e: TouchEvent) => {
+      y0 = window.scrollY <= 0 && !document.querySelector('dialog[open]') && !inScrolled(e.target) ? e.touches[0].clientY : null
+      x0 = e.touches[0].clientX
+      d = 0
+    }
+    const move = (e: TouchEvent) => {
+      if (y0 === null) return
+      const dy = e.touches[0].clientY - y0
+      d = dy > 0 && dy > Math.abs(e.touches[0].clientX - x0) ? Math.min(dy * 0.5, 90) : 0 // sideways swipes aren't pulls
+      setPull(d)
+    }
+    const end = async () => {
+      if (y0 === null) return
+      y0 = null
+      if (d < 60) return setPull(0)
+      setBusy(true)
+      setPull(56)
+      try {
+        await Promise.allSettled([sync(), strava ? api('POST', 'strava/sync') : null])
+        await reload()
+      } finally {
+        setBusy(false)
+        setPull(0)
+      }
+    }
+    window.addEventListener('touchstart', start, { passive: true })
+    window.addEventListener('touchmove', move, { passive: true })
+    // iOS cancels the touch when the system takes it (pulling down into Notification Centre): drop the arrow.
+    const cancel = () => {
+      y0 = null
+      setPull(0)
+    }
+    window.addEventListener('touchend', end)
+    window.addEventListener('touchcancel', cancel)
+    return () => {
+      window.removeEventListener('touchstart', start)
+      window.removeEventListener('touchmove', move)
+      window.removeEventListener('touchend', end)
+      window.removeEventListener('touchcancel', cancel)
+    }
+  }, [off, busy, strava, sync, reload])
+  if (!pull && !busy) return null
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 flex justify-center" style={{ transform: `translateY(${pull - 36}px)`, opacity: Math.min(1, pull / 50) }} role="status" aria-label={busy ? 'Refreshing' : undefined}>
+      <div className="grid size-9 place-items-center rounded-full border border-line bg-surface shadow-lg">
+        {busy ? <span className="size-4 animate-spin rounded-full border-2 border-accent border-r-transparent" />
+          : <span className={`transition-transform ${pull >= 60 ? 'rotate-180' : ''}`}><Icon d="M12 5v14M6 13l6 6 6-6" className="h-4 w-4 text-accent" /></span>}
+      </div>
     </div>
   )
 }
