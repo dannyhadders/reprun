@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'Share a workout and you see the picture first, like Strava, then Share it or press and hold to save it to Photos.',
       'Finishing the intro plays a short logo animation, then your dashboard builds itself in.',
       'The intro screens stay a readable width on a computer instead of stretching across the whole screen.',
       'The add-to-home-screen steps name the browser you\'re using (Chrome, Firefox, Edge…) instead of always saying Safari.',

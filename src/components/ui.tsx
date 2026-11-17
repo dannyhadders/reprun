@@ -1,4 +1,5 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Tap } from '../lib/haptic'
 import { cardFile, shareFile, type CardWorkout } from '../lib/share'
 
 export const Icon = ({ d, className = 'h-5 w-5' }: { d: string; className?: string }) => (
@@ -112,17 +113,80 @@ const SHARE = 'M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'
  * iOS only lets navigator.share run straight off a tap, not after the awaits that drawing takes. Spinner until it's ready.
  */
 export function ShareButton({ w, pbs, line, label = 'Share', className = 'btn-ghost' }: { w: CardWorkout; pbs: string[]; line?: string; label?: string; className?: string }) {
-  const [card, setCard] = useState<File | null>(null)
+  // The file to share, and a URL of it for the preview, revoked when a newer picture replaces it or the button goes.
+  const [made, setMade] = useState<{ card: File; url: string } | null>(null)
   useEffect(() => {
     let live = true // a slower, older render (before the PBs arrived) mustn't win
-    void cardFile(w, pbs, line).then(f => live && setCard(f), () => live && setCard(null))
-    return () => void (live = false)
+    let url = ''
+    void cardFile(w, pbs, line).then(f => live && setMade({ card: f, url: (url = URL.createObjectURL(f)) }), () => live && setMade(null))
+    return () => void ((live = false), url && URL.revokeObjectURL(url))
   }, [w, pbs, line])
+  const card = made?.card ?? null, url = made?.url
+  const [open, setOpen] = useState(false)
+  const close = useCallback(() => setOpen(false), [])
   const share = () => card && shareFile(card, `${w.title || 'Workout'} · RepRun`).catch(e => alert(e instanceof Error ? e.message : String(e)))
+  const canShare = !!card && !!navigator.canShare?.({ files: [card] })
   return (
-    <button type="button" className={`${className} ${card ? '' : 'busy'}`} disabled={!card} aria-busy={!card} onClick={() => void share()}>
-      <Icon d={SHARE} className="h-4 w-4" />{label}
-    </button>
+    <>
+      <button type="button" className={`${className} ${card ? '' : 'busy'}`} disabled={!card} aria-busy={!card} onClick={() => setOpen(true)}>
+        <Icon d={SHARE} className="h-4 w-4" />{label}
+      </button>
+      {/* Like Strava: see the picture first, then share it. The file is already made, so Share still runs straight off the tap (iOS). */}
+      {open && url && (
+        <Sheet close={close} label="Share picture">
+          <img src={url} alt={`${w.title || 'Workout'} as a picture`} className="mx-auto max-h-[60dvh] w-auto rounded-xl border border-line" />
+          <p className="mt-3 text-center text-xs text-muted">{canShare ? 'Press and hold the picture to save it to Photos.' : 'Saves as a PNG file.'}</p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button type="button" className="btn-ghost min-h-11" onClick={close}>Close</button>
+            <button type="button" className="btn relative min-h-11" onClick={() => void share()}>
+              <Tap /><Icon d={SHARE} className="h-4 w-4" />{canShare ? 'Share' : 'Download'}
+            </button>
+          </div>
+        </Sheet>
+      )}
+    </>
+  )
+}
+
+/**
+ * iOS-style sheet from the bottom: dimmed backdrop, tap outside or drag the handle area down past 80px to close.
+ * Styles set directly while dragging, so no re-render per touchmove. Only a drag that starts at the top of the
+ * sheet's scroll closes it, so scrolling a long sheet back up doesn't.
+ */
+export function Sheet({ close, children, className = '', label }: { close: () => void; children: ReactNode; className?: string; label?: string }) {
+  const drag = useRef<{ y: number; dy: number } | null>(null)
+  // Opened by a press and hold, the finger is still down: iOS's click on release would land on the backdrop and shut it.
+  const [opened] = useState(Date.now)
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    addEventListener('keydown', esc)
+    return () => removeEventListener('keydown', esc)
+  }, [close])
+  return (
+    <div className="fixed inset-0 z-50 animate-fade-in bg-black/55" onClick={() => Date.now() - opened > 400 && close()}>
+      <div role="dialog" aria-modal aria-label={label}
+        className={`absolute inset-x-0 bottom-0 mx-auto max-h-[90dvh] max-w-xl animate-sheet-in overflow-y-auto overscroll-contain rounded-t-2xl border-t border-line bg-surface px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2.5 ${className}`}
+        onClick={e => e.stopPropagation()}
+        onTouchStart={e => void (drag.current = e.currentTarget.scrollTop > 0 ? null : { y: e.touches[0].clientY, dy: 0 })}
+        onTouchMove={e => {
+          if (!drag.current) return
+          drag.current.dy = Math.max(0, e.touches[0].clientY - drag.current.y)
+          e.currentTarget.style.transition = 'none'
+          e.currentTarget.style.transform = `translateY(${drag.current.dy}px)`
+        }}
+        onTouchEnd={e => {
+          const el = e.currentTarget
+          if ((drag.current?.dy ?? 0) > 80) close()
+          else {
+            el.style.transition = 'transform 0.2s ease-out'
+            el.style.transform = ''
+          }
+          drag.current = null
+        }}>
+        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-line" />
+        {children}
+      </div>
+    </div>
   )
 }
 

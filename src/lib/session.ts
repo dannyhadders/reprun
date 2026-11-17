@@ -154,6 +154,35 @@ let ctx: AudioContext | null = null
 export const unlockAudio = () => {
   ctx ??= new AudioContext()
   void ctx.resume()
+  // iOS speaks later only if speech was started once inside a tap: a silent, empty line does it.
+  if (!spoke && 'speechSynthesis' in window) speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance(''), { volume: 0 }))
+  spoke = true
+}
+let spoke = false
+
+// ---------- spoken cues ----------
+const VOICE = 'reprun.voice'
+export const voiceOn = () => read(VOICE, true)
+export const setVoice = (on: boolean) => (write(VOICE, on), on || speechSynthesis?.cancel())
+
+/** The first set not ticked yet, in plain words: "Squat, 100 kilos, 5 reps". Falls back to the suggested weight/reps. */
+export function nextUp(a: Active) {
+  for (const ex of a.exercises) {
+    const s = ex.sets.find(x => !x.done)
+    if (!s) continue
+    const w = s.weight || ex.suggest?.weight
+    const r = s.reps || ex.suggest?.reps
+    return [ex.name, w && `${w} kilos`, r && `${r} reps`].filter(Boolean).join(', ')
+  }
+  return null
+}
+
+/** Rest over: beep, then say what's next unless the voice is muted. */
+export function restOver(a: Active) {
+  beep()
+  if (!voiceOn() || !('speechSynthesis' in window)) return
+  const n = nextUp(a)
+  speechSynthesis.speak(new SpeechSynthesisUtterance(n ? `Rest over. Next: ${n}.` : 'Rest over.'))
 }
 export function beep() {
   navigator.vibrate?.([200, 100, 200]) // Android; iPhone has no vibrate API, so it only beeps
