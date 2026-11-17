@@ -5,7 +5,7 @@ import { GOALS } from '../../shared/rules'
 import { showIntroAgain } from '../lib/intro'
 import type { ImportResult, Profile } from '../../shared/types'
 import { ask, Card, PageHeader, SourceBadge } from '../components/ui'
-import { api, useData } from '../lib/data'
+import { api, importStravaFile, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
 import { lastBackup, saveBackup } from '../lib/backupFile'
 import { ThisPhoneCard } from '../components/PhoneOnly'
@@ -132,13 +132,21 @@ function ImportCard() {
   const { reload } = useData()
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
+  const [strava, setStrava] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const onFile = async (file: File) => {
     setBusy(true)
     setError(null)
     setResult(null)
+    setStrava(null)
     try {
+      // Strava's activities.csv goes its own way: same picker, recognised by its header.
+      if (/\.csv$/i.test(file.name) && /^\uFEFF?Activity ID,/.test(await file.slice(0, 64).text())) {
+        setStrava(await importStravaFile(file))
+        await reload()
+        return
+      }
       // Parsing happens here in the browser; only the tidy result goes to the server.
       const [{ read }, { parseWorkbook }] = await Promise.all([import('xlsx'), import('../../shared/sheet')])
       const payload = parseWorkbook(read(await file.arrayBuffer()))
@@ -155,11 +163,12 @@ function ImportCard() {
   return (
     <Card title="Import spreadsheet" action={<SourceBadge source="sheet" />}>
       <p className="text-sm text-muted">Drop in a training workbook (.xlsx) with the sheets listed below. Days already in RepRun are skipped, so re-importing the updated file only adds new sessions and never overwrites your edits.</p>
+      <p className="mt-2 text-sm text-muted">Or Strava's <b className="text-ink">activities.csv</b>: on strava.com, Settings → My Account → Download or Delete Your Account → Request your archive. Every run, ride and gym session comes in with its time and distance (Strava keeps no sets).</p>
       <label className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line px-4 py-8 text-center transition hover:border-accent hover:bg-accent/5 ${busy ? 'pointer-events-none opacity-60' : ''}`}
         onDragOver={e => e.preventDefault()}
         onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) onFile(f) }}>
         <span className="text-2xl">📄</span>
-        <span className="mt-2 font-semibold">{busy ? 'Importing…' : 'Choose or drop an .xlsx file'}</span>
+        <span className="mt-2 font-semibold">{busy ? 'Importing…' : 'Choose or drop an .xlsx or activities.csv'}</span>
         <span className="text-xs text-muted">Reads Set Log, Session Summary, Running Log, PBs & Benchmarks, Progress & Targets</span>
         <input type="file" accept=".xlsx,.xls,.csv" className="sr-only" onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = '' }} />
       </label>
@@ -169,6 +178,7 @@ function ImportCard() {
           {result.skipped.length > 0 && <span className="text-muted"> Skipped {plural(result.skipped.length, 'day')} already in RepRun.</span>}
         </p>
       )}
+      {strava && <p className="mt-3 text-sm text-good">{strava}</p>}
       {error && <p className="mt-3 text-sm text-bad">{error}</p>}
     </Card>
   )

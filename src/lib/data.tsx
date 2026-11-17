@@ -39,6 +39,17 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
   return out as T
 }
 
+/** Strava's activities.csv (from "Download your data") into RepRun. Returns what came in, for a message. Caller reloads. */
+export async function importStravaFile(file: File) {
+  const { fromStravaCsv, isStravaCsv, stravaSummary } = await import('../../shared/stravaCsv.ts')
+  const text = await file.text()
+  if (!isStravaCsv(text)) throw new Error("That isn't Strava's activities.csv. It's in the zip Strava emails you.")
+  const activities = fromStravaCsv(text)
+  if (!activities.length) throw new Error('No activities in that file.')
+  await api('POST', 'import', { workouts: [], activities, records: [], goals: [] })
+  return `Brought in ${stravaSummary(activities)}. Anything already here was updated, not doubled.`
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   // Open on the last copy straight away and refresh behind it; the network only decides what shows on the very first open.
   const [data, setData] = useState<Data | null>(() => {

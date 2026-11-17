@@ -3,6 +3,8 @@ import { estimateS, formatLine, parseLine, parsePlan, roughTime, suggest } from 
 import { resolveExercise } from '../shared/catalogue.ts'
 import { STARTER_ROUTINES } from '../shared/starter.ts'
 import { livePb, type ExerciseSession } from '../src/lib/stats.ts'
+import { fromStravaCsv, isStravaCsv, parseCsv, stravaDate } from '../shared/stravaCsv.ts'
+import { cleanGoals } from '../shared/rules.ts'
 
 const assert = (c: unknown, msg: string) => { if (!c) throw new Error(msg) }
 const eq = (a: unknown, b: unknown, msg: string) => assert(JSON.stringify(a) === JSON.stringify(b), `${msg}: ${JSON.stringify(a)} !== ${JSON.stringify(b)}`)
@@ -50,3 +52,19 @@ eq(livePb(past([[80, 5]]), live([[70, 5, true]])), -1, 'pb: lighter is no PB')
 eq(livePb(past([[null, 10]]), live([[null, 12, true]])), 0, 'pb: bodyweight reps')
 eq(livePb(past([[80, 5]]), live([[85, 5, false]])), -1, 'pb: not until ticked')
 eq(livePb(past([[80, 5]]), live([[85, 0, true]])), -1, 'pb: no reps, not saved, no PB')
+
+// Strava's activities.csv: repeated column names (km then metres), quoted multi-line descriptions, UTC dates.
+process.env.TZ = 'Europe/London'
+eq(parseCsv('a,"b ""c""",d\r\n"x\ny",2,\n'), [['a', 'b "c"', 'd'], ['x\ny', '2', '']], 'csv: quotes, newlines in quotes, CRLF')
+eq(stravaDate('Nov 9, 2025, 9:15:30 PM')?.toISOString(), '2025-11-09T21:15:30.000Z', 'strava date: 12-hour, UTC')
+eq(stravaDate('Jul 1, 2025, 12:05:00 AM')?.toISOString(), '2025-07-01T00:05:00.000Z', 'strava date: 12 AM is midnight')
+const csv = 'Activity ID,Activity Date,Activity Name,Activity Type,Activity Description,Elapsed Time,Distance,Elapsed Time,Moving Time,Distance,Elevation Gain,Average Heart Rate,Total Sets,Total Reps,Total Weight Lifted\n' +
+  '111,"Jul 1, 2025, 11:30:00 PM",Late run,Run,"Hot one\nwater stop",3148,7.76,3148.0,3142.0,7768.2,100.6,156.0,,,\n' +
+  '222,"Nov 9, 2025, 6:00:00 AM",Gym,Weight Training,,3600,0,3600.0,3600.0,0.0,,120.0,12,96,4800\n'
+assert(isStravaCsv(csv) && !isStravaCsv('Date,Exercise\n'), 'csv: recognised by its header')
+const acts = fromStravaCsv(csv)
+eq(acts.map(a => [a.date, a.start, a.sport, a.distance_m, a.moving_s, a.external_id]), [['2025-07-02', '00:30', 'Run', 7768.2, 3142, 'strava:111'], ['2025-11-09', '06:00', 'WeightTraining', null, 3600, 'strava:222']], 'csv: metres, local date across midnight (BST), sport names')
+eq(acts[1].notes, 'Strava: 12 sets, 96 reps, 4800 kg lifted', 'csv: strength totals kept as a note')
+eq(acts[0].notes, 'Hot one\nwater stop', 'csv: description kept')
+eq(cleanGoals(['lose', 'x', 'lose', 'strength', 'muscle']), ['lose', 'strength'], 'goals: known, unique, two')
+console.log('strava csv + goals self-check passed')
