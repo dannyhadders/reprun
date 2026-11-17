@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { WorkoutSet } from '../../shared/types'
-import { Icon } from '../components/Layout'
-import { CopyButton, Empty, Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
+import { ask, CopyButton, Empty, Icon, Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { duration, kg, monthLabel, plural, setText, weekday, workoutText, date as fmtDate } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
@@ -188,7 +187,7 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
       }
     }
   })
-  const remove = () => confirm(w ? `Delete ${s.title} on ${fmtDate(s.date)} and all ${s.sets} sets?` : 'Delete this Strava activity from RepRun? (It stays in Strava, and comes back on the next full sync.)')
+  const remove = async () => await ask(w ? `Delete ${s.title} on ${fmtDate(s.date)} and all ${s.sets} sets?` : 'Delete this Strava activity from RepRun? (It stays in Strava, and comes back on the next full sync.)', 'Delete', true)
     && run(() => api('DELETE', w ? `workouts/${w.id}` : `activities/${s.activity!.id}`))
 
   return (
@@ -202,7 +201,7 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
       {groups.map(([exId, list]) => (
         <div key={exId}>
           <p className="font-semibold">{model.exById.get(exId)?.name}</p>
-          <div className="mt-2 grid grid-cols-[1.5rem_1fr_auto_1fr_2.5rem] items-center gap-2 text-sm">
+          <div className="mt-2 grid grid-cols-[1.5rem_1fr_auto_1fr_2.75rem] items-center gap-2 text-sm">
             {list.map((x, i) => {
               const d = sets.get(x.id)!
               return [
@@ -220,7 +219,7 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
       <div className="flex flex-wrap items-center gap-2">
         <button className="btn-danger mr-auto" disabled={busy} onClick={() => void remove()}><Icon d={BIN} className="h-4 w-4" /> Delete {w ? 'workout' : 'activity'}</button>
         <button className="btn-ghost" disabled={busy} onClick={close}>Cancel</button>
-        {w && <button className="btn" disabled={busy} onClick={() => void save()}>{busy ? 'Saving…' : 'Save'}</button>}
+        {w && <button className={`btn ${busy ? 'busy' : ''}`} disabled={busy} aria-busy={busy} onClick={() => void save()}>Save</button>}
       </div>
     </div>
   )

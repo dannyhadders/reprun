@@ -9,7 +9,7 @@ import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { ago, clock, duration, num, plural, setText, workoutText } from '../lib/format'
-import { CopyButton } from '../components/ui'
+import { ask, Burst, CopyButton, useCountUp } from '../components/ui'
 import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
 import { lastSets, MUSCLES } from '../lib/stats'
 
@@ -22,7 +22,7 @@ export default function Log() {
   const setActive = (a: Active | null) => (saveActive(a), setActiveRaw(a))
 
   const finish = (a: Active) => {
-    if (!totals(a).sets) return confirm('No sets ticked off. Discard this workout?') && setActive(null)
+    if (!totals(a).sets) return void ask('No sets ticked off. Discard this workout?', 'Discard', true).then(ok => ok && setActive(null))
     const w = toImport(a)
     queue(w)
     setActive(null)
@@ -31,7 +31,7 @@ export default function Log() {
   }
 
   return (
-    <div className="mx-auto min-h-dvh max-w-xl px-4 pb-40 pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="mx-auto min-h-dvh max-w-xl animate-fade-in px-4 pb-40 pt-[max(1rem,env(safe-area-inset-top))]">
       {finished ? <Summary w={finished} done={() => setFinished(null)} />
         : active ? <Workout a={active} set={setActive} finish={() => finish(active)} />
         : <Planner begin={setActive}><Outbox /></Planner>}
@@ -45,10 +45,20 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [name, setName] = useState('')
   const [muscle, setMuscle] = useState<Muscle>('other')
   const update = (f: (x: Active) => void) => {
-    const next = structuredClone(a)
+    // From storage, not the render's `a`: after an awaited "Are you sure?" the rest timer may have changed it meanwhile.
+    const next = structuredClone(loadActive() ?? a)
     f(next)
     set(next)
   }
+  // After a confirmed remove, Undo stays up for a few seconds in case it was the wrong one.
+  const [undo, setUndo] = useState<{ msg: string; put: (x: Active) => void } | null>(null)
+  useEffect(() => {
+    if (!undo) return
+    const t = setTimeout(() => setUndo(null), 5000)
+    return () => clearTimeout(t)
+  }, [undo])
+  // The set just ticked (it pops) and whether that finished the exercise (it bursts). Set by the tap, so reopening the logger doesn't replay it.
+  const [fx, setFx] = useState<{ i: number; j: number; all: boolean; t: number } | null>(null)
 
 
   // Keep the screen on for the whole workout, so the rest timer stays visible and audible.
@@ -85,7 +95,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         <Link to="/" className="icon-btn -ml-2 text-xl" aria-label="Back to the menu, workout keeps running">‹</Link>
         <div className="min-w-0 flex-1">
           <input className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-ink" placeholder="Workout" value={a.title} onChange={e => update(x => (x.title = e.target.value))} aria-label="Workout name" />
-          <p className="text-sm tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · {plural(t.sets, 'set')} · {num(t.volume)} kg</p>
+          <p className="text-sm tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · <span key={t.sets} className="inline-block animate-bump">{plural(t.sets, 'set')}</span> · {num(t.volume)} kg</p>
         </div>
         <button className="relative btn" onClick={finish}><Tap />Finish</button>
       </header>
@@ -100,13 +110,22 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 <Tap />
                 <span className={`text-muted transition ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
                 <h2 className="min-w-0 truncate font-semibold">{ex.name}</h2>
-                <span className={`shrink-0 text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>{done}/{ex.sets.length}{done === ex.sets.length ? ' ✓' : ''}</span>
+                <span key={done} className={`relative inline-block shrink-0 animate-bump text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>
+                  {done}/{ex.sets.length}{done === ex.sets.length ? ' ✓' : ''}
+                  {fx?.all && fx.i === i && <Burst key={fx.t} />}
+                </span>
               </button>
-              <select className="rounded-lg bg-surface-2 px-2 py-1 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
+              <select className="min-h-11 rounded-lg bg-surface-2 px-2 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
                 onChange={e => (rememberRest(ex.name, +e.target.value), update(x => (x.exercises[i].restS = +e.target.value)))}>
                 {[...new Set([...RESTS, ex.restS])].sort((x, y) => x - y).map(s => <option key={s} value={s}>Rest {clock(s)}</option>)}
               </select>
-              <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={() => confirm(`Remove ${ex.name}?`) && update(x => void x.exercises.splice(i, 1))}>✕</button>
+              {/* A finished exercise stays: every set is ticked, so there's nothing left to remove it for. */}
+              {done < ex.sets.length ? <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={async () => {
+                if (!await ask(`Remove ${ex.name} from this workout?${done ? ` Its ${plural(done, 'ticked set')} go too.` : ''}`, 'Remove', true)) return
+                update(x => void x.exercises.splice(i, 1))
+                setFx(null) // indices shift: don't let the pop land on another exercise
+                setUndo({ msg: `Removed ${ex.name}`, put: x => void x.exercises.splice(Math.min(i, x.exercises.length), 0, ex) })
+              }}>✕</button> : <span className="size-11 shrink-0" />}
             </div>
             {!ex.collapsed && <>
             {ex.target && (
@@ -122,19 +141,22 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 const hint = ex.suggest ?? { weight: p?.weight_kg?.toString() ?? '', reps: p?.reps?.toString() ?? '' }
                 return [
                   // Tap the set number for a note on that set.
-                  <button key={`n${j}`} className="relative text-center text-muted" aria-label={`Note for set ${j + 1}`}
+                  <button key={`n${j}`} className="relative min-h-11 text-center text-muted" aria-label={`Note for set ${j + 1}`}
                     onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>,
                   <span key={`p${j}`} className="truncate text-muted">{p ? setText(p) : '–'}</span>,
-                  <input key={`w${j}`} className="input px-2 text-center" type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
-                  <input key={`r${j}`} className="input px-2 text-center" type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />,
+                  <input key={`w${j}`} className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />,
+                  <input key={`r${j}`} className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />,
                   <button key={`d${j}`} aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
-                    className={`relative h-10 rounded-xl text-lg font-bold transition ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'}`}
-                    onClick={() => {
+                    className={`press relative h-11 rounded-xl text-lg font-bold ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'} ${s.done && fx?.i === i && fx.j === j ? 'animate-pop' : ''}`}
+                    onClick={async () => {
                       unlockAudio()
                       // First time with no weight in the plan: a blank weight would save as bodyweight, so ask once.
-                      if (!s.done && s.weight === '' && ex.suggest?.fresh && !confirm(`No weight entered for ${ex.name}. Log it as bodyweight?`)) return
+                      if (!s.done && s.weight === '' && ex.suggest?.fresh && !await ask(`No weight entered for ${ex.name}. Log it as bodyweight?`, 'Bodyweight')) return
+                      const all = !s.done && done + 1 === ex.sets.length
+                      setFx(s.done ? null : { i, j, all, t: Date.now() })
+                      if (all) navigator.vibrate?.([15, 60, 15])
                       update(x => {
                         if (x.exercises[i].suggest) x.exercises[i].suggest.fresh = false // asked once is enough
                         const y = x.exercises[i].sets[j]
@@ -142,11 +164,13 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         if (!y.done && y.reps === '' && hint.reps) y.reps = hint.reps
                         if (!y.done && y.weight === '' && hint.weight) y.weight = hint.weight
                         y.done = !y.done
-                        x.restEndsAt = y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
+                        // Last set of the whole workout: nothing left to rest for.
+                        const finished = x.exercises.every(e => e.sets.every(z => z.done))
+                        x.restEndsAt = finished ? null : y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
                       })
                     }}><Tap />✓</button>,
                   s.note !== undefined && (
-                    <input key={`t${j}`} className="input col-span-5 py-1.5" placeholder={`Note for set ${j + 1}, e.g. felt easy, left shoulder`} aria-label={`Set ${j + 1} note`}
+                    <input key={`t${j}`} className="input col-span-5 py-2" placeholder={`Note for set ${j + 1}, e.g. felt easy, left shoulder`} aria-label={`Set ${j + 1} note`}
                       autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))} />
                   ),
                 ]
@@ -154,10 +178,12 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             </div>
             <div className="mt-3 flex gap-2">
               <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false, note: undefined }))}>+ Set</button>
-              {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => {
+              {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={async () => {
                 const last = ex.sets[ex.sets.length - 1]
-                if ((last.done || last.reps || last.weight || last.note) && !confirm(`Remove set ${ex.sets.length} of ${ex.name}? It has data in it.`)) return
+                if ((last.done || last.reps || last.weight || last.note) && !await ask(`Remove set ${ex.sets.length} of ${ex.name}? It has data in it.`, 'Remove', true)) return
                 update(x => void x.exercises[i].sets.pop())
+                // ponytail: put back by name, so removing an exercise above it first can't land it on the wrong one. Same name twice: first wins.
+                setUndo({ msg: `Removed set ${ex.sets.length} of ${ex.name}`, put: x => void x.exercises.find(e => e.name === ex.name)?.sets.splice(ex.sets.length - 1, 0, last) })
               }}>− Set</button>}
             </div>
             </>}
@@ -205,18 +231,28 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       <textarea className="input min-h-20" placeholder="Workout notes: how it felt, sleep, anything for next time" aria-label="Workout notes"
         value={a.notes ?? ''} onChange={e => update(x => void (x.notes = e.target.value))} />
 
-      <button className="w-full py-3 text-sm text-bad" onClick={() => confirm('Discard this workout? Nothing will be saved.') && set(null)}>Discard workout</button>
+      <button className="w-full py-3 text-sm text-bad" onClick={() => void ask('Discard this workout? Nothing will be saved.', 'Discard', true).then(ok => ok && set(null))}>Discard workout</button>
+
+      {/* One dock at the bottom: Undo stacks on top of the rest timer, so neither can cover the other. */}
+      <div className="fixed inset-x-0 bottom-0 z-20">
+      {undo && (
+        <div className={`mx-4 mb-3 flex animate-toast-in items-center gap-3 rounded-2xl border border-line bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg sm:mx-auto sm:max-w-md ${a.restEndsAt ? '' : 'mb-[max(1rem,env(safe-area-inset-bottom))]'}`} role="status">
+          <span className="min-w-0 flex-1 truncate text-sm">{undo.msg}</span>
+          <button className="press relative min-h-11 rounded-xl px-4 text-sm font-semibold text-accent" onClick={() => (update(undo.put), setUndo(null), setFx(null))}><Tap />Undo</button>
+        </div>
+      )}
 
       {a.restEndsAt && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        <div className="border-t border-line bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
           <div className="mx-auto flex max-w-xl items-center gap-2">
             <span className="flex-1 text-3xl font-bold tabular-nums">{clock(Math.max(0, (a.restEndsAt - now) / 1000))}</span>
-            <button className="btn-ghost" onClick={() => update(x => (x.restEndsAt = x.restEndsAt! - 15_000))}>−15</button>
-            <button className="btn-ghost" onClick={() => update(x => (x.restEndsAt = x.restEndsAt! + 15_000))}>+15</button>
-            <button className="btn" onClick={() => update(x => (x.restEndsAt = null))}>Skip</button>
+            <button className="btn-ghost min-h-11" onClick={() => update(x => (x.restEndsAt = x.restEndsAt! - 15_000))}>−15</button>
+            <button className="btn-ghost min-h-11" onClick={() => update(x => (x.restEndsAt = x.restEndsAt! + 15_000))}>+15</button>
+            <button className="btn min-h-11" onClick={() => update(x => (x.restEndsAt = null))}>Skip</button>
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
@@ -226,16 +262,17 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
   const nav = useNavigate()
   const pbs = model.sessions.find(s => s.workout?.client_id === w.client_id)?.pbs ?? 0
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
+  const [secs, sets, kg] = [useCountUp(w.duration_s ?? 0), useCountUp(w.sets.length), useCountUp(volume)]
   return (
     <div className="space-y-5 pt-10 text-center">
-      <p className="text-5xl">💪</p>
+      <p className="animate-pop text-5xl">💪</p>
       <h1 className="text-3xl font-bold tracking-tight">{w.title || 'Workout'} done</h1>
       <div className="grid grid-cols-3 gap-3 rounded-2xl border border-line bg-surface p-4">
-        <div><div className="text-xl font-bold">{duration(w.duration_s)}</div><div className="text-xs text-muted">Time</div></div>
-        <div><div className="text-xl font-bold">{w.sets.length}</div><div className="text-xs text-muted">Sets</div></div>
-        <div><div className="text-xl font-bold">{num(volume)} kg</div><div className="text-xs text-muted">Volume</div></div>
+        <div><div className="text-xl font-bold tabular-nums">{duration(Math.round(secs))}</div><div className="text-xs text-muted">Time</div></div>
+        <div><div className="text-xl font-bold tabular-nums">{Math.round(sets)}</div><div className="text-xs text-muted">Sets</div></div>
+        <div><div className="text-xl font-bold tabular-nums">{num(Math.round(kg))} kg</div><div className="text-xs text-muted">Volume</div></div>
       </div>
-      {pbs > 0 && <p className="font-semibold text-pb">🏆 {plural(pbs, 'PB')}</p>}
+      {pbs > 0 && <p className="relative mx-auto w-fit animate-pop font-semibold text-pb">🏆 {plural(pbs, 'PB')}<Burst n={24} r={90} /></p>}
       {pending ? <Outbox /> : LOCAL ? <BackupNudge /> : <p className="text-sm text-muted">Uploaded.</p>}
       <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />
       <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>

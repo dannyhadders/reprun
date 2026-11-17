@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { MUSCLE_LIST } from '../../shared/exercises'
 import type { Exercise as Ex, Muscle } from '../../shared/types'
 import { ACCENT_2, Chart, gradientFill, gradientStroke } from '../components/Chart'
-import { Card, Empty, Line, PageHeader, PbBadge, Stat, Tabs } from '../components/ui'
+import { ask, Card, Empty, Line, PageHeader, PbBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { date as fmtDate, kg, num, plural, shortDate } from '../lib/format'
@@ -158,8 +158,8 @@ function EditExercise({ ex, done }: { ex: Ex; done: () => void }) {
     setError(null)
     try { await f() } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
   }
-  const merge = (target: Ex, why = '') => {
-    if (!confirm(`${why}Move ${plural(sets(ex.id), 'set')} from "${ex.name}" into "${target.name}"?\n\n"${ex.name}" disappears, and its history, PBs and targets become part of "${target.name}". Typing "${ex.name}" later also lands on "${target.name}" (you can undo that under Old names). The merge itself can't be undone.`)) return
+  const merge = async (target: Ex, why = '') => {
+    if (!await ask(`${why}Move ${plural(sets(ex.id), 'set')} from "${ex.name}" into "${target.name}"?\n\n"${ex.name}" disappears, and its history, PBs and targets become part of "${target.name}". Typing "${ex.name}" later also lands on "${target.name}" (you can undo that under Old names). The merge itself can't be undone.`, 'Merge', true)) return
     return run(async () => {
       await api('POST', `exercises/${ex.id}/merge`, { into: target.id })
       await reload()
@@ -212,8 +212,8 @@ function EditExercise({ ex, done }: { ex: Ex; done: () => void }) {
             {oldNames.map(n => (
               <li key={n} className="flex items-center gap-1 rounded-full border border-line py-1 pl-3 pr-1 text-sm">
                 {n}
-                <button className="icon-btn size-7" aria-label={`Forget ${n}`} disabled={busy}
-                  onClick={() => confirm(`Forget "${n}"? Typing it will make a new exercise again. Nothing already logged changes.`) && run(async () => (await api('DELETE', `aliases/${encodeURIComponent(n)}`), await reload()))}>✕</button>
+                <button className="icon-btn -my-2" aria-label={`Forget ${n}`} disabled={busy}
+                  onClick={async () => await ask(`Forget "${n}"? Typing it will make a new exercise again. Nothing already logged changes.`, 'Forget') && run(async () => (await api('DELETE', `aliases/${encodeURIComponent(n)}`), await reload()))}>✕</button>
               </li>
             ))}
           </ul>

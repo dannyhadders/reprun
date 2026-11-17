@@ -1,4 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+
+export const Icon = ({ d, className = 'h-5 w-5' }: { d: string; className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
+    <path d={d} />
+  </svg>
+)
+const COPY = 'M9 3h6v3H9zM9 4.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H15'
+const CHECK = 'M5 12.5 10 17.5 19 7'
 
 export function Card({ title, action, children, className = '' }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -53,7 +61,7 @@ export function Tabs<T extends string>({ value, options, onChange, size = 'md' }
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`whitespace-nowrap rounded-lg font-medium transition-colors ${size === 'sm' ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'} ${o.value === value ? 'bg-accent text-white shadow' : 'text-muted hover:text-ink'}`}
+          className={`press whitespace-nowrap rounded-lg font-medium ${size === 'sm' ? 'min-h-9 px-3 text-xs' : 'min-h-11 px-3.5 text-sm'} ${o.value === value ? 'bg-accent text-white shadow' : 'text-muted hover:text-ink'}`}
         >
           {o.label}
         </button>
@@ -89,5 +97,68 @@ export function CopyButton({ text, label = 'Copy', className = 'btn-ghost' }: { 
     setState(r)
     setTimeout(() => setState('idle'), 2000)
   })
-  return <button type="button" className={className} onClick={() => void copy()}>{state === 'done' ? 'Copied ✓' : state === 'failed' ? "Couldn't copy" : label}</button>
+  return (
+    <button type="button" className={className} onClick={() => void copy()}>
+      <Icon d={state === 'done' ? CHECK : COPY} className={`h-4 w-4 ${state === 'done' ? 'animate-pop text-good' : ''}`} />
+      {state === 'done' ? 'Copied' : state === 'failed' ? "Couldn't copy" : label}
+    </button>
+  )
+}
+
+/**
+ * A styled stand-in for confirm(). Native <dialog>, so Escape, focus and the dimmed backdrop come
+ * free; built with plain DOM so any handler can await it without a provider. Cancel is focused first.
+ */
+export function ask(message: string, ok = 'OK', danger = false): Promise<boolean> {
+  const d = document.createElement('dialog')
+  d.className = 'm-auto w-[min(24rem,calc(100vw-2rem))] animate-toast-in rounded-2xl border border-line bg-surface p-5 text-ink backdrop:bg-black/60'
+  const p = document.createElement('p')
+  p.className = 'whitespace-pre-line text-[15px] leading-relaxed'
+  p.textContent = message
+  const row = document.createElement('div')
+  row.className = 'mt-5 grid grid-cols-2 gap-2'
+  for (const [label, cls, value] of [['Cancel', 'btn-ghost', ''], [ok, danger ? 'btn-danger' : 'btn', 'ok']]) {
+    const b = document.createElement('button')
+    b.className = `${cls} min-h-11`
+    b.textContent = label
+    b.onclick = () => d.close(value)
+    row.append(b)
+  }
+  d.append(p, row)
+  document.body.append(d)
+  d.showModal()
+  return new Promise(resolve => d.addEventListener('close', () => (resolve(d.returnValue === 'ok'), d.remove()), { once: true }))
+}
+
+const COLOURS = ['var(--color-accent)', 'var(--color-accent-2)', 'var(--color-pb)', 'var(--color-good)']
+/** Confetti-ish burst from the middle of the nearest `relative` parent. Plays once on mount; hidden under reduced motion. */
+export function Burst({ n = 14, r = 56 }: { n?: number; r?: number }) {
+  const [parts] = useState(() => Array.from({ length: n }, (_, i) => {
+    const a = (i / n) * 2 * Math.PI + Math.random() * 0.4
+    const dist = r * (0.6 + Math.random() * 0.5)
+    return { '--dx': `${Math.cos(a) * dist}px`, '--dy': `${Math.sin(a) * dist}px`, background: COLOURS[i % COLOURS.length] } as CSSProperties
+  }))
+  return (
+    <span aria-hidden className="burst pointer-events-none absolute left-1/2 top-1/2">
+      {parts.map((style, i) => <span key={i} className="absolute -ml-[3px] -mt-[3px] size-1.5 rounded-full [animation:burst_0.7s_ease-out_forwards]" style={style} />)}
+    </span>
+  )
+}
+
+const still = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
+/** Counts up from 0 to `to` (ease-out), for totals on a finish screen. Straight to the number under reduced motion. */
+export function useCountUp(to: number, ms = 700) {
+  const [v, setV] = useState(0)
+  useEffect(() => {
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / ms)
+      setV(to * (1 - (1 - k) ** 3))
+      if (k < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [to, ms])
+  return still ? to : v
 }

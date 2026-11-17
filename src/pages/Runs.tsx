@@ -2,8 +2,7 @@ import type { ChartConfiguration } from 'chart.js'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ACCENT_2, Chart, gradientFill, gradientStroke, STRAVA } from '../components/Chart'
-import { Icon } from '../components/Layout'
-import { Card, Empty, Line, PageHeader, SourceBadge, Stat, Tabs } from '../components/ui'
+import { ask, Card, Empty, Icon, Line, PageHeader, SourceBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { clock, date as fmtDate, duration, km, num, pace, plural, shortDate, today } from '../lib/format'
 import { inRange, runBests, runPace, weekly, type RangeKey } from '../lib/stats'
@@ -108,7 +107,7 @@ export default function Runs() {
               <button
                 className="icon-btn md:opacity-0 md:group-hover:opacity-100"
                 aria-label={`Delete ${r.name}`}
-                onClick={async () => { if (confirm(`Delete ${r.name} on ${fmtDate(r.date)}?`)) { await api('DELETE', `activities/${r.id}`); await reload() } }}
+                onClick={async () => { if (await ask(`Delete ${r.name} on ${fmtDate(r.date)}?`, 'Delete', true)) { await api('DELETE', `activities/${r.id}`); await reload() } }}
               >
                 <Icon d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" className="h-4 w-4" />
               </button>

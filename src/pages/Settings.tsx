@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isBackup } from '../../shared/backup'
 import type { ImportResult, Profile } from '../../shared/types'
-import { Card, PageHeader, SourceBadge } from '../components/ui'
+import { ask, Card, PageHeader, SourceBadge } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
 import { lastBackup, saveBackup } from '../lib/backupFile'
@@ -100,8 +100,8 @@ function BackupCard() {
       <div className="mt-4 flex flex-wrap gap-2">
         <button className="btn" onClick={save}>Save a backup</button>
         {!data.demo && (
-          <label className={`btn-ghost cursor-pointer ${busy ? 'pointer-events-none opacity-60' : ''}`}>
-            {busy ? 'Restoring…' : 'Restore from a file'}
+          <label className={`btn-ghost cursor-pointer ${busy ? 'busy' : ''}`} aria-busy={busy}>
+            Restore from a file
             <input type="file" accept=".json,application/json" className="sr-only" onChange={e => { const f = e.target.files?.[0]; if (f) restore(f); e.target.value = '' }} />
           </label>
         )}
@@ -195,7 +195,7 @@ function StravaCard() {
         {data.strava.configured && !data.strava.connected && <a className="btn bg-strava" href="/api/strava/connect">Connect Strava</a>}
         {data.strava.connected && <button className="btn bg-strava" disabled={busy} onClick={() => run(async () => `Synced ${plural((await api<{ activities: number }>('POST', 'strava/sync')).activities, 'activity', 'activities')}.`)}>Sync now</button>}
         {samples > 0
-          ? <button className="btn-ghost" disabled={busy} onClick={() => confirm(`Remove ${samples} sample Strava activities?`) && run(async () => (await api('DELETE', 'strava/sample'), 'Sample data removed.'))}>Remove sample data</button>
+          ? <button className="btn-ghost" disabled={busy} onClick={async () => await ask(`Remove ${samples} sample Strava activities?`, 'Remove', true) && run(async () => (await api('DELETE', 'strava/sample'), 'Sample data removed.'))}>Remove sample data</button>
           : <button className="btn-ghost" disabled={busy} onClick={() => run(async () => `Added ${plural((await api<{ activities: number }>('POST', 'strava/sample')).activities, 'sample activity', 'sample activities')}.`)}>Load sample data</button>}
       </div>
       {msg && <p className="mt-3 text-sm text-muted">{msg}</p>}

@@ -14,9 +14,24 @@
   --color-bad: #f87171;
   --color-pb: #fbbf24;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --animate-page-in: page-in 0.18s ease-out;
+  --animate-fade-in: fade-in 0.18s ease-out; /* no transform: a transformed parent would shift its fixed children */
+  --animate-pop: pop 0.28s ease-out;
+  --animate-bump: bump 0.3s ease-out;
+  --animate-toast-in: toast-in 0.2s ease-out;
 }
 
-html { color-scheme: dark; touch-action: pan-x pan-y; } /* app feel: no pinch zoom (iOS ignores user-scalable=no) */
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes pop { 50% { transform: scale(1.18); } }
+@keyframes bump { 40% { transform: scale(1.3); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* Burst particles: each flies out to its own --dx/--dy and fades. */
+@keyframes burst { to { transform: translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; } }
+
+/* app feel: no pinch zoom (iOS ignores user-scalable=no), and no grey box on tap: the pressed states below replace it */
+html { color-scheme: dark; touch-action: pan-x pan-y; -webkit-tap-highlight-color: transparent; }
 body { @apply bg-bg text-ink antialiased; }
 
 @utility grad-text {
@@ -29,14 +44,25 @@ body { @apply bg-bg text-ink antialiased; }
   background: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
 }
 
+/* `press`: buttons dip when touched. Touch has no hover, so it's the only feedback a tap gets. */
+@utility press { @apply transition active:scale-[0.96] disabled:active:scale-100; }
+
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50; }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink transition hover:bg-surface-2 disabled:opacity-50; }
-  .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-bad/40 px-3 py-2 text-sm font-medium text-bad transition hover:bg-bad/10 disabled:opacity-50; }
+  .btn { @apply press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-50; }
+  .btn-ghost { @apply press inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-surface-2 active:bg-surface-2 disabled:opacity-50; }
+  .btn-danger { @apply press inline-flex items-center justify-center gap-2 rounded-xl border border-bad/40 px-3 py-2 text-sm font-medium text-bad hover:bg-bad/10 active:bg-bad/10 disabled:opacity-50; }
   .input { @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-accent; }
-  .icon-btn { @apply grid h-8 w-8 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-ink; }
+  /* 44px: Apple's minimum tap target. */
+  .icon-btn { @apply press grid size-11 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-2 hover:text-ink active:bg-surface-2; }
+  /* Wide rows (menus, lists): shrinking a whole row reads as a glitch, so they light up instead. */
+  .row-press { @apply transition-colors active:bg-surface-2; }
+  /* Busy button: the label goes invisible but keeps its width, and a spinner sits on top. No layout jump. */
+  .busy { @apply pointer-events-none relative text-transparent!; }
+  .busy::after { content: ""; @apply absolute inset-0 m-auto size-4 rounded-full border-2 border-white border-r-transparent; animation: spin 0.7s linear infinite; }
+  .btn-ghost.busy::after, .btn-danger.busy::after { @apply border-ink border-r-transparent; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+  .burst { display: none; } /* without the animation the particles would just sit there */
 }

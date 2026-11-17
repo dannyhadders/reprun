@@ -84,9 +84,9 @@ export function AddWorkout({ className = '' }: { className?: string }) {
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_4.5rem_5.5rem_2rem] gap-2 text-xs text-muted"><span>Exercise</span><span>Reps</span><span>Weight kg</span></div>
+              <div className="grid grid-cols-[1fr_4rem_5rem_2.75rem] gap-2 text-xs text-muted"><span>Exercise</span><span>Reps</span><span>Weight kg</span></div>
               {rows.map((r, i) => (
-                <div key={i} className="grid grid-cols-[1fr_4.5rem_5.5rem_2rem] gap-2">
+                <div key={i} className="grid grid-cols-[1fr_4rem_5rem_2.75rem] gap-2">
                   <input className="input" list="exercise-names" aria-label="Exercise" value={r.exercise} onChange={e => setRow(i, { exercise: e.target.value })} />
                   <input className="input" type="number" min="1" inputMode="numeric" aria-label="Reps" value={r.reps} onChange={e => setRow(i, { reps: e.target.value })} />
                   <input className="input" type="number" min="0" step="0.5" inputMode="decimal" aria-label="Weight in kg" placeholder="BW" value={r.weight} onChange={e => setRow(i, { weight: e.target.value })} />
@@ -100,7 +100,7 @@ export function AddWorkout({ className = '' }: { className?: string }) {
           )}
 
           {error && <p className="text-sm text-bad">{error}</p>}
-          <button className="btn w-full" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+          <button className={`btn w-full ${busy ? 'busy' : ''}`} disabled={busy} aria-busy={busy}>Save</button>
         </form>
       </dialog>
     </>

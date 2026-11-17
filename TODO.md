@@ -47,3 +47,10 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [ ] **Feature toggles**: Settings → Features, a switch per optional feature. Off hides its tab, cards and buttons; the data stays. Do this first, then build each idea below behind its own switch.
 - [ ] **Calories**: decide which first. (1) Burned: estimate per workout and run from body weight (MET values), small. (2) Food log: what you ate + calories, daily total vs a target, medium. (3) From a meal photo: needs a paid AI vision API, doesn't fit "free".
 - [ ] **Photos** (progress pics, meals, gym notes): store in R2 (10 GB free), not D1. The app loads all of D1 in one `/api/data` call, so photos there would download every time. Shrink on the phone to ~200 KB first; D1 keeps only the R2 key. Needs an R2 binding, created by the button and `npm run setup` like the database. Local (no-setup) mode would keep them in IndexedDB.
+
+## Later: desktop
+
+From running the Blueprint checklist (danielhadaway.dev/blueprint) against RepRun. Phone comes first; these wait.
+
+- [ ] **Keyboard focus rings**: `.input` sets `outline-none`; give buttons, tabs and inputs a `focus-visible` ring that shows on every surface.
+- [ ] **Hover states**: cards and list rows that open something get a hover border/background so they read as clickable on a laptop.

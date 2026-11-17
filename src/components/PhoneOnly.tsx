@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { backupAge, saveBackup } from '../lib/backupFile'
 import { useData } from '../lib/data'
 import { wipeLocal } from '../lib/local'
-import { Card } from './ui'
+import { ask, Card } from './ui'
 
 const SETUP = 'https://github.com/dannyhadders/reprun/blob/main/docs/SETUP.md'
 const ios = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -71,8 +71,8 @@ export function Welcome({ onStart }: { onStart: (sample: boolean) => Promise<voi
 export function ThisPhoneCard() {
   const [kept, setKept] = useState<boolean | null>(null)
   useEffect(() => void navigator.storage?.persisted?.().then(p => p || navigator.storage.persist()).then(setKept, () => setKept(null)), [])
-  const startOver = () => {
-    if (!confirm('Delete everything RepRun keeps on this phone? Workouts, runs, routines, body weight: all of it. Save a backup first if you might want it back.')) return
+  const startOver = async () => {
+    if (!await ask('Delete everything RepRun keeps on this phone? Workouts, runs, routines, body weight: all of it. Save a backup first if you might want it back.', 'Delete everything', true)) return
     wipeLocal()
     location.assign('/')
   }

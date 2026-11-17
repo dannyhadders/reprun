@@ -14,6 +14,8 @@ import Year from './pages/Year'
 import './index.css'
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js')
+// iOS Safari only applies :active (the pressed states in index.css) once the page listens for touches.
+document.addEventListener('touchstart', () => {}, { passive: true })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

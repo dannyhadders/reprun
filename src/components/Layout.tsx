@@ -4,7 +4,7 @@ import { useData } from '../lib/data'
 import { isSample, LOCAL, startLocal } from '../lib/local'
 import { clock, plural, workoutText } from '../lib/format'
 import { beep, loadActive, outbox, saveActive, totals, useNow } from '../lib/session'
-import { CopyButton } from './ui'
+import { ask, CopyButton, Icon } from './ui'
 import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
 
@@ -29,12 +29,6 @@ const NAV = [
   { to: '/settings', label: 'Settings', icon: I.settings },
 ]
 
-export const Icon = ({ d, className = 'h-5 w-5' }: { d: string; className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
-    <path d={d} />
-  </svg>
-)
-
 export function Layout() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -45,7 +39,7 @@ export function Layout() {
   const go = (to: string) => navigate(to, { replace: pathname === to })
   const inMore = NAV.some(n => !TABS.includes(n.to) && on(n.to))
   const tab = (n: (typeof NAV)[number]) => (
-    <button key={n.to} onClick={() => go(n.to)} aria-current={on(n.to) ? 'page' : undefined} className={`relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${on(n.to) ? 'text-accent' : 'text-muted'}`}>
+    <button key={n.to} onClick={() => go(n.to)} aria-current={on(n.to) ? 'page' : undefined} className={`press relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${on(n.to) ? 'text-accent' : 'text-muted'}`}>
       <Tap />
       <Icon d={n.icon} />
       {n.label}
@@ -90,14 +84,15 @@ export function Layout() {
           <p className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
             <b>Sample data</b> on this phone, made up so you can look around.{' '}
             <button className="font-semibold text-accent underline" onClick={async () => {
-              if (!confirm('Clear the sample data, and anything you\'ve logged while trying it, and start with an empty RepRun?')) return
+              if (!await ask('Clear the sample data, and anything you\'ve logged while trying it, and start with an empty RepRun?', 'Start fresh', true)) return
               await startLocal(false)
               await reload()
             }}>Start fresh →</button>
           </p>
         )}
         <Outbox className="mb-5" />
-        <Outlet />
+        {/* Keyed by path so each page fades in. ponytail: CSS, not view transitions: those need the data router, and this app uses <BrowserRouter>. */}
+        <div key={pathname} className="animate-page-in"><Outlet /></div>
       </main>
       <Running />
 
@@ -106,24 +101,24 @@ export function Layout() {
           <div className="absolute inset-x-0 bottom-0 rounded-t-2xl border-t border-line bg-surface px-4 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-2.5" onClick={e => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-line" />
             {NAV.filter(n => !TABS.includes(n.to)).map(n => (
-              <button key={n.to} onClick={() => (go(n.to), setMore(false))} className="relative flex w-full items-center gap-3 border-b border-line px-1 py-3.5 text-left text-[15px]">
+              <button key={n.to} onClick={() => (go(n.to), setMore(false))} className="row-press relative flex w-full items-center gap-3 border-b border-line px-1 py-3.5 text-left text-[15px]">
                 <Tap />
                 <Icon d={n.icon} className="h-5 w-5 text-muted" />{n.label === 'Year' ? 'Year in review' : n.label}
               </button>
             ))}
-            <AddWorkout className="flex w-full items-center gap-3 px-1 py-3.5 text-left text-[15px] text-muted" />
+            <AddWorkout className="row-press flex w-full items-center gap-3 px-1 py-3.5 text-left text-[15px] text-muted" />
           </div>
         </div>
       )}
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {tab(NAV[0])}
         {tab(NAV[1])}
-        <button onClick={() => go('/log')} aria-label="Start workout" className="relative -mt-5 grid h-14 w-14 place-self-center place-items-center rounded-full border-4 border-bg text-white shadow-lg shadow-accent/40 grad-bg">
+        <button onClick={() => go('/log')} aria-label="Start workout" className="press relative -mt-5 grid h-14 w-14 place-self-center place-items-center rounded-full border-4 border-bg text-white shadow-lg shadow-accent/40 grad-bg">
           <Tap />
           <Icon d={I.plus} className="h-6 w-6" />
         </button>
         {tab(NAV[3])}
-        <button onClick={() => setMore(!more)} aria-expanded={more} className={`relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${more || inMore ? 'text-accent' : 'text-muted'}`}>
+        <button onClick={() => setMore(!more)} aria-expanded={more} className={`press relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${more || inMore ? 'text-accent' : 'text-muted'}`}>
           <Tap />
           <Icon d={I.more} />
           More
@@ -143,7 +138,7 @@ export function Outbox({ className = '' }: { className?: string }) {
       <p>{plural(pending, 'workout')} saved on this phone, not uploaded yet. It's safe here until it goes up.</p>
       {upload.error && <p className="mt-1 text-muted">Last try: {upload.error}.</p>}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button className="btn-ghost" disabled={sending} onClick={() => void sync()}>{sending ? 'Uploading…' : 'Try again'}</button>
+        <button className={`btn-ghost ${sending ? 'busy' : ''}`} disabled={sending} aria-busy={sending} onClick={() => void sync()}>Try again</button>
         {/* A full page load goes through Cloudflare Access, which renews an expired session and comes back here. */}
         <a className="btn-ghost" href={location.pathname}>Sign in again</a>
         {/* Belt and braces: the workout can always leave the phone by hand. */}
@@ -167,7 +162,7 @@ function Running() {
   }, [now])
   if (!a) return null
   return (
-    <Link to="/log" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 px-4 py-3 shadow-lg backdrop-blur md:bottom-6 md:left-auto md:right-6 md:w-80">
+    <Link to="/log" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 transition-colors active:bg-surface-2 px-4 py-3 shadow-lg backdrop-blur md:bottom-6 md:left-auto md:right-6 md:w-80">
       <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-good" />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{a.title || 'Workout'} in progress</span>

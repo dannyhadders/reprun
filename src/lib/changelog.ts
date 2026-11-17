@@ -4,7 +4,14 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
-      'Pages with nothing on them yet say so instead of showing empty charts.',
+      'Buttons dip when you tap them, and the small ones (✕, ✓, rest timer) are easier to hit.',
+      '"Are you sure?" questions (remove, delete, discard, merge) ask in RepRun\'s own style instead of a grey phone pop-up.',
+      'Removing an exercise or a set mid-workout asks first, then offers Undo for a few seconds. A finished exercise can\'t be removed.',
+      'No rest timer after the last set of the workout.',
+      'Ticking a set pops, finishing an exercise bursts, and a PB gets confetti on the finish screen.',
+      'Buttons show a spinner while they work instead of changing their wording.',
+      'Pages fade in, and pages with nothing on them yet say so instead of showing empty charts.',
+      'Copy buttons show a clipboard that turns into a tick.',
       'Edit an exercise: rename it, change its muscle, or merge a typo into the right one. Routines and targets follow.',
       'Starter routines: Push, Pull, Leg, Back and Arms days in one tap when you have none yet.',
       'First time doing an exercise from a routine: it asks for a weight instead of assuming bodyweight.',

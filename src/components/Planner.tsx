@@ -7,7 +7,7 @@ import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets } from '../lib/stats'
-import { Icon } from './Layout'
+import { ask, Icon } from './ui'
 import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../lib/session'
 
 /** The logger's start screen: next routine up, all routines, recent workouts to repeat, or an empty one. */
@@ -87,7 +87,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
           <div className="rounded-2xl border border-dashed border-line p-4 text-sm text-muted">
             <p>No routines yet. Start with ours, or import a plan from your PT or ChatGPT: paste the text and each day becomes a routine.</p>
             {added ? <p className="mt-3 text-good">Added. They'll show here once the page refreshes.</p>
-              : <button className="relative btn mt-3 w-full" disabled={adding} onClick={addStarters}><Tap />{adding ? 'Adding…' : 'Add starter routines'}</button>}
+              : <button className={`relative btn mt-3 w-full ${adding ? 'busy' : ''}`} disabled={adding} aria-busy={adding} onClick={addStarters}>{!adding && <Tap />}Add starter routines</button>}
             <p className="mt-2 text-xs">{STARTER_ROUTINES.map(r => r.name).join(' · ')}. Edit or delete them any time.</p>
           </div>
         )}
@@ -185,7 +185,7 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
     }
   }
   const remove = async () => {
-    if (!routine || !confirm(`Delete the ${routine.name} routine? Past workouts stay.`)) return
+    if (!routine || !await ask(`Delete the ${routine.name} routine? Past workouts stay.`, 'Delete', true)) return
     await api('DELETE', `routines/${routine.id}`)
     await reload()
     close()
@@ -231,8 +231,8 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
       ))}
 
       {error && <p className="text-sm text-bad">{error}</p>}
-      <button className="btn w-full py-3" disabled={busy || !parsed.length} onClick={save}>
-        {busy ? 'Saving…' : routine ? 'Save routine' : parsed.length ? `Save ${plural(parsed.length, 'routine')}` : 'Paste a plan to preview it'}
+      <button className={`btn w-full py-3 ${busy ? 'busy' : ''}`} disabled={busy || !parsed.length} aria-busy={busy} onClick={save}>
+        {routine ? 'Save routine' : parsed.length ? `Save ${plural(parsed.length, 'routine')}` : 'Paste a plan to preview it'}
       </button>
       {routine && <button className="w-full py-2 text-sm text-bad" onClick={remove}>Delete routine</button>}
     </div>
