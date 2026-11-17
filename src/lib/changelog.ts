@@ -4,7 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
-      'The no-setup phone version has its own address: reprun.co.uk.',
+      'The no-setup phone version has its own address: app.reprun.co.uk.',
       'A short intro for new people: what RepRun does, how to add it to your home screen, your goals and details (all optional), and a quick way in with ChatGPT, starter routines or your Strava history. Skip it any time.',
       'The ChatGPT prompt tells it your goals and details, and asks it to quiz you before writing a plan. Starter routines follow your goals too, with new Full body and Conditioning days.',
       'Bring in your whole Strava history from Strava\'s download (activities.csv), no Strava connection needed: Settings → Import spreadsheet.',

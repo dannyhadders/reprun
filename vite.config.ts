@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), cloudflare()],
   define: {
     __BUILD__: JSON.stringify({ sha: sha.trim().slice(0, 7), date: new Date().toISOString().slice(0, 10) }),
-    // Phone-only build (reprun.co.uk): data in the browser instead of the Worker. Dead code everywhere else.
+    // Phone-only build (app.reprun.co.uk): data in the browser instead of the Worker. Dead code everywhere else.
     __LOCAL__: JSON.stringify(process.env.CLOUDFLARE_ENV === 'local'),
   },
 })

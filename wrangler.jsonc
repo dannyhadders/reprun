@@ -50,7 +50,7 @@
       "workers_dev": false,
       // ponytail: old domain kept so phones that installed from it keep their data
       "routes": [
-        { "pattern": "reprun.co.uk", "custom_domain": true },
+        { "pattern": "app.reprun.co.uk", "custom_domain": true },
         { "pattern": "reprun.danielhadaway.dev", "custom_domain": true }
       ]
     }
