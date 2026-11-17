@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'The ChatGPT prompt tells it your goals and details, and asks it to quiz you before writing a plan. Starter routines follow your goals too, with new Full body and Conditioning days.',
       'Bring in your whole Strava history from Strava\'s download (activities.csv), no Strava connection needed: Settings → Import spreadsheet.',
       'Settings → Profile: say what you\'re training for (up to two goals). RepRun uses it to suggest routines and plans.',
       'The shared picture fits long workout names and every exercise (two columns when there are lots), with PBs first in gold and counted next to the time, sets and volume.',

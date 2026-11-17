@@ -55,6 +55,11 @@ add(['barbell row', 'bent-over row', 'bent over row'], { name: 'Barbell Row', mu
 add(['pull-up', 'pull-ups', 'pull up', 'pullups'], { name: 'Pull-up', muscle: 'back' })
 add(['single-arm dumbbell row', 'one-arm dumbbell row'], { name: 'Single-arm Dumbbell Row', muscle: 'back' })
 add(['side plank'], { name: 'Side Plank', muscle: 'core' })
+add(['goblet squat', 'goblet squats'], { name: 'Goblet Squat', muscle: 'legs' })
+add(['push-up', 'push-ups', 'push up', 'press-up', 'press-ups'], { name: 'Push-up', muscle: 'chest' })
+add(['walking lunge', 'walking lunges', 'lunge', 'lunges'], { name: 'Walking Lunge', muscle: 'legs' })
+add(['kettlebell swing', 'kettlebell swings', 'kb swing'], { name: 'Kettlebell Swing', muscle: 'legs' })
+add(['dead bug', 'dead bugs'], { name: 'Dead Bug', muscle: 'core' })
 
 export function resolveExercise(raw: string, weightKg: number | null): Entry {
   const key = raw.trim().toLowerCase()

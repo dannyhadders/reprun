@@ -68,3 +68,10 @@ eq(acts[1].notes, 'Strava: 12 sets, 96 reps, 4800 kg lifted', 'csv: strength tot
 eq(acts[0].notes, 'Hot one\nwater stop', 'csv: description kept')
 eq(cleanGoals(['lose', 'x', 'lose', 'strength', 'muscle']), ['lose', 'strength'], 'goals: known, unique, two')
 console.log('strava csv + goals self-check passed')
+
+// Starters by goal: no goals keeps the original five; goals pick, combine and don't repeat.
+const { startersFor } = await import('../shared/starter.ts')
+eq(startersFor().map(r => r.name), ['Push day', 'Pull day', 'Leg day', 'Back day', 'Arms day'], 'starters: no goals = the split')
+eq(startersFor(['lose']).map(r => r.name), ['Full body', 'Conditioning'], 'starters: lose weight')
+eq(startersFor(['strength', 'running']).map(r => r.name), ['Push day', 'Pull day', 'Leg day', 'Full body'], 'starters: two goals, no repeats')
+console.log('starters self-check passed')

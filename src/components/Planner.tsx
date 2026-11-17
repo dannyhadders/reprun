@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { estimateS, formatLine, parsePlan, roughTime, targetText, type PlanItem } from '../../shared/plan'
-import { STARTER_ROUTINES } from '../../shared/starter'
-import type { Data, Routine, WorkoutSet } from '../../shared/types'
+import { GOALS, type GoalId } from '../../shared/rules'
+import { startersFor } from '../../shared/starter'
+import type { Data, Profile, Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
 import { Tap } from '../lib/haptic'
@@ -25,7 +26,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
   const addStarters = async () => {
     setAdding(true)
     try {
-      await api('POST', 'routines', { routines: STARTER_ROUTINES })
+      await api('POST', 'routines', { routines: startersFor(data.profile.goals) })
       setAdded(true)
       await reload()
     } catch (e) {
@@ -93,7 +94,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
             <p>No routines yet. Start with ours, or import a plan from your PT or ChatGPT: paste the text and each day becomes a routine.</p>
             {added ? <p className="mt-3 text-good">Added. They'll show here once the page refreshes.</p>
               : <button className={`relative btn mt-3 w-full ${adding ? 'busy' : ''}`} disabled={adding} aria-busy={adding} onClick={addStarters}>{!adding && <Tap />}Add starter routines</button>}
-            <p className="mt-2 text-xs">{STARTER_ROUTINES.map(r => r.name).join(' · ')}. Edit or delete them any time.</p>
+            <p className="mt-2 text-xs">{startersFor(data.profile.goals).map(r => r.name).join(' · ')}{data.profile.goals?.length ? ', for your goals' : ''}. Edit or delete them any time.</p>
           </div>
         )}
       </section>
@@ -156,12 +157,21 @@ function Preview({ rows }: { rows: [string, string, string | null][] }) {
   )
 }
 
-const prompt = (names: string[]) => `Write my gym plan as plain text, no tables or markdown.
+/**
+ * The ChatGPT prompt (Planner and onboarding): who they are and what they're after, then ask ChatGPT to quiz them
+ * before writing a plan in the format the importer reads. Unknown details are just left out.
+ */
+export function planPrompt(names: string[], me: { goals?: GoalId[]; weight_kg?: number | null; age?: number | null; sex?: Profile['sex'] | null } = {}) {
+  const goals = (me.goals ?? []).map(g => GOALS.find(x => x.id === g)!.label.toLowerCase())
+  const about = [goals.length && `I want to ${goals.join(' and ')}`, me.age && `I'm ${me.age}`, me.weight_kg && `I weigh ${me.weight_kg} kg`, me.sex && `I'm ${me.sex === 'female' ? 'a woman' : 'a man'}`].filter(Boolean)
+  return `Help me plan my gym training. I log it in an app called RepRun, which imports the plan you write.
+${about.length ? `About me: ${about.join(', ')}.\n` : ''}Before you write anything, ask me a few short questions, one at a time: how many days a week I can train, how long a session can be, what equipment I have, any injuries, and how experienced I am.
+Then write my gym plan as plain text, no tables or markdown.
 Start each workout day with its name on its own line, ending with a colon.
 Then one line per exercise, exactly like this:
 Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
-Use kg. Leave out "@ ...kg" for bodyweight exercises.
-Where they fit, use these exact exercise names: ${names.join(', ')}.`
+Use kg. Leave out "@ ...kg" for bodyweight exercises.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
+}
 
 function ImportPlan({ routine, close }: { routine: Routine | null; close: () => void }) {
   const { data, reload } = useData()
@@ -201,8 +211,8 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
       <button className="text-sm text-muted" onClick={close}>← Back</button>
       <h1 className="text-3xl font-bold tracking-tight">{routine ? `Edit ${routine.name}` : 'Import a plan'}</h1>
       <p className="text-sm text-muted">Paste a plan from your PT or ChatGPT. Each day's name on its own line, then one exercise per line, like <code className="text-ink">Bicep Curl – 3x8-10 @ 12kg, rest 60s</code>.</p>
-      <button className="btn-ghost w-full" onClick={async () => { await navigator.clipboard.writeText(prompt(data.exercises.map(e => e.name))); setCopied(true) }}>
-        {copied ? 'Copied: paste it into ChatGPT with what you want' : 'Copy a prompt for ChatGPT'}
+      <button className="btn-ghost w-full" onClick={async () => { await navigator.clipboard.writeText(planPrompt(data.exercises.map(e => e.name), { goals: data.profile.goals, age: data.profile.age, weight_kg: data.profile.weight_kg }) /* not sex: it defaults to male, so it may never have been said */); setCopied(true) }}>
+        {copied ? 'Copied: paste it into ChatGPT and answer its questions' : 'Copy a prompt for ChatGPT'}
       </button>
       <textarea className="input min-h-48 font-mono text-[13px]" placeholder={'Arm day:\nEZ-bar Curl – 3x10-12 @ 19kg, rest 75s\n…'} value={text} onChange={e => setText(e.target.value)} aria-label="Plan text" />
 
