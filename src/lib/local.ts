@@ -1,4 +1,4 @@
-// Phone-only copies (the `local` build, reprun.danielhadaway.dev): the Worker's /api routes, run in the browser
+// Phone-only copies (the `local` build, reprun.co.uk): the Worker's /api routes, run in the browser
 // over one Data object in localStorage. The import and restore rules come from shared/, so they match the Worker's.
 // ponytail: the whole dataset is read and written per call; a year of training is ~0.5 MB, well inside localStorage.
 import { isBackup, planRestore, workoutSeen } from '../../shared/backup.ts'

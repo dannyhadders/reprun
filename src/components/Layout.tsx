@@ -96,7 +96,7 @@ export function Layout() {
         {data.demo && (
           <p className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
             <b>Demo</b> with made-up data: click around, log a workout, break things. It all resets every night.{' '}
-            <a className="font-semibold text-accent underline" href="https://reprun.danielhadaway.dev">Use it for real on your phone →</a>{' '}
+            <a className="font-semibold text-accent underline" href="https://reprun.co.uk">Use it for real on your phone →</a>{' '}
             <a className="text-muted underline" href="https://github.com/dannyhadders/reprun">or host your own</a>
           </p>
         )}

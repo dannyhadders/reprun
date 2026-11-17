@@ -7,7 +7,7 @@ minutes, all on free plans, and no domain needed.
 
 **You need:** a free [Cloudflare](https://dash.cloudflare.com/sign-up) account and a GitHub account.
 
-Don't need a server at all? <https://reprun.danielhadaway.dev> runs on your phone with no setup. Its backup
+Don't need a server at all? <https://reprun.co.uk> runs on your phone with no setup. Its backup
 file restores into your own copy later (Settings → Backup → Restore).
 
 Got a domain and want RepRun on it, e.g. `gym.yourname.com`? Use [Own domain](#own-domain) instead.

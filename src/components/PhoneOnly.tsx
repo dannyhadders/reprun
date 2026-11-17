@@ -1,4 +1,4 @@
-// Screens only the phone-only copy (reprun.danielhadaway.dev) shows: the This phone card in Settings and the
+// Screens only the phone-only copy (reprun.co.uk) shows: the This phone card in Settings and the
 // backup nudge after a workout. Its first run is the onboarding (components/Onboarding.tsx). See src/lib/local.ts.
 import { useEffect, useState } from 'react'
 import { backupAge, saveBackup } from '../lib/backupFile'

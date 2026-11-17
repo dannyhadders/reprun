@@ -48,7 +48,11 @@
     // deploy `npx wrangler deploy`. By hand: `npm run deploy:local` (a bare `wrangler deploy` ships whatever was built last).
     "local": {
       "workers_dev": false,
-      "routes": [{ "pattern": "reprun.danielhadaway.dev", "custom_domain": true }]
+      // ponytail: old domain kept so phones that installed from it keep their data
+      "routes": [
+        { "pattern": "reprun.co.uk", "custom_domain": true },
+        { "pattern": "reprun.danielhadaway.dev", "custom_domain": true }
+      ]
     }
   }
 }
