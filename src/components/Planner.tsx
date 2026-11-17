@@ -56,7 +56,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
           </button>
           {open === 'next' && <Preview rows={planRows(next.items)} />}
           <p className="mt-1 text-xs text-muted"><Time s={estimateS(next.items)} /> · {next.last ? `Last done ${ago(next.last).toLowerCase()}` : 'Not done yet'}</p>
-          <button className="relative btn mt-3 w-full py-3 text-base" onClick={() => go(fromRoutine(next.r, data.exercises, last))}><Tap />Start {next.r.name}</button>
+          <button className="relative btn mt-3 w-full py-3 text-base" onClick={() => go(fromRoutine(next.r, data.exercises, last, data.aliases))}><Tap />Start {next.r.name}</button>
         </section>
       )}
 
@@ -75,7 +75,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
                     <p className="truncate text-xs text-muted"><Time s={estimateS(items)} /> · {plural(items.length, 'exercise')} · {when ? ago(when) : 'not done yet'}</p>
                   </button>
                   <button className="relative icon-btn" aria-label={`Edit ${r.name}`} onClick={() => setEditing(r)}><Tap />✎</button>
-                  <button className="relative btn py-1.5" onClick={() => go(fromRoutine(r, data.exercises, last))}><Tap />Start</button>
+                  <button className="relative btn py-1.5" onClick={() => go(fromRoutine(r, data.exercises, last, data.aliases))}><Tap />Start</button>
                 </div>
                 {open === `r${r.id}` && (
                   <Preview rows={planRows(items)} />
@@ -166,7 +166,7 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const parsed = useMemo(() => parsePlan(text), [text])
-  const nameFor = (raw: string) => rename[raw.toLowerCase()] ?? matchExercise(raw, data.exercises)?.name ?? null
+  const nameFor = (raw: string) => rename[raw.toLowerCase()] ?? matchExercise(raw, data.exercises, data.aliases)?.name ?? null
 
   const save = async () => {
     const out = parsed.map(r => ({ name: r.name, body: r.items.map(p => formatLine({ ...p, name: nameFor(p.name) ?? p.name })).join('\n') }))

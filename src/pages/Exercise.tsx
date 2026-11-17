@@ -1,9 +1,12 @@
 import type { ChartConfiguration } from 'chart.js'
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { MUSCLE_LIST } from '../../shared/exercises'
+import type { Exercise as Ex, Muscle } from '../../shared/types'
 import { ACCENT_2, Chart, gradientFill, gradientStroke } from '../components/Chart'
 import { Card, Empty, Line, PageHeader, PbBadge, Stat, Tabs } from '../components/ui'
-import { useData } from '../lib/data'
+import { api, useData } from '../lib/data'
+import { Tap } from '../lib/haptic'
 import { date as fmtDate, kg, num, plural, shortDate } from '../lib/format'
 import { LIFT_NAMES, standing } from '../lib/standards'
 import { e1rm, exerciseBests, exerciseSeries, METRICS, RANGES, type MetricKey, type RangeKey } from '../lib/stats'
@@ -14,6 +17,7 @@ export default function Exercise() {
   const ex = model.exById.get(Number(id))
   const [metric, setMetric] = useState<MetricKey>('heaviest')
   const [range, setRange] = useState<RangeKey>('All')
+  const [editing, setEditing] = useState(false)
 
   const b = useMemo(() => (ex ? exerciseBests(model, ex.id) : null), [model, ex])
   const timed = !!b && !b.heaviest && !!b.longestHold
@@ -43,7 +47,9 @@ export default function Exercise() {
   return (
     <div className="space-y-5">
       <Link to="/exercises" className="text-sm text-muted hover:text-ink">← Exercises</Link>
-      <PageHeader title={ex.name} sub={<><span className="capitalize">{ex.muscle}</span> · {plural(b.sessions, 'session')} · {plural(b.totalSets, 'set')}</>} />
+      <PageHeader title={ex.name} sub={<><span className="capitalize">{ex.muscle}</span> · {plural(b.sessions, 'session')} · {plural(b.totalSets, 'set')}</>}
+        action={!editing && <button className="relative btn-ghost" onClick={() => setEditing(true)}><Tap />Edit</button>} />
+      {editing && <EditExercise key={ex.id} ex={ex} done={() => setEditing(false)} />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {timed ? (
@@ -131,5 +137,89 @@ export default function Exercise() {
         </ul>
       </Card>
     </div>
+  )
+}
+
+/** Rename, re-file, or merge into another exercise. The server keeps the old name as an alias (shared/exercises.ts). */
+function EditExercise({ ex, done }: { ex: Ex; done: () => void }) {
+  const { data, model, reload } = useData()
+  const nav = useNavigate()
+  const [name, setName] = useState(ex.name)
+  const [muscle, setMuscle] = useState<Muscle>(ex.muscle)
+  const [into, setInto] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const sets = (id: number) => (model.exHistory.get(id) ?? []).reduce((n, h) => n + h.sets.length, 0)
+  const others = data.exercises.filter(e => e.id !== ex.id).sort((a, b) => a.name.localeCompare(b.name))
+  const oldNames = Object.entries(data.aliases).filter(([, to]) => to === ex.name).map(([from]) => from)
+
+  const run = async (f: () => Promise<void>) => {
+    setBusy(true)
+    setError(null)
+    try { await f() } catch (e) { setError(e instanceof Error ? e.message : String(e)) } finally { setBusy(false) }
+  }
+  const merge = (target: Ex, why = '') => {
+    if (!confirm(`${why}Move ${plural(sets(ex.id), 'set')} from "${ex.name}" into "${target.name}"?\n\n"${ex.name}" disappears, and its history, PBs and targets become part of "${target.name}". Typing "${ex.name}" later also lands on "${target.name}" (you can undo that under Old names). The merge itself can't be undone.`)) return
+    return run(async () => {
+      await api('POST', `exercises/${ex.id}/merge`, { into: target.id })
+      await reload()
+      done() // close the panel: it belonged to the exercise that's gone
+      nav(`/exercises/${target.id}`, { replace: true })
+    })
+  }
+  const save = () => {
+    const clash = name.trim() !== ex.name && others.find(e => e.name.toLowerCase() === name.trim().toLowerCase())
+    if (clash) return merge(clash, `You already have "${clash.name}". `)
+    return run(async () => {
+      await api('PATCH', `exercises/${ex.id}`, { name: name.trim(), muscle })
+      await reload()
+      done()
+    })
+  }
+
+  return (
+    <Card title="Edit exercise">
+      <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={e => (e.preventDefault(), save())}>
+        <label className="text-sm text-muted">Name<input className="input mt-1" value={name} onChange={e => setName(e.target.value)} maxLength={100} /></label>
+        <label className="text-sm text-muted">Muscle
+          <select className="input mt-1 capitalize" value={muscle} onChange={e => setMuscle(e.target.value as Muscle)}>
+            {MUSCLE_LIST.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </label>
+        <p className="text-xs text-muted sm:col-span-2">Routines and targets follow the new name, and anything still using the old one (a routine, a workout waiting to upload) lands here.</p>
+        <div className="flex gap-2 sm:col-span-2">
+          <button className="btn" disabled={busy || !name.trim()}>Save</button>
+          <button type="button" className="btn-ghost" onClick={done}>Cancel</button>
+        </div>
+      </form>
+
+      <div className="mt-5 border-t border-line pt-4">
+        <p className="text-sm font-semibold">Merge into another exercise</p>
+        <p className="mt-1 text-xs text-muted">For a typo or the same lift under two names: all {plural(sets(ex.id), 'set')} move over and this one disappears.</p>
+        <div className="mt-3 flex gap-2">
+          <select className="input" value={into} onChange={e => setInto(e.target.value)} aria-label="Merge into">
+            <option value="">Pick an exercise…</option>
+            {others.map(e => <option key={e.id} value={e.id}>{e.name} ({plural(sets(e.id), 'set')})</option>)}
+          </select>
+          <button className="btn-danger shrink-0" disabled={busy || !into} onClick={() => merge(others.find(e => e.id === Number(into))!)}>Merge</button>
+        </div>
+      </div>
+      {oldNames.length > 0 && (
+        <div className="mt-5 border-t border-line pt-4">
+          <p className="text-sm font-semibold">Old names that land here</p>
+          <p className="mt-1 text-xs text-muted">Typing one of these files it under {ex.name}. Forget one if it's really a different exercise (say, a different machine).</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {oldNames.map(n => (
+              <li key={n} className="flex items-center gap-1 rounded-full border border-line py-1 pl-3 pr-1 text-sm">
+                {n}
+                <button className="icon-btn size-7" aria-label={`Forget ${n}`} disabled={busy}
+                  onClick={() => confirm(`Forget "${n}"? Typing it will make a new exercise again. Nothing already logged changes.`) && run(async () => (await api('DELETE', `aliases/${encodeURIComponent(n)}`), await reload()))}>✕</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {error && <p className="mt-3 text-sm text-bad">{error}</p>}
+    </Card>
   )
 }

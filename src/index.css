@@ -32,7 +32,7 @@ body { @apply bg-bg text-ink antialiased; }
 @layer components {
   .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-50; }
   .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink transition hover:bg-surface-2 disabled:opacity-50; }
-  .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-bad/40 px-3 py-2 text-sm font-medium text-bad transition hover:bg-bad/10; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-xl border border-bad/40 px-3 py-2 text-sm font-medium text-bad transition hover:bg-bad/10 disabled:opacity-50; }
   .input { @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-accent; }
   .icon-btn { @apply grid h-8 w-8 place-items-center rounded-lg text-muted transition hover:bg-surface-2 hover:text-ink; }
 }

@@ -3,7 +3,8 @@
 // ponytail: the whole dataset is read and written per call; a year of training is ~0.5 MB, well inside localStorage.
 import { isBackup, planRestore, workoutSeen } from '../../shared/backup.ts'
 import { isDate, num, routineOk, setNumbers } from '../../shared/rules.ts'
-import type { Backup, BodyWeight, Data, ImportPayload, ImportResult, Profile, Routine } from '../../shared/types.ts'
+import { addAlias, exerciseNameOk, mergeAliases, MUSCLE_LIST, nameFiler, rewriteRoutine } from '../../shared/exercises.ts'
+import type { Backup, BodyWeight, Data, ImportPayload, ImportResult, Muscle, Profile, Routine } from '../../shared/types.ts'
 import { localISO } from './format.ts'
 
 declare const __LOCAL__: boolean // vite.config.ts: true only in the phone-only build (CLOUDFLARE_ENV=local)
@@ -43,12 +44,13 @@ export function wipeLocal() {
 const blank = (): Data => ({
   exercises: [], workouts: [], activities: [], records: [], goals: [], bodyWeight: [], routines: [],
   profile: { age: null, sex: 'male', weight_kg: null },
+  aliases: {},
   demo: false,
   strava: { configured: false, connected: false, lastSync: null },
 })
 const load = (): Data => {
   const s = localStorage.getItem(LOCAL_KEY)
-  return s ? (JSON.parse(s) as Data) : blank()
+  return s ? { ...blank(), ...(JSON.parse(s) as Data) } : blank() // older copies lack newer fields
 }
 // Not caught on purpose: a full or blocked storage must fail loudly, so a finished workout stays in the outbox.
 const store = (d: Data) => localStorage.setItem(LOCAL_KEY, JSON.stringify(d))
@@ -126,7 +128,9 @@ export async function local<T>(method: string, path: string, body?: unknown): Pr
   } else if (resource === 'profile' && method === 'PUT') {
     const b = body as Profile
     d.profile = { age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg) }
-  } else if (resource === 'strava') fail('Strava needs your own copy of RepRun (docs/SETUP.md)')
+  } else if (resource === 'aliases' && id && method === 'DELETE') delete d.aliases[decodeURIComponent(id).toLowerCase()]
+  else if (resource === 'exercises' && id && method === (path.endsWith('/merge') ? 'POST' : 'PATCH')) out = editExercise(d, n, path.endsWith('/merge'), body as { name?: unknown; muscle?: unknown; into?: unknown })
+  else if (resource === 'strava') fail('Strava needs your own copy of RepRun (docs/SETUP.md)')
   else fail('Not found')
 
   store(d)
@@ -139,6 +143,10 @@ function importLocal(d: Data, p: ImportPayload | Backup): ImportResult {
   const backup = isBackup(p)
   const result: ImportResult = { workouts: 0, skipped: [], sets: 0, activities: 0, records: 0, goals: 0 }
 
+  // Old names you've renamed or merged land on the current one.
+  const file = nameFiler(d.aliases, d.exercises.map(e => e.name))
+  for (const w of p.workouts) for (const s of w.sets) s.exercise = file(s.exercise)
+  for (const g of p.goals) if (typeof g?.exercise === 'string') g.exercise = file(g.exercise) // targets follow too
   // Exercises by name; existing ones keep any edits.
   const ids = new Map(d.exercises.map(e => [e.name, e.id]))
   for (const w of p.workouts) for (const s of w.sets) {
@@ -175,6 +183,7 @@ function importLocal(d: Data, p: ImportPayload | Backup): ImportResult {
     for (const w of add.bodyWeight) d.bodyWeight.push({ date: w.date, kg: Number(w.kg), source: w.source ?? 'manual' })
     // Profile only if this copy has none yet, like the Worker. ponytail: "none" = no age and no weight.
     if (p.profile && d.profile.age === null && d.profile.weight_kg === null) d.profile = p.profile
+    d.aliases = mergeAliases(d.aliases, p.aliases, d.exercises.map(e => e.name))
     return { ...result, activities: add.activities.length, records: add.records.length, goals: add.goals.length, routines: add.routines.length, bodyWeight: add.bodyWeight.length }
   }
 
@@ -197,4 +206,38 @@ function importLocal(d: Data, p: ImportPayload | Backup): ImportResult {
     result.goals = p.goals.length
   }
   return result
+}
+
+/** The Worker's editExercise: rename / re-file, or merge into another. The old name becomes an alias. */
+function editExercise(d: Data, id: number, merge: boolean, b: { name?: unknown; muscle?: unknown; into?: unknown }) {
+  const ex = d.exercises.find(e => e.id === id) ?? fail('That exercise is gone')
+  const follow = (to: string) => {
+    for (const g of d.goals) if (g.exercise === ex.name) g.exercise = to
+    for (const r of d.routines) r.body = rewriteRoutine(r.body, ex.name, to)
+    d.aliases = addAlias(d.aliases, ex.name, to)
+  }
+  if (merge) {
+    const into = d.exercises.find(e => e.id === Number(b.into))
+    if (!into || into.id === ex.id) fail('Pick another exercise to merge into')
+    let moved = 0
+    for (const w of d.workouts) for (const s of w.sets) {
+      if (s.exercise_id !== ex.id) continue
+      s.exercise_id = into!.id
+      moved++
+    }
+    into!.lift = into!.lift ?? ex.lift
+    d.exercises = d.exercises.filter(e => e.id !== ex.id)
+    follow(into!.name)
+    return { ok: true, moved, into: into!.id }
+  }
+  const name = b.name === undefined ? ex.name : b.name
+  const muscle = b.muscle === undefined ? ex.muscle : b.muscle
+  if (!exerciseNameOk(name)) fail('An exercise needs a name (up to 100 characters)')
+  if (!MUSCLE_LIST.includes(muscle as Muscle)) fail('Pick a muscle group')
+  const clash = (name as string).trim() !== ex.name && d.exercises.find(e => e.id !== ex.id && e.name.toLowerCase() === (name as string).trim().toLowerCase())
+  if (clash) fail(`You already have "${clash.name}"`) // the edit screen offers a merge before it gets here
+  if ((name as string).trim() !== ex.name) follow((name as string).trim())
+  ex.name = (name as string).trim()
+  ex.muscle = muscle as Muscle
+  return { ok: true }
 }

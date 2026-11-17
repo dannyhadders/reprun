@@ -1,4 +1,6 @@
 // The live workout on the phone: pure helpers plus localStorage persistence. No JSX.
+import { matchExercise, type Aliases } from '../../shared/exercises.ts'
+export { matchExercise }
 import { resolveExercise } from '../../shared/catalogue.ts'
 import { parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
 import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
@@ -54,17 +56,12 @@ export const newExercise = (raw: string, muscle?: Muscle, sets = 1, reps = '', w
 }
 
 // Exercises in a plan are matched to ones you've logged before, so history, PBs and suggestions line up.
-export const matchExercise = (name: string, known: Exercise[]) => {
-  const key = resolveExercise(name, null).name.toLowerCase()
-  return known.find(e => e.name.toLowerCase() === name.trim().toLowerCase() || e.name.toLowerCase() === key) ?? null
-}
-
 type Last = (name: string) => WorkoutSet[]
 
-export function fromRoutine(r: Routine, known: Exercise[], last: Last): Active {
+export function fromRoutine(r: Routine, known: Exercise[], last: Last, aliases: Aliases = {}): Active {
   const items = parsePlan(r.body).flatMap(x => x.items)
   return start(r.name, items.map(p => {
-    const ex = matchExercise(p.name, known)
+    const ex = matchExercise(p.name, known, aliases)
     const e = newExercise(ex?.name ?? p.name, ex?.muscle, p.sets)
     const s = suggest(p, last(e.name))
     return {

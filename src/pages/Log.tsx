@@ -10,7 +10,7 @@ import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { ago, clock, duration, num, plural, setText, workoutText } from '../lib/format'
 import { CopyButton } from '../components/ui'
-import { beep, loadActive, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
+import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
 import { lastSets, MUSCLES } from '../lib/stats'
 
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
@@ -67,7 +67,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     return () => clearTimeout(t)
   })
 
-  const known = data.exercises.find(e => e.name.toLowerCase() === name.trim().toLowerCase())
+  const known = name.trim() ? matchExercise(name, data.exercises, data.aliases) : null // follows renames, merges and the catalogue
   const isNew = name.trim() && !known && newExercise(name).muscle === 'other'
   const t = totals(a)
   const add = (n: string, m?: Muscle) => (update(x => void x.exercises.push(newExercise(n, m))), setName(''))

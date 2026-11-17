@@ -57,6 +57,7 @@ export type Data = {
   bodyWeight: BodyWeight[]
   routines: Routine[]
   profile: Profile
+  aliases: Record<string, string> // your renamed/merged exercises: old name (lower case) → current name
   demo: boolean
   strava: { configured: boolean; connected: boolean; lastSync: string | null }
 }
@@ -81,4 +82,5 @@ export type Backup = ImportPayload & {
   routines: Pick<Routine, 'name' | 'body'>[]
   bodyWeight: BodyWeight[]
   profile: Profile
+  aliases?: Record<string, string> // renamed/merged exercise names (shared/exercises.ts)
 }

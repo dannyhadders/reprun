@@ -63,4 +63,50 @@ assert(await local('GET', 'strava/connect').then(() => false, () => true), 'stra
 const junk = { ...toBackup(await get()), routines: [{ name: null, body: 'x' }, null, { name: 'Legs', body: 'Squat – 3x5' }], bodyWeight: [{ date: 'nope', kg: 1 }, { date: '2026-12-01', kg: 0 }, { date: '2026-12-01', kg: 81 }], records: [null] } as unknown as Backup
 const rj = await local<ImportResult>('POST', 'import', junk)
 assert(rj.routines === 1 && rj.bodyWeight === 1 && rj.records === 0, `junk skipped, good rows kept (${rj.routines}/${rj.bodyWeight}/${rj.records})`)
+// Rename and merge (shared/exercises.ts): history moves, routines and goals follow, old names become aliases.
+await local('POST', 'routines', { routines: [{ name: 'Typo day', body: 'Bench Pres – 3x8, rest 90s\nSquat – 3x5' }] })
+const typo = { workouts: [{ date: '2026-11-18', title: 'Typo', notes: null, source: 'app', duration_s: 600, client_id: 'typo1', sets: [{ exercise: 'Bench Pres', muscle: 'other' as const, lift: null, position: 0, weight_kg: 70, reps: 5, seconds: null, notes: null }] }], activities: [], records: [], goals: [] }
+await local('POST', 'import', typo)
+let dd = await get()
+const bad = dd.exercises.find(e => e.name === 'Bench Pres')!, bench = dd.exercises.find(e => e.name === 'Bench Press')!
+const benchSets = dd.workouts.flatMap(w => w.sets).filter(s => s.exercise_id === bench.id).length
+await local('PATCH', `exercises/${bad.id}`, { name: 'Bench Prez', muscle: 'chest' })
+dd = await get()
+assert(dd.exercises.find(e => e.id === bad.id)!.name === 'Bench Prez' && dd.exercises.find(e => e.id === bad.id)!.muscle === 'chest', 'rename + muscle')
+assert(dd.routines.find(r => r.name === 'Typo day')!.body.startsWith('Bench Prez – 3x8'), 'routine follows a rename')
+assert(await local('PATCH', `exercises/${bad.id}`, { name: 'bench press' }).then(() => false, () => true), 'rename onto an existing name refused')
+const m = await local<{ moved: number }>('POST', `exercises/${bad.id}/merge`, { into: bench.id })
+dd = await get()
+assert(m.moved === 1 && !dd.exercises.some(e => e.id === bad.id), 'merge moves the set and removes the duplicate')
+assert(dd.workouts.flatMap(w => w.sets).filter(s => s.exercise_id === bench.id).length === benchSets + 1, 'merged set is on Bench Press')
+assert(dd.routines.find(r => r.name === 'Typo day')!.body.startsWith('Bench Press – 3x8'), 'routine follows a merge')
+assert(dd.aliases['bench pres'] === 'Bench Press' && dd.aliases['bench prez'] === 'Bench Press', 'old names alias to the survivor')
+// An upload still using the oldest name (e.g. sat in the outbox) lands on Bench Press, not a new exercise.
+await local('POST', 'import', { ...typo, workouts: [{ ...typo.workouts[0], client_id: 'typo2' }] })
+dd = await get()
+assert(!dd.exercises.some(e => /bench pre[sz]$/i.test(e.name)) && dd.workouts.find(w => w.client_id === 'typo2')!.sets[0].exercise_id === bench.id, 'old name in an upload lands on the survivor')
+assert(await local('POST', `exercises/${bench.id}/merge`, { into: bench.id }).then(() => false, () => true), 'merge into itself refused')
+// Review fixes: case-only renames, targets via aliases, forgetting an old name, muscle-only edits, catalogue + alias.
+const { matchExercise } = await import('../shared/exercises.ts')
+const up2 = (id: string, ex: string) => ({ workouts: [{ date: '2026-11-19', title: 'x', notes: null, source: 'app', duration_s: 60, client_id: id, sets: [{ exercise: ex, muscle: 'other' as const, lift: null, position: 0, weight_kg: 10, reps: 10, seconds: null, notes: null }] }], activities: [], records: [], goals: [] })
+await local('POST', 'import', up2('c-fly', 'cable fly'))
+let d3 = await get()
+const fly = d3.exercises.find(e => e.name === 'cable fly')!
+await local('PATCH', `exercises/${fly.id}`, { name: 'Cable Fly' })
+await local('POST', 'import', up2('c-fly2', 'cable fly')) // an upload made before the rename
+d3 = await get()
+assert(d3.exercises.filter(e => e.name.toLowerCase() === 'cable fly').length === 1, 'case-only rename does not split history')
+await local('PATCH', `exercises/${fly.id}`, { muscle: 'chest' })
+assert((await get()).exercises.find(e => e.id === fly.id)!.muscle === 'chest', 'muscle-only edit fine')
+await local('POST', 'import', { workouts: [], activities: [], records: [], goals: [{ exercise: 'Bench Pres', latest: null, target: '90 kg', context: null, source: 'sheet' }] })
+assert((await get()).goals.some(g => g.target === '90 kg' && g.exercise === 'Bench Press'), 'sheet targets go through aliases')
+d3 = await get()
+const benchId = d3.exercises.find(e => e.name === 'Bench Press')!.id
+await local('PATCH', `exercises/${benchId}`, { name: 'Flat Bench' })
+d3 = await get()
+assert(matchExercise('bench', d3.exercises, d3.aliases)?.name === 'Flat Bench', 'catalogue name then alias: "bench" finds Flat Bench')
+await local('DELETE', `aliases/${encodeURIComponent('bench pres')}`)
+assert(!('bench pres' in (await get()).aliases), 'forget an old name')
+assert(JSON.stringify(toBackup(await get()).aliases) === JSON.stringify((await get()).aliases), 'backup carries aliases')
+assert(await local('GET', `exercises/${benchId}`).then(() => false, () => true), 'wrong method refused')
 console.log('local: all checks passed')

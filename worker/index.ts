@@ -1,6 +1,7 @@
-import type { Activity, Backup, BodyWeight, Data, Exercise, Goal, ImportActivity, ImportPayload, ImportResult, Profile, RecordRow, Routine, Workout, WorkoutSet } from '../shared/types.ts'
+import type { Activity, Backup, BodyWeight, Data, Exercise, Goal, Muscle, ImportActivity, ImportPayload, ImportResult, Profile, RecordRow, Routine, Workout, WorkoutSet } from '../shared/types.ts'
 import { isBackup, planRestore, workoutSeen } from '../shared/backup.ts'
 import { isDate, num, routineOk, setNumbers } from '../shared/rules.ts'
+import { addAlias, exerciseNameOk, mergeAliases, MUSCLE_LIST, nameFiler, rewriteRoutine, type Aliases } from '../shared/exercises.ts'
 import { demoData } from '../shared/demo.ts'
 import { fromStrava, sampleStravaActivities, type StravaActivity } from '../shared/strava.ts'
 
@@ -141,6 +142,17 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     return json({ ok: true })
   }
 
+  if (resource === 'exercises' && id) {
+    const merge = url.pathname.endsWith('/merge')
+    if (m !== (merge ? 'POST' : 'PATCH')) return bad('Not found', 404)
+    return editExercise(db, req, Number(id), merge)
+  }
+  if (resource === 'aliases' && id && m === 'DELETE') { // forget an old name, so typing it makes a new exercise again
+    const aliases = await getSetting<Aliases>(db, 'aliases', {})
+    delete aliases[decodeURIComponent(id).toLowerCase()]
+    await setSetting(db, 'aliases', aliases)
+    return json({ ok: true })
+  }
   if (resource === 'strava') return strava(req, env, url, id)
   return bad('Not found', 404)
 }
@@ -155,7 +167,7 @@ async function loadAll(env: Env): Promise<Data> {
     db.prepare('SELECT * FROM records ORDER BY category, id'),
     db.prepare('SELECT * FROM goals ORDER BY id'),
     db.prepare('SELECT * FROM body_weight ORDER BY date'),
-    db.prepare("SELECT key, value FROM settings WHERE key IN ('profile', 'strava')"),
+    db.prepare("SELECT key, value FROM settings WHERE key IN ('profile', 'strava', 'aliases')"),
     db.prepare('SELECT * FROM routines ORDER BY id'),
   ])
   const sets = new Map<number, WorkoutSet[]>()
@@ -171,6 +183,7 @@ async function loadAll(env: Env): Promise<Data> {
     bodyWeight: bw.results as BodyWeight[],
     routines: ro.results as Routine[],
     profile: settings.profile ?? { age: null, sex: 'male', weight_kg: null },
+    aliases: settings.aliases ?? {},
     demo: !!env.DEMO,
     strava: { configured: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!tokens?.refresh_token, lastSync: tokens?.last_sync ?? null },
   }
@@ -181,6 +194,12 @@ async function importPayload(db: D1Database, p: ImportPayload | Backup): Promise
   const result: ImportResult = { workouts: 0, skipped: [], sets: 0, activities: 0, records: 0, goals: 0 }
   const backup = isBackup(p)
   if (![p.workouts, p.activities, p.records, p.goals].every(Array.isArray)) throw new Error('That file isn\'t a RepRun import')
+
+  // Old names you've renamed or merged land on the current one (shared/exercises.ts).
+  const aliases = await getSetting<Aliases>(db, 'aliases', {})
+  const file = nameFiler(aliases, ((await db.prepare('SELECT name FROM exercises').all()).results as { name: string }[]).map(e => e.name))
+  for (const w of p.workouts) for (const s of w.sets) s.exercise = file(s.exercise)
+  for (const g of p.goals) if (typeof g?.exercise === 'string') g.exercise = file(g.exercise) // targets follow too
 
   // Exercises first, so sets can reference them by id. Existing ones keep any edits.
   const exercises = new Map<string, { muscle: string; lift: string | null }>()
@@ -252,6 +271,9 @@ async function restoreRest(db: D1Database, b: Backup) {
     ...add.bodyWeight.map(w => db.prepare('INSERT OR IGNORE INTO body_weight (date, kg, source) VALUES (?, ?, ?)').bind(w.date, Number(w.kg), w.source ?? 'manual')),
     // Profile only if this copy has none yet.
     ...(b.profile ? [db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('profile', ?)").bind(JSON.stringify(b.profile))] : []),
+    db.prepare("INSERT INTO settings (key, value) VALUES ('aliases', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .bind(JSON.stringify(mergeAliases(await getSetting<Aliases>(db, 'aliases', {}), b.aliases,
+        ((await db.prepare('SELECT name FROM exercises').all()).results as { name: string }[]).map(e => e.name)))),
   ])
   return { activities: add.activities.length, records: add.records.length, goals: add.goals.length, routines: add.routines.length, bodyWeight: add.bodyWeight.length }
 }
@@ -266,6 +288,57 @@ async function upsertActivities(db: D1Database, list: ImportActivity[]) {
         elevation_m = excluded.elevation_m, avg_hr = excluded.avg_hr`)
       .bind(a.date, a.start, a.sport, a.name, a.distance_m, a.moving_s, a.elapsed_s, a.elevation_m, a.avg_hr, a.notes, a.source, a.external_id, a.sample)))
   return list.length
+}
+
+async function getSetting<T>(db: D1Database, key: string, fallback: T): Promise<T> {
+  const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first<{ value: string }>()
+  return row ? (JSON.parse(row.value) as T) : fallback
+}
+
+/** PATCH /api/exercises/:id {name?, muscle?} renames or re-files; POST /api/exercises/:id/merge {into} moves every
+ *  set onto another exercise and removes this one. Either way the old name becomes an alias and routines are
+ *  rewritten. One batch, so it all happens or none of it does. */
+async function editExercise(db: D1Database, req: Request, id: number, merge: boolean): Promise<Response> {
+  const exercises = (await db.prepare('SELECT * FROM exercises').all()).results as Exercise[]
+  const ex = exercises.find(e => e.id === id)
+  if (!ex) return bad('That exercise is gone', 404)
+  const b = (await req.json()) as { name?: unknown; muscle?: unknown; into?: unknown }
+  const routines = (await db.prepare('SELECT id, body FROM routines').all()).results as Pick<Routine, 'id' | 'body'>[]
+  const aliases = await getSetting<Aliases>(db, 'aliases', {})
+
+  // Both paths end the same way: goals and routines follow the new name, and the old one becomes an alias.
+  const follow = (to: string) => [
+    db.prepare('UPDATE goals SET exercise = ? WHERE exercise = ?').bind(to, ex.name),
+    ...routines.map(r => [r, rewriteRoutine(r.body, ex.name, to)] as const).filter(([r, body]) => body !== r.body)
+      .map(([r, body]) => db.prepare('UPDATE routines SET body = ? WHERE id = ?').bind(body, r.id)),
+    db.prepare("INSERT INTO settings (key, value) VALUES ('aliases', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .bind(JSON.stringify(addAlias(aliases, ex.name, to))),
+  ]
+
+  if (merge) {
+    const into = exercises.find(e => e.id === Number(b.into))
+    if (!into || into.id === ex.id) return bad('Pick another exercise to merge into')
+    const moved = await db.prepare('SELECT count(*) AS n FROM sets WHERE exercise_id = ?').bind(ex.id).first<{ n: number }>()
+    await db.batch([
+      db.prepare('UPDATE sets SET exercise_id = ? WHERE exercise_id = ?').bind(into.id, ex.id),
+      db.prepare('UPDATE exercises SET lift = COALESCE(lift, ?) WHERE id = ?').bind(ex.lift, into.id), // keep its own big-lift tag
+      db.prepare('DELETE FROM exercises WHERE id = ?').bind(ex.id),
+      ...follow(into.name),
+    ])
+    return json({ ok: true, moved: moved?.n ?? 0, into: into.id })
+  }
+
+  const name = b.name === undefined ? ex.name : b.name
+  const muscle = b.muscle === undefined ? ex.muscle : b.muscle
+  if (!exerciseNameOk(name)) return bad('An exercise needs a name (up to 100 characters)')
+  if (!MUSCLE_LIST.includes(muscle as Muscle)) return bad('Pick a muscle group')
+  const clash = name.trim() !== ex.name && exercises.find(e => e.id !== ex.id && e.name.toLowerCase() === name.trim().toLowerCase())
+  if (clash) return json({ error: `You already have "${clash.name}"`, mergeInto: clash.id }, 409)
+  await db.batch([
+    db.prepare('UPDATE exercises SET name = ?, muscle = ? WHERE id = ?').bind(name.trim(), muscle, ex.id),
+    ...(name.trim() === ex.name ? [] : follow(name.trim())),
+  ])
+  return json({ ok: true })
 }
 
 async function setSetting(db: D1Database, key: string, value: unknown) {

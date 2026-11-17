@@ -23,6 +23,7 @@ export function toBackup(d: Data, exported = new Date().toISOString()): Backup {
     routines: d.routines.map(({ name, body }) => ({ name, body })),
     bodyWeight: d.bodyWeight,
     profile: d.profile,
+    aliases: d.aliases,
   }
 }
 
