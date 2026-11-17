@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
 import { Outbox } from '../components/Layout'
@@ -374,10 +374,17 @@ function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: Rea
 }
 
 function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
-  const { model, lines, pending } = useData()
+  const { data, model, lines, pending } = useData()
   const nav = useNavigate()
   const session = model.sessions.find(s => s.workout?.client_id === w.client_id) // once it's uploaded
   const pbs = session?.pbs ?? 0
+  // Exercises with a PB, for the picture: from the saved PBs once uploaded, until then the same check the logger's 🏆 uses.
+  // Memoised so the picture isn't redrawn on every frame of the count-up.
+  const saved = session?.workout
+  const pbNames = useMemo(() => saved
+    ? [...new Set(saved.sets.filter(x => model.pbs.has(x.id)).map(x => model.exById.get(x.exercise_id)?.name ?? '?'))]
+    : [...new Set(w.sets.map(s => s.exercise))].filter(n => livePb(model.exHistory.get(matchExercise(n, data.exercises, data.aliases)?.id ?? -1) ?? [], w.sets.filter(s => s.exercise === n).map(s => ({ ...s, done: true }))) >= 0),
+  [w, saved, model, data])
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
   // The same one-liner the Workouts list will show; until it's uploaded, one from the weight lifted.
   const line = (session && lines.get(session.key)) || workoutLine(volume, w.sets.length)
@@ -393,7 +400,7 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
       </div>
       {pbs > 0 && <p className="relative mx-auto w-fit animate-pop font-semibold text-pb">🏆 {plural(pbs, 'PB')}<Burst n={24} r={90} /></p>}
       {pending ? <Outbox /> : LOCAL ? <BackupNudge /> : <p className="text-sm text-muted">Uploaded.</p>}
-      <ShareButton className="btn-ghost w-full" label="Share as a picture" w={w} pbs={pbs} line={line} />
+      <ShareButton className="btn-ghost w-full" label="Share as a picture" w={w} pbs={pbNames} line={line} />
       <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />
       <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>
     </div>

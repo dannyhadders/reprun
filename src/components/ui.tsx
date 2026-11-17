@@ -111,7 +111,7 @@ const SHARE = 'M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'
  * Shares a workout as a picture. The picture is drawn when the button appears (and again if its inputs change), because
  * iOS only lets navigator.share run straight off a tap, not after the awaits that drawing takes. Spinner until it's ready.
  */
-export function ShareButton({ w, pbs, line, label = 'Share', className = 'btn-ghost' }: { w: CardWorkout; pbs: number; line?: string; label?: string; className?: string }) {
+export function ShareButton({ w, pbs, line, label = 'Share', className = 'btn-ghost' }: { w: CardWorkout; pbs: string[]; line?: string; label?: string; className?: string }) {
   const [card, setCard] = useState<File | null>(null)
   useEffect(() => {
     let live = true // a slower, older render (before the PBs arrived) mustn't win
