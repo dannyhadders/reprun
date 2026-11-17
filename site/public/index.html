@@ -75,14 +75,21 @@
     .desk .sep { width: 1px; height: 16px; background: var(--line-strong); }
     .burger { display: none; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: none; color: var(--ink); place-items: center; cursor: pointer; }
     .burger .i { width: 20px; height: 20px; }
-    .burger .x, header.open .burger .m { display: none; }
-    header.open .burger .x { display: block; }
+    .burger .x, .burger[aria-expanded="true"] .m { display: none; }
+    .burger[aria-expanded="true"] .x { display: block; }
     .menu { display: none; }
     @media (max-width: 800px) {
       .desk { display: none; }
       .burger { display: grid; }
-      header.open .menu { display: block; border-top: 1px solid var(--line); padding: 12px 0 18px; animation: drop 0.28s var(--ease); }
-      @keyframes drop { from { opacity: 0; transform: translateY(-6px); } }
+      /* Slides down: the row animates from 0fr to 1fr, so the header grows with it. Closing runs the same in reverse;
+         the header keeps its solid backing (.open) until the menu has finished folding away. */
+      .menu { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.32s var(--ease); }
+      .menu > div { overflow: hidden; min-height: 0; opacity: 0; transform: translateY(-8px); transition: opacity 0.25s, transform 0.32s var(--ease); }
+      .menu.show { grid-template-rows: 1fr; }
+      .menu.show > div { opacity: 1; transform: none; }
+      .menu > div > :first-child { margin-top: 12px; }
+      .menu > div > :last-child { margin-bottom: 18px; }
+      header.open nav { border-bottom: 1px solid var(--line); }
       .menu p { padding: 8px 8px 4px; font: 600 11px ui-monospace, Menlo, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
       .menu a:not(.btn) { display: flex; align-items: center; gap: 10px; padding: 12px 8px; border-radius: 10px; text-decoration: none; color: rgba(232, 234, 240, 0.85); }
       .menu a:not(.btn) .i { color: var(--muted); }
@@ -207,9 +214,8 @@
     }
 
     .demo { margin-top: 16px; display: flex; align-items: center; gap: 18px; }
-    .demo .ico { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--surface-2); flex: none; }
-    .demo .ico .i { width: 22px; height: 22px; stroke: url(#grad); }
-    .demo h3 { font-size: 18px; letter-spacing: -0.02em; }
+    .demo h3 { display: flex; align-items: center; gap: 9px; font-size: 18px; letter-spacing: -0.02em; margin-bottom: 4px; }
+    .demo h3 .i { width: 20px; height: 20px; stroke: url(#grad); } /* same size as the title, as on the feature cards */
     .demo p { color: var(--muted); font-size: 15px; }
     .demo .btn { margin-left: auto; }
     @media (max-width: 600px) { .demo { flex-wrap: wrap; } .demo .btn { margin-left: 0; width: 100%; } }
@@ -312,11 +318,11 @@
         <span class="sep" aria-hidden="true"></span>
         <a class="btn btn-primary btn-sm" href="https://app.reprun.co.uk"><svg class="i" aria-hidden="true"><use href="#smartphone" /></svg>Open the app</a>
       </div>
-      <button class="burger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu">
+      <button class="burger" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-menu">
         <svg class="i m" aria-hidden="true"><use href="#menu" /></svg><svg class="i x" aria-hidden="true"><use href="#x" /></svg>
       </button>
     </nav>
-    <div class="menu wrap" id="menu">
+    <div class="menu wrap" id="nav-menu"><div>
       <p>On this page</p>
       <a href="#features"><svg class="i" aria-hidden="true"><use href="#layout-grid" /></svg>Features</a>
       <a href="#start"><svg class="i" aria-hidden="true"><use href="#rocket" /></svg>Get started</a>
@@ -324,7 +330,7 @@
       <a href="https://demo.danielhadaway.dev"><svg class="i" aria-hidden="true"><use href="#play" /></svg>Try the demo</a>
       <a href="https://github.com/dannyhadders/reprun"><svg class="i" aria-hidden="true"><use href="#github" /></svg>GitHub</a>
       <a class="btn btn-primary" href="https://app.reprun.co.uk"><svg class="i" aria-hidden="true"><use href="#smartphone" /></svg>Open the app</a>
-    </div>
+    </div></div>
     <div class="progress" aria-hidden="true"></div>
   </header>
 
@@ -440,8 +446,7 @@
         </div>
 
         <div class="card demo reveal">
-          <div class="ico"><svg class="i" aria-hidden="true"><use href="#play" /></svg></div>
-          <div><h3>Just want a look around?</h3><p>The demo has a year of made-up training to click through. Break anything you like: it resets every night.</p></div>
+          <div><h3><svg class="i" aria-hidden="true"><use href="#play" /></svg>Just want a look around?</h3><p>The demo has a year of made-up training to click through. Break anything you like: it resets every night.</p></div>
           <a class="btn btn-ghost" href="https://demo.danielhadaway.dev">Try the demo</a>
         </div>
       </div>
@@ -513,8 +518,15 @@
     // Mobile menu.
     const header = document.getElementById('top');
     const burger = header.querySelector('.burger');
-    const setMenu = (open) => { header.classList.toggle('open', open); burger.setAttribute('aria-expanded', open); };
-    burger.onclick = () => setMenu(!header.classList.contains('open'));
+    const menu = document.getElementById('nav-menu');
+    const setMenu = (open) => {
+      if (open) header.classList.add('open');
+      menu.classList.toggle('show', open);
+      if (!open && matchMedia('(prefers-reduced-motion: reduce)').matches) header.classList.remove('open'); // no transition to wait for
+      burger.setAttribute('aria-expanded', open);
+    };
+    menu.addEventListener('transitionend', (e) => { if (e.target === menu && !menu.classList.contains('show')) header.classList.remove('open'); });
+    burger.onclick = () => setMenu(!menu.classList.contains('show'));
     header.querySelectorAll('.menu a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
 
     // Footer groups: open on desktop (columns), folded on a phone.
