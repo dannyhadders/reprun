@@ -61,7 +61,7 @@ UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pas
 - [ ] **Plate calculator**: tap the kg for "20 kg bar + 15 + 2.5 each side".
 - [x] **More menu slides up**, and swipes down to close.
 - [x] **Next up on Home**: the routine due next, one tap to start it.
-- [ ] **Home stats count up** on the first open.
+- [x] **Home stats count up** on the first open.
 - [ ] **Pull to refresh**: reloads, sends anything waiting, and syncs Strava when it's connected.
 - [ ] **"Uploaded ✓" message** when a waiting workout reaches the server.
 - [ ] **Loading placeholders** on the very first load instead of "Loading…"; after that, open on the last copy straight away.

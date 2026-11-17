@@ -1,5 +1,5 @@
 import type { ChartConfiguration } from 'chart.js'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { estimateS } from '../../shared/plan'
 import { routineRows, Time } from '../components/Planner'
@@ -7,7 +7,7 @@ import { Tap } from '../lib/haptic'
 import { fromRoutine, loadActive, saveActive } from '../lib/session'
 import { ACCENT, ACCENT_2, Chart, sparkConfig, STRAVA } from '../components/Chart'
 import { BodyMap } from '../components/BodyMap'
-import { Card, Empty, Line, SourceBadge, Stat, Tabs } from '../components/ui'
+import { Card, Empty, Line, SourceBadge, Stat, Tabs, useCountUp } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { ago, daysAgo, duration, greeting, kg, km, num, pace, plural, shortDate, today, weekStart } from '../lib/format'
 import { overallLine } from '../lib/motivation'
@@ -79,10 +79,10 @@ export default function Home() {
       <NextUp />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card><Stat accent value={plural(week.gym, 'session')} label="Gym this week" /></Card>
-        <Card><Stat accent value={km(week.km, 1)} label={`${plural(week.runs, 'run')} this week`} /></Card>
-        <Card><Stat accent value={kg(Math.round(week.volume))} label="Lifted this week" /></Card>
-        <Card><Stat accent value={`${streak} wk${streak === 1 ? '' : 's'}`} label="Active streak" sub="Weeks in a row with a session" /></Card>
+        <Card><Stat accent value={<Up to={week.gym} fmt={n => plural(Math.round(n), 'session')} />} label="Gym this week" /></Card>
+        <Card><Stat accent value={<Up to={week.km} fmt={n => km(n, 1)} />} label={`${plural(week.runs, 'run')} this week`} /></Card>
+        <Card><Stat accent value={<Up to={week.volume} fmt={n => kg(Math.round(n))} />} label="Lifted this week" /></Card>
+        <Card><Stat accent value={<Up to={streak} fmt={n => `${Math.round(n)} wk${Math.round(n) === 1 ? '' : 's'}`} />} label="Active streak" sub="Weeks in a row with a session" /></Card>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-5">
@@ -156,6 +156,19 @@ export default function Home() {
       </div>
     </div>
   )
+}
+
+// ponytail: once per app open. Counting up on every visit to Home would get old fast.
+let counted = false
+function Up({ to, fmt }: { to: number; fmt: (n: number) => string }) {
+  const [animate, setAnimate] = useState(() => !counted)
+  useEffect(() => {
+    counted = true
+    const t = setTimeout(() => setAnimate(false), 950) // after the first count, later changes just show
+    return () => clearTimeout(t)
+  }, [])
+  const v = useCountUp(to, 900)
+  return <>{fmt(animate ? v : to)}</>
 }
 
 /** The routine due next, one tap from opening the app. Hidden while a workout is running (the bar covers that) or with no routines. */
