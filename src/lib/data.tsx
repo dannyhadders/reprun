@@ -91,6 +91,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setUpload({ sending: false, error: r.error ?? undefined })
     if (r.sent) await reload()
   }, [reload])
+  // Workouts waiting to upload, as a number on the app icon. iOS shows it only once notifications are allowed (Settings).
+  useEffect(() => {
+    void (pending ? navigator.setAppBadge?.(pending) : navigator.clearAppBadge?.())?.catch(() => {})
+  }, [pending])
   useEffect(() => {
     const front = () => document.visibilityState === 'visible' && void sync()
     void sync()

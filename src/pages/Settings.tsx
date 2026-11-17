@@ -26,6 +26,7 @@ export default function Settings() {
         <BackupCard />
         {!data.demo && <ImportCard />}
         {!data.demo && !LOCAL && <StravaCard />}
+        {!LOCAL && 'setAppBadge' in navigator && 'Notification' in window && <BadgeCard />}
         <BodyWeightLog />
         <SourcesCard />
         <AboutCard />
@@ -231,6 +232,18 @@ function StravaCard() {
           : <button className="btn-ghost" disabled={busy} onClick={() => run(async () => `Added ${plural((await api<{ activities: number }>('POST', 'strava/sample')).activities, 'sample activity', 'sample activities')}.`)}>Load sample data</button>}
       </div>
       {msg && <p className="mt-3 text-sm text-muted">{msg}</p>}
+    </Card>
+  )
+}
+
+function BadgeCard() {
+  const [perm, setPerm] = useState(Notification.permission)
+  return (
+    <Card title="Badge on the app icon">
+      <p className="text-sm text-muted">Shows a number on RepRun's icon when a workout is saved on this phone but not uploaded yet. iPhone needs notifications allowed for that (RepRun doesn't send any yet).</p>
+      {perm === 'granted' ? <p className="mt-3 text-sm text-good">On.</p>
+        : perm === 'denied' ? <p className="mt-3 text-sm text-muted">Notifications are blocked. Turn them on in the phone's Settings → Notifications → RepRun.</p>
+        : <button className="btn mt-4" onClick={() => void Notification.requestPermission().then(setPerm)}>Turn on</button>}
     </Card>
   )
 }
