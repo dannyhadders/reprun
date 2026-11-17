@@ -459,7 +459,7 @@
           <h2>Make it an app <span class="g">in three taps.</span></h2>
         </div>
         <div class="steps">
-          <div class="card step reveal"><h3>Open it in Safari</h3><p>Go to <a href="https://app.reprun.co.uk">app.reprun.co.uk</a>.</p></div>
+          <div class="card step reveal"><h3>Open it in <span id="browser">your browser</span></h3><p>Go to <a href="https://app.reprun.co.uk">app.reprun.co.uk</a>.</p></div>
           <div class="card step reveal"><h3>Add to Home Screen</h3><p>Tap Share, then Add to Home Screen. It opens full screen like any other app.</p></div>
           <div class="card step reveal"><h3>Back up now and then</h3><p>Settings → Backup. Deleting the app deletes the data, so keep a copy somewhere safe.</p></div>
         </div>
@@ -599,6 +599,14 @@
     document.addEventListener('visibilitychange', sync);
     show(0);
     sync();
+
+    // Step 1 names the browser you're on, if you're on a phone: a computer's browser isn't the one you'd install from.
+    // Order matters: Edge, Opera and Samsung all say "Chrome" too, and everything on iOS says "Safari".
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|Android/.test(ua)) {
+      const name = [[/EdgiOS|EdgA|Edg\//, 'Edge'], [/OPR|OPT\//, 'Opera'], [/SamsungBrowser/, 'Samsung Internet'], [/FxiOS|Firefox\//, 'Firefox'], [/CriOS|Chrome\//, 'Chrome'], [/Safari\//, 'Safari']].find(([re]) => re.test(ua))?.[1];
+      if (name) document.getElementById('browser').textContent = name;
+    }
 
     // Cards: a soft light follows the pointer.
     document.querySelectorAll('.card').forEach((c) => c.addEventListener('pointermove', (e) => {
