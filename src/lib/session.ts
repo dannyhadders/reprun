@@ -18,7 +18,7 @@ export type LogExercise = {
   suggest?: { weight: string; reps: string; fresh?: boolean } // progression pick, shown as placeholders; fresh = no history and no weight in the plan
   collapsed?: boolean // folded away in the logger; ticked count still shows
 }
-export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null }
+export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null } // restFrom: when the rest began, for the timer bar
 
 const KEY = { active: 'reprun.active', outbox: 'reprun.outbox', rest: 'reprun.rest' }
 const DEFAULT_REST = 90
@@ -156,6 +156,7 @@ export const unlockAudio = () => {
   void ctx.resume()
 }
 export function beep() {
+  navigator.vibrate?.([200, 100, 200]) // Android; iPhone has no vibrate API, so it only beeps
   if (!ctx) return
   for (const [at, freq] of [[0, 880], [0.25, 880], [0.5, 1320]]) {
     const o = ctx.createOscillator()

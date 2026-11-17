@@ -179,6 +179,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         // Last set of the whole workout: nothing left to rest for.
                         const finished = x.exercises.every(e => e.sets.every(z => z.done))
                         x.restEndsAt = finished ? null : y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
+                        if (y.done) x.restFrom = Date.now()
                       })
                     }}><Tap />✓</button>,
                   s.note !== undefined && (
@@ -255,9 +256,14 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       )}
 
       {a.restEndsAt && (
-        <div className="border-t border-line bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        <div className="relative border-t border-line bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+          {/* Drains from full to empty over the rest; ±15 stretches or shrinks what's left. */}
+          <div className="absolute inset-x-0 top-0 h-1 bg-line">
+            <div className="h-full bg-linear-to-r from-accent to-accent-2 transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.max(0, Math.min(1, (a.restEndsAt - now) / Math.max(1, a.restEndsAt - (a.restFrom ?? now)))) * 100}%` }} />
+          </div>
           <div className="mx-auto flex max-w-xl items-center gap-2">
-            <span className="flex-1 text-3xl font-bold tabular-nums">{clock(Math.max(0, (a.restEndsAt - now) / 1000))}</span>
+            <span className={`flex-1 text-3xl font-bold tabular-nums transition-colors ${a.restEndsAt - now <= 10_000 ? 'text-good' : ''}`}>{clock(Math.max(0, (a.restEndsAt - now) / 1000))}</span>
             <button className="btn-ghost min-h-11" onClick={() => update(x => (x.restEndsAt = x.restEndsAt! - 15_000))}>−15</button>
             <button className="btn-ghost min-h-11" onClick={() => update(x => (x.restEndsAt = x.restEndsAt! + 15_000))}>+15</button>
             <button className="btn min-h-11" onClick={() => update(x => (x.restEndsAt = null))}>Skip</button>
