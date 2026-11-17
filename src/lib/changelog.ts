@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'When rest is over RepRun says what\'s next out loud ("Rest over. Next: Squat, 100 kilos, 5 reps"), great with AirPods. The speaker button at the top of a workout mutes it; the beep stays.',
       'Finishing a workout shows any milestones it just reached.',
       'Share a workout and you see the picture first, like Strava, then Share it or press and hold to save it to Photos.',
       'Rate how hard each exercise felt once its sets are ticked (Easy, Good, Hard, Max). After a Hard or Max session RepRun keeps the same weight next time instead of adding more, and the copied text says how it felt.',

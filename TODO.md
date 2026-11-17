@@ -67,7 +67,17 @@ UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pas
 - [x] **Loading placeholders** on the very first load instead of "Loading…"; after that, open on the last copy straight away.
 - [x] **Share card**: the finish screen makes an image (time, sets, volume, PBs) to post or send.
 - [x] **Swipe a set left to delete it**, any set, not just the last. Two steps like Mail: the swipe shows a bin, the bin deletes.
-- Not doable: a lock-screen rest alert. iOS pauses a web app's timers once the screen is off; the wake lock above is the workaround.
+- Not doable from the phone alone: a lock-screen rest alert. iOS pauses a web app's timers once the screen is off; the wake lock above is the workaround. Doable with a push from the server: see "Rest-over notification" below.
+
+## Phone feel, round 3: app abilities
+
+What else a home-screen web app can do on iPhone, picked 2026-11-17.
+
+- [ ] **Rest-over notification** (Web Push, iOS 16.4+, installed app only): when rest starts, the app asks the Worker to send "Rest over: Bench 60 kg × 8" after the rest time, so it reaches the lock screen and Watch. VAPID keys as secrets, a push subscriptions table (new migration), a delayed send (Durable Object alarm), cancel when the next set is ticked early. Ask for permission from a button, never on open. Not on the demo; phone-only needs a small push endpoint or goes without. Later: "4 days since your last session" nudges on the same setup.
+- [ ] **App icon badge** (`navigator.setAppBadge`, needs the notification permission above): number of workouts waiting to upload; clear when they're sent.
+- [x] **Spoken cues** (`speechSynthesis`, works through AirPods while the app is open): "Rest over. Next: squat, 100 kilos, 5 reps." On by default; speaker button in the logger header mutes it (the beep stays).
+- [ ] **Page transitions** (View Transitions API, Safari 18+): slide/fade between pages instead of a flash. Skip where the browser doesn't have it.
+- [ ] **"New version" prompt**: `sw.js` takes over silently (`skipWaiting`). Instead, wait, show "New version, tap to reload", then switch. Also prune old caches on activate.
 
 ## Later: desktop
 

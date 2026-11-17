@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { api, useData } from '../lib/data'
 import { isSample, LOCAL, startLocal } from '../lib/local'
 import { clock, plural, workoutText } from '../lib/format'
-import { beep, loadActive, outbox, saveActive, totals, useNow } from '../lib/session'
+import { loadActive, outbox, restOver, saveActive, totals, useNow } from '../lib/session'
 import { ask, CopyButton, Icon } from './ui'
 import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
@@ -274,7 +274,7 @@ function Running() {
   useEffect(() => {
     const x = loadActive()
     if (!x?.restEndsAt || x.restEndsAt > now) return
-    beep()
+    restOver(x)
     saveActive({ ...x, restEndsAt: null })
   }, [now])
   if (!a) return null

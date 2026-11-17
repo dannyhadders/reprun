@@ -13,7 +13,7 @@ import { ask, Burst, CopyButton, Empty, Icon, PbBadge, ShareButton, Sheet, useCo
 import { Chart, sparkConfig } from '../components/Chart'
 import { workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
+import { loadActive, matchExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -69,6 +69,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   useEffect(() => () => clearTimeout(foldTimer), []) // logger closed first: don't fold or scroll anything
   const [peek, setPeek] = useState<string | null>(null) // exercise whose history sheet is open
   const closePeek = useCallback(() => setPeek(null), [])
+  const [voice, setVoiceState] = useState(voiceOn)
 
 
   // Keep the screen on for the whole workout, so the rest timer stays visible and audible.
@@ -83,7 +84,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   // Rest over: beep and clear. A negative delay (app reopened after the rest ended) fires straight away.
   useEffect(() => {
     if (!a.restEndsAt) return
-    const t = setTimeout(() => (beep(), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
+    const t = setTimeout(() => (restOver(loadActive() ?? a), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
     return () => clearTimeout(t)
   })
 
@@ -107,6 +108,11 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           <input className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-ink" placeholder="Workout" value={a.title} onChange={e => update(x => (x.title = e.target.value))} aria-label="Workout name" />
           <p className="text-sm tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · <span key={t.sets} className="inline-block animate-bump">{plural(t.sets, 'set')}</span> · {num(t.volume)} kg</p>
         </div>
+        {/* Mutes the spoken "Rest over. Next: …"; the beep stays. */}
+        <button className="icon-btn relative" onClick={() => { unlockAudio(); setVoice(!voice); setVoiceState(!voice) }}
+          aria-label={voice ? 'Mute spoken cues' : 'Turn spoken cues on'} aria-pressed={!voice}>
+          <Tap /><Icon d={voice ? SPEAKER_ON : SPEAKER_OFF} className="h-6 w-6" />
+        </button>
         <button className="relative btn" onClick={finish}><Tap />Finish</button>
       </header>
 
@@ -324,6 +330,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 }
 
 const BIN_W = 72 // px the row slides to show the bin; also the bin's width
+const SPEAKER_ON = 'M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14' // Lucide volume-2
+const SPEAKER_OFF = 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6' // Lucide volume-x
 const BIN = 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6' // Lucide trash-2
 
 /**
