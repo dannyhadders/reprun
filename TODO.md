@@ -48,6 +48,27 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [ ] **Calories**: decide which first. (1) Burned: estimate per workout and run from body weight (MET values), small. (2) Food log: what you ate + calories, daily total vs a target, medium. (3) From a meal photo: needs a paid AI vision API, doesn't fit "free".
 - [ ] **Photos** (progress pics, meals, gym notes): store in R2 (10 GB free), not D1. The app loads all of D1 in one `/api/data` call, so photos there would download every time. Shrink on the phone to ~200 KB first; D1 keeps only the R2 key. Needs an R2 binding, created by the button and `npm run setup` like the database. Local (no-setup) mode would keep them in IndexedDB.
 
+## Phone feel, round 2
+
+UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pass.
+
+- [ ] **Tap "Last time" to copy it** into that set's kg and reps.
+- [ ] **− / + on kg (±2.5) and reps (±1)**, or swipe up/down on the field: less typing with sweaty hands.
+- [ ] **Fold a finished exercise** automatically once every set is ticked, and scroll to the next one.
+- [ ] **Rest timer bar** that drains, with the numbers going green near the end and a buzz (Android) at 0.
+- [ ] **PB badge on the set** the moment it's ticked, not only on the finish screen.
+- [ ] **`enterKeyHint="next"`** on kg/reps so Return moves kg → reps → next set.
+- [ ] **Plate calculator**: tap the kg for "20 kg bar + 15 + 2.5 each side".
+- [ ] **More menu slides up**, and swipes down to close.
+- [ ] **Next up on Home**: the routine due next, one tap to start it.
+- [ ] **Home stats count up** on the first open.
+- [ ] **Pull to refresh**: reloads, sends anything waiting, and syncs Strava when it's connected.
+- [ ] **"Uploaded ✓" message** when a waiting workout reaches the server.
+- [ ] **Loading placeholders** on the very first load instead of "Loading…"; after that, open on the last copy straight away.
+- [ ] **Share card**: the finish screen makes an image (time, sets, volume, PBs) to post or send.
+- [ ] **Swipe a set left to delete it**, any set, not just the last.
+- Not doable: a lock-screen rest alert. iOS pauses a web app's timers once the screen is off; the wake lock above is the workaround.
+
 ## Later: desktop
 
 From running the Blueprint checklist (danielhadaway.dev/blueprint) against RepRun. Phone comes first; these wait.
