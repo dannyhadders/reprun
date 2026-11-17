@@ -3,7 +3,7 @@ import type { Data } from '../../shared/types.ts'
 import { useNavigate } from 'react-router-dom'
 import { planPrompt } from '../../shared/plan.ts'
 import { startersFor } from '../../shared/starter.ts'
-import { Onboarding, type Answers } from '../components/Onboarding.tsx'
+import { Onboarding, Splash, type Answers } from '../components/Onboarding.tsx'
 import { today } from './format.ts'
 import { installHint, introAgain, introDone, markIntroDone } from './intro.ts'
 import { local, LOCAL, startLocal, started } from './local.ts'
@@ -113,7 +113,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [introMode] = useState<'local' | 'self' | null>(() => (LOCAL ? (started() ? 'self' : 'local') : null))
   const fresh = !!data && !data.workouts.length && !data.activities.some(a => !a.sample)
   const showIntro = intro && (LOCAL || introAgain() || data?.demo || fresh) && (LOCAL || !!data)
+  // Finishing the intro plays the splash; the app behind remounts as it ends, so the dashboard builds in (html.reveal, index.css).
+  const [splash, setSplash] = useState(false)
+  const [mount, setMount] = useState(0)
+  const endSplash = useCallback(() => setSplash(false), [])
+  const reveal = useCallback(() => {
+    setIntro(false) // only now: hidden any sooner, the dashboard would show before the splash covers it
+    setMount(m => m + 1)
+    document.documentElement.classList.add('reveal')
+    setTimeout(() => document.documentElement.classList.remove('reveal'), 1200)
+  }, [])
   const finishIntro = async (a: Answers | null, then?: 'paste-plan') => {
+    if (!then) setSplash(true) // paste-plan heads straight to the logger
     try {
       if (LOCAL && !started()) await startLocal(false) // skipped before picking: an empty copy
       if (a && data && !data.demo) { // the demo is one shared database: one visitor's details would show to everyone
@@ -123,7 +134,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
     } catch { /* offline or signed out: don't trap them in the intro; Settings → Profile has it all */ }
     markIntroDone()
-    setIntro(false)
+    if (then) setIntro(false) // otherwise the splash's reveal does it
     await reload()
     setReady(true)
     // ponytail: with a workout already running, /log shows that instead of the paste box. Only reachable via "Show the intro again".
@@ -152,7 +163,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       onFinish={(a, then) => void finishIntro(a, then)}
     />
   ) : null
-  if (LOCAL && !ready) return <>{null}{introEl}</>
+  const splashEl = splash ? <Splash onReveal={reveal} onDone={endSplash} /> : null
+  if (LOCAL && !ready) return <>{null}{introEl}{splashEl}</>
 
   // ponytail: matches the worker's "Almost there" message rather than adding an error code.
   if (error?.startsWith('Almost there') && !data) return <FinishSetup />
@@ -169,7 +181,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
   if (!value) return <Skeleton />
   // While the intro's up, the app behind it is inert: no focus, taps or screen reader can reach it.
-  return <><div className="contents" inert={!!introEl}><DataCtx.Provider value={value}>{children}</DataCtx.Provider></div>{introEl}</>
+  return <><div key={mount} className="contents" inert={!!introEl}><DataCtx.Provider value={value}>{children}</DataCtx.Provider></div>{introEl}{splashEl}</>
 }
 
 export const useData = () => {

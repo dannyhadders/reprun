@@ -288,3 +288,29 @@ function Demo() {
     </div>
   )
 }
+
+/** Between the intro and the dashboard: the intro fades to the logo and tagline, which then zoom away into the app.
+ * The timings live in index.css (splash-*): the zoom-away starts at 80% of SPLASH_MS, which is when onReveal
+ * builds the dashboard underneath, so it's never seen before its own animation. Reduced motion skips it. */
+const SPLASH_MS = 2600
+export function Splash({ onReveal, onDone }: { onReveal: () => void; onDone: () => void }) {
+  useEffect(() => {
+    const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : SPLASH_MS
+    const t = [setTimeout(onReveal, ms * 0.8), setTimeout(onDone, ms)]
+    return () => t.forEach(clearTimeout)
+  }, [onReveal, onDone])
+  return (
+    <div className="splash fixed inset-0 z-[60] grid place-items-center bg-bg" aria-hidden="true">
+      <div className="flex flex-col items-center">
+        <div className="relative">
+          <span className="splash-ring absolute inset-0 rounded-full grad-bg" />
+          <img src="/favicon.svg" alt="" className="splash-logo relative size-20" />
+        </div>
+        <h1 className="splash-word mt-6 text-5xl font-extrabold tracking-tight">Rep<span className="grad-text">Run</span></h1>
+        <p className="mt-3 flex gap-2 text-lg text-muted">
+          {['Lift.', 'Run.', 'Repeat.'].map((w, i) => <span key={w} className="splash-tag" style={{ animationDelay: `${1 + i * 0.15}s` }}>{w}</span>)}
+        </p>
+      </div>
+    </div>
+  )
+}
