@@ -1,6 +1,6 @@
 import type { Activity, Backup, BodyWeight, Data, Exercise, Goal, Muscle, ImportActivity, ImportPayload, ImportResult, Profile, RecordRow, Routine, Workout, WorkoutSet } from '../shared/types.ts'
 import { isBackup, planRestore, workoutSeen } from '../shared/backup.ts'
-import { isDate, num, routineOk, setNumbers } from '../shared/rules.ts'
+import { cleanProfile, isDate, num, routineOk, setNumbers } from '../shared/rules.ts'
 import { addAlias, exerciseNameOk, mergeAliases, MUSCLE_LIST, nameFiler, rewriteRoutine, type Aliases } from '../shared/exercises.ts'
 import { demoData } from '../shared/demo.ts'
 import { fromStrava, sampleStravaActivities, type StravaActivity } from '../shared/strava.ts'
@@ -138,7 +138,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
 
   if (resource === 'profile' && m === 'PUT') {
     const b = (await req.json()) as Profile
-    await setSetting(db, 'profile', { age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg) })
+    await setSetting(db, 'profile', cleanProfile(b))
     return json({ ok: true })
   }
 

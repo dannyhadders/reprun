@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isBackup } from '../../shared/backup'
+import { GOALS } from '../../shared/rules'
+import { showIntroAgain } from '../lib/intro'
 import type { ImportResult, Profile } from '../../shared/types'
 import { ask, Card, PageHeader, SourceBadge } from '../components/ui'
 import { api, useData } from '../lib/data'
@@ -42,8 +44,21 @@ function ProfileCard() {
     setTimeout(() => setSaved(false), 2000)
   }
   return (
-    <Card title="Profile" action={<span className="text-xs text-muted">Used for strength standards</span>}>
+    <Card title="Profile" action={<span className="text-xs text-muted">Shapes plans and strength comparisons</span>}>
       <form className="grid grid-cols-3 gap-3" onSubmit={e => (e.preventDefault(), save())}>
+        <div className="col-span-3 text-sm text-muted">Training for <span className="text-xs">(up to two)</span>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {GOALS.map(g => {
+              const on = (p.goals ?? []).includes(g.id)
+              return (
+                <button key={g.id} type="button" aria-pressed={on} onClick={() => setP(x => ({ ...x, goals: on ? (x.goals ?? []).filter(y => y !== g.id) : [...(x.goals ?? []), g.id].slice(-2) }))}
+                  className={`press min-h-11 rounded-full border px-3.5 text-sm font-medium ${on ? 'border-accent bg-accent/15 text-ink' : 'border-line text-muted'}`}>
+                  {g.emoji} {g.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
         <label className="text-sm text-muted">Age<input className="input mt-1" type="number" min="10" max="100" value={p.age ?? ''} onChange={e => setP({ ...p, age: e.target.value ? +e.target.value : null })} /></label>
         <label className="text-sm text-muted">Body weight (kg)<input className="input mt-1" type="number" step="0.1" min="20" max="300" value={p.weight_kg ?? ''} onChange={e => setP({ ...p, weight_kg: e.target.value ? +e.target.value : null })} /></label>
         <label className="text-sm text-muted">Compare with
@@ -55,6 +70,7 @@ function ProfileCard() {
         <div className="col-span-3 flex items-center gap-3">
           <button className="btn">Save</button>
           {saved && <span className="text-sm text-good">Saved</span>}
+          <button type="button" className="ml-auto text-sm text-accent underline-offset-4 hover:underline" onClick={() => (showIntroAgain(), location.reload())}>Show the intro again</button>
         </div>
       </form>
     </Card>

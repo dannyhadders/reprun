@@ -2,7 +2,7 @@
 // over one Data object in localStorage. The import and restore rules come from shared/, so they match the Worker's.
 // ponytail: the whole dataset is read and written per call; a year of training is ~0.5 MB, well inside localStorage.
 import { isBackup, planRestore, workoutSeen } from '../../shared/backup.ts'
-import { isDate, num, routineOk, setNumbers } from '../../shared/rules.ts'
+import { cleanProfile, isDate, num, routineOk, setNumbers } from '../../shared/rules.ts'
 import { addAlias, exerciseNameOk, mergeAliases, MUSCLE_LIST, nameFiler, rewriteRoutine } from '../../shared/exercises.ts'
 import type { Backup, BodyWeight, Data, ImportPayload, ImportResult, Muscle, Profile, Routine } from '../../shared/types.ts'
 import { localISO } from './format.ts'
@@ -127,7 +127,7 @@ export async function local<T>(method: string, path: string, body?: unknown): Pr
     } else if (method === 'DELETE' && id) d.routines = d.routines.filter(r => r.id !== n)
   } else if (resource === 'profile' && method === 'PUT') {
     const b = body as Profile
-    d.profile = { age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg) }
+    d.profile = cleanProfile(b)
   } else if (resource === 'aliases' && id && method === 'DELETE') delete d.aliases[decodeURIComponent(id).toLowerCase()]
   else if (resource === 'exercises' && id && method === (path.endsWith('/merge') ? 'POST' : 'PATCH')) out = editExercise(d, n, path.endsWith('/merge'), body as { name?: unknown; muscle?: unknown; into?: unknown })
   else if (resource === 'strava') fail('Strava needs your own copy of RepRun (docs/SETUP.md)')

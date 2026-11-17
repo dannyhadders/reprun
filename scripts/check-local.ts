@@ -109,4 +109,9 @@ await local('DELETE', `aliases/${encodeURIComponent('bench pres')}`)
 assert(!('bench pres' in (await get()).aliases), 'forget an old name')
 assert(JSON.stringify(toBackup(await get()).aliases) === JSON.stringify((await get()).aliases), 'backup carries aliases')
 assert(await local('GET', `exercises/${benchId}`).then(() => false, () => true), 'wrong method refused')
+// Profile: goals cleaned to known ids, no repeats, two at most; sex falls back to male.
+await local('PUT', 'profile', { age: '34', weight_kg: 82.5, sex: 'nope', goals: ['lose', 'lose', 'made-up', 'strength', 'muscle'] })
+const prof = (await get()).profile
+assert(JSON.stringify(prof) === JSON.stringify({ age: 34, sex: 'male', weight_kg: 82.5, goals: ['lose', 'strength'] }), `profile cleaned: ${JSON.stringify(prof)}`)
+assert(JSON.stringify(toBackup(await get()).profile.goals) === '["lose","strength"]', 'backup carries goals')
 console.log('local: all checks passed')

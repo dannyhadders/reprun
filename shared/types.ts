@@ -1,3 +1,5 @@
+import type { GoalId } from './rules.ts'
+
 export type Muscle = 'chest' | 'back' | 'shoulders' | 'arms' | 'legs' | 'core' | 'other'
 export type Lift = 'bench' | 'squat' | 'deadlift' | 'ohp'
 
@@ -46,7 +48,7 @@ export type RecordRow = { id: number; category: string | null; name: string; val
 export type Goal = { id: number; exercise: string; latest: string | null; target: string; context: string | null; source: string }
 export type BodyWeight = { date: string; kg: number; source: string }
 export type Routine = { id: number; name: string; body: string; created: string }
-export type Profile = { age: number | null; sex: 'male' | 'female'; weight_kg: number | null }
+export type Profile = { age: number | null; sex: 'male' | 'female'; weight_kg: number | null; goals?: GoalId[] } // goals: up to two, from onboarding or Settings
 
 export type Data = {
   exercises: Exercise[]
