@@ -300,42 +300,72 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   )
 }
 
+const BIN_W = 72 // px the row slides to show the bin; also the bin's width
+const BIN = 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6' // Lucide trash-2
+
 /**
- * One set's row, swipeable left to delete like an iOS list. Spans the set grid via subgrid so the columns still line up.
- * No onDelete (an exercise's only set): a plain row. Styles set directly while dragging, so no re-render per touchmove.
+ * One set's row. Two steps, like deleting an email on iPhone: swipe left and it stops open on a red bin; only tapping
+ * the bin deletes, so a stray swipe can't. Swiping back, tapping the row, scrolling or touching anywhere else closes it.
+ * Spans the set grid via subgrid so the columns still line up. No onDelete (an exercise's only set): a plain row.
  */
 function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: ReactNode }) {
+  const wrap = useRef<HTMLDivElement>(null)
   const row = useRef<HTMLDivElement>(null)
-  const t = useRef<{ x: number; y: number; dx: number; lock?: 'x' | 'y' } | null>(null)
-  const slide = (dx: number, ease: boolean) => {
-    const el = row.current!
+  const [open, setOpen] = useState(false)
+  const t = useRef<{ x: number; y: number; dx: number; base: number; lock?: 'x' | 'y' } | null>(null)
+  // Styles set directly while dragging, so no re-render per touchmove.
+  const slide = (x: number, ease: boolean) => {
+    const el = row.current
+    if (!el) return
     el.style.transition = ease ? 'transform 0.2s ease-out' : 'none'
-    el.style.transform = dx ? `translateX(${dx}px)` : ''
+    el.style.transform = x ? `translateX(${x}px)` : ''
   }
+  useEffect(() => slide(open ? -BIN_W : 0, true), [open])
+  useEffect(() => {
+    if (!open) return
+    const away = (e: TouchEvent) => void (!wrap.current?.contains(e.target as Node) && setOpen(false))
+    document.addEventListener('touchstart', away, { passive: true })
+    return () => document.removeEventListener('touchstart', away)
+  }, [open])
   const cells = 'col-span-5 grid grid-cols-subgrid items-center'
   if (!onDelete) return <div className={cells}>{children}</div>
   return (
     // Clipped on the left only (where the row slides out), so the ✓'s pop and 🏆 aren't cut off.
-    <div className={`relative [clip-path:inset(-8px_-8px_-8px_0)] ${cells}`}>
-      <div className="absolute inset-0 flex items-center justify-end rounded-xl bg-bad pr-4 text-sm font-semibold text-white" aria-hidden>Delete</div>
+    <div ref={wrap} className={`relative [clip-path:inset(-8px_-8px_-8px_0)] ${cells}`}>
+      <button type="button" aria-label="Delete set" tabIndex={open ? 0 : -1} aria-hidden={!open}
+        className="press absolute inset-y-0 right-0 grid place-items-center rounded-xl bg-bad text-white" style={{ width: BIN_W }}
+        onClick={() => {
+          setOpen(false)
+          onDelete()
+        }}>
+        <Icon d={BIN} className="h-5 w-5" />
+      </button>
       <div ref={row} className={`relative bg-surface ${cells} touch-pan-y`}
-        onTouchStart={e => void (t.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0 })}
+        onTouchStart={e => void (t.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, base: open ? -BIN_W : 0 })}
         onTouchMove={e => {
           const c = t.current
           if (!c) return
           const dx = e.touches[0].clientX - c.x, dy = e.touches[0].clientY - c.y
           c.lock ??= Math.abs(dx) > 8 ? 'x' : Math.abs(dy) > 8 ? 'y' : undefined // decide once: a scroll never turns into a swipe
           if (c.lock !== 'x') return
-          c.dx = Math.min(0, dx)
-          slide(c.dx, false)
+          c.dx = dx
+          slide(Math.max(-BIN_W - 24, Math.min(0, c.base + dx)), false) // a little give past the bin, none to the right
         }}
-        onTouchEnd={() => {
+        onTouchEnd={e => {
           const c = t.current
           t.current = null
-          if (c && c.dx < -90) {
-            slide(0, false)
-            onDelete()
-          } else slide(0, true)
+          if (!c) return
+          if (c.lock !== 'x') {
+            // Open and tapped (or scrolled): just close. preventDefault stops that tap also ticking a set or focusing an input.
+            if (open) {
+              if (!c.lock) e.preventDefault()
+              setOpen(false)
+            }
+            return
+          }
+          const next = c.base + c.dx < -BIN_W / 2
+          if (next === open) slide(open ? -BIN_W : 0, true)
+          else setOpen(next)
         }}>
         {children}
       </div>

@@ -66,7 +66,7 @@ UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pas
 - [x] **"Uploaded ✓" message** when a waiting workout reaches the server.
 - [x] **Loading placeholders** on the very first load instead of "Loading…"; after that, open on the last copy straight away.
 - [x] **Share card**: the finish screen makes an image (time, sets, volume, PBs) to post or send.
-- [x] **Swipe a set left to delete it**, any set, not just the last.
+- [x] **Swipe a set left to delete it**, any set, not just the last. Two steps like Mail: the swipe shows a bin, the bin deletes.
 - Not doable: a lock-screen rest alert. iOS pauses a web app's timers once the screen is off; the wake lock above is the workaround.
 
 ## Later: desktop

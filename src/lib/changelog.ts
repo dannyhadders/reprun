@@ -7,7 +7,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
       'Tap anywhere on an exercise\'s header to fold or open it, and a folded one hides everything below its name.',
       'A finished exercise drops its rest picker and shows a green tick.',
       'Exercises slide shut and open in the logger instead of snapping.',
-      'Swipe any set left to delete it, not just the last one. It asks first if the set has data, then offers Undo.',
+      'Swipe any set left to show a bin, then tap the bin to delete it, like deleting an email. It asks first if the set has data, then offers Undo.',
       'Finish screen: share the workout as a picture (time, sets, volume, PBs, each exercise\'s best set) to Instagram, WhatsApp or anywhere.',
       'Opening the app shows your last data straight away while it refreshes, and the very first open shows placeholders instead of "Loading…".',
       'When a workout that was waiting on this phone reaches the server, a short "uploaded" message says so.',
