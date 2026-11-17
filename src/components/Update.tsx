@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Tap } from '../lib/haptic'
 
+declare const __BUILD__: { sha: string; date: string } // vite.config.ts
+
 /**
  * Registers the service worker and, when a new version has downloaded, offers to switch to it.
  * Update: the waiting worker takes over and the page reloads once. A workout in progress is in localStorage, so it survives.
@@ -14,7 +16,8 @@ export function UpdateBanner() {
     const sw = navigator.serviceWorker
     let reloaded = false
     sw.addEventListener('controllerchange', () => reloaded || ((reloaded = true), location.reload()))
-    void sw.register('/sw.js').then(reg => {
+    // The build's sha in the address makes every deploy a new service worker, even when sw.js itself didn't change.
+    void sw.register(`/sw.js?v=${__BUILD__.sha}`).then(reg => {
       // Only an update waits: with no controller this is the first install, which takes over by itself.
       const check = () => reg.waiting && sw.controller && setWaiting(reg.waiting)
       check()
