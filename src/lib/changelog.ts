@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'Home shows the routine that\'s due next, with a Start button.',
       'The More menu slides up from the bottom, and you can drag it down to close it.',
       'A 🏆 appears on a set the moment you tick a PB, not just on the finish screen.',
       'The rest timer has a bar that drains, the numbers turn green for the last 10 seconds, and Android phones buzz at the end.',

@@ -1,13 +1,17 @@
 import type { ChartConfiguration } from 'chart.js'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { estimateS } from '../../shared/plan'
+import { routineRows, Time } from '../components/Planner'
+import { Tap } from '../lib/haptic'
+import { fromRoutine, loadActive, saveActive } from '../lib/session'
 import { ACCENT, ACCENT_2, Chart, sparkConfig, STRAVA } from '../components/Chart'
 import { BodyMap } from '../components/BodyMap'
 import { Card, Empty, Line, SourceBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { ago, daysAgo, duration, greeting, kg, km, num, pace, plural, shortDate, today, weekStart } from '../lib/format'
 import { overallLine } from '../lib/motivation'
-import { mainExercises, MUSCLES, muscleSets, runPace, weekly, weekStreak } from '../lib/stats'
+import { lastSets, mainExercises, MUSCLES, muscleSets, runPace, weekly, weekStreak } from '../lib/stats'
 
 export default function Home() {
   const { model, data } = useData()
@@ -72,6 +76,7 @@ export default function Home() {
         <p className="text-muted">{greeting()}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">{headline}</h1>
       </header>
+      <NextUp />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card><Stat accent value={plural(week.gym, 'session')} label="Gym this week" /></Card>
@@ -150,6 +155,25 @@ export default function Home() {
         </Card>
       </div>
     </div>
+  )
+}
+
+/** The routine due next, one tap from opening the app. Hidden while a workout is running (the bar covers that) or with no routines. */
+function NextUp() {
+  const { data, model } = useData()
+  const nav = useNavigate()
+  const { next } = useMemo(() => routineRows(data, model), [data, model])
+  if (!next || loadActive()) return null
+  const begin = () => (saveActive(fromRoutine(next.r, data.exercises, n => lastSets(model, n), data.aliases)), nav('/log'))
+  return (
+    <section className="flex items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 p-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-accent">Next up</p>
+        <h2 className="truncate text-lg font-bold">{next.r.name}</h2>
+        <p className="truncate text-xs text-muted"><Time s={estimateS(next.items)} /> · {plural(next.items.length, 'exercise')} · {next.last ? `last done ${ago(next.last).toLowerCase()}` : 'not done yet'}</p>
+      </div>
+      <button className="btn relative min-h-11 shrink-0 px-5" onClick={begin}><Tap />Start</button>
+    </section>
   )
 }
 

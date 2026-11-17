@@ -2,13 +2,20 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { estimateS, formatLine, parsePlan, roughTime, targetText, type PlanItem } from '../../shared/plan'
 import { STARTER_ROUTINES } from '../../shared/starter'
-import type { Routine, WorkoutSet } from '../../shared/types'
+import type { Data, Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
 import { Tap } from '../lib/haptic'
-import { lastSets } from '../lib/stats'
+import { lastSets, type Model } from '../lib/stats'
 import { ask, Icon } from './ui'
 import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../lib/session'
+
+/** Routines with their exercises and when each was last done; `next` is the one done longest ago (never-done first). Home shows it too. */
+export function routineRows(data: Data, model: Model) {
+  // A routine counts as done when a workout carries its name (starting one sets the title).
+  const routines = data.routines.map(r => ({ r, items: parsePlan(r.body).flatMap(x => x.items), last: model.sessions.find(s => s.workout && s.title === r.name)?.date ?? null }))
+  return { routines, next: [...routines].sort((a, b) => (a.last ?? '').localeCompare(b.last ?? ''))[0] }
+}
 
 /** The logger's start screen: next routine up, all routines, recent workouts to repeat, or an empty one. */
 export function Planner({ begin, children }: { begin: (a: Active) => void; children?: ReactNode }) {
@@ -33,9 +40,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
   const last = (name: string) => lastSets(model, name)
   const go = (a: Active) => begin(a)
 
-  // A routine counts as done when a workout carries its name (starting one sets the title).
-  const routines = data.routines.map(r => ({ r, items: parsePlan(r.body).flatMap(x => x.items), last: model.sessions.find(s => s.workout && s.title === r.name)?.date ?? null }))
-  const next = [...routines].sort((a, b) => (a.last ?? '').localeCompare(b.last ?? ''))[0]
+  const { routines, next } = routineRows(data, model)
   const recent = model.sessions.filter(s => s.workout?.sets.length).slice(0, 5)
 
   if (editing) return <ImportPlan routine={editing === 'new' ? null : editing} close={() => setEditing(null)} />
@@ -120,7 +125,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
 
 // Lucide "clock", inline like the app's other icons.
 const CLOCK = 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2'
-const Time = ({ s, approx = true }: { s: number | null; approx?: boolean }) => s
+export const Time = ({ s, approx = true }: { s: number | null; approx?: boolean }) => s
   ? <span className="whitespace-nowrap"><Icon d={CLOCK} className="mr-1 inline h-3.5 w-3.5 align-[-3px]" />{approx ? '~' : ''}{roughTime(s)}</span>
   : null
 
