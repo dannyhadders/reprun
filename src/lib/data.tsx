@@ -13,6 +13,10 @@ type Ctx = {
 }
 const DataCtx = createContext<Ctx | null>(null)
 const CACHE = 'reprun.data'
+declare const __BUILD__: { sha: string; date: string } // vite.config.ts
+// The copy opened on at launch must come from this version of the app: one saved by an older version may lack a field
+// the new screens read, and a crash before the first fetch would never get replaced. (The offline fallback takes any copy, as before.)
+const CACHE_BUILD = 'reprun.data.build'
 
 export async function api<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
   if (LOCAL) return local<T>(method, path, body)
@@ -36,7 +40,10 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<Data | null>(null)
+  // Open on the last copy straight away and refresh behind it; the network only decides what shows on the very first open.
+  const [data, setData] = useState<Data | null>(() => {
+    try { return !LOCAL && localStorage.getItem(CACHE_BUILD) === __BUILD__.sha ? JSON.parse(localStorage.getItem(CACHE) ?? 'null') as Data | null : null } catch { return null }
+  })
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(() => outbox().length)
   const [upload, setUpload] = useState<Upload>({ sending: false })
@@ -46,7 +53,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const d = await api<Data>('GET', 'data')
       setData(d)
       setError(null)
-      if (!LOCAL) try { localStorage.setItem(CACHE, JSON.stringify(d)) } catch { /* full or blocked: just no offline copy */ }
+      if (!LOCAL) try { localStorage.setItem(CACHE, JSON.stringify(d)); localStorage.setItem(CACHE_BUILD, __BUILD__.sha) } catch { /* full or blocked: just no offline copy */ }
     } catch (e) {
       // Offline at the gym (or Access session expired): carry on with the last copy so the logger still works.
       const cached = (() => { try { return localStorage.getItem(CACHE) } catch { return null } })()
@@ -96,7 +103,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       </div>
     )
   }
-  if (!value) return <div className="grid min-h-dvh place-items-center text-muted">Loading…</div>
+  if (!value) return <Skeleton />
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>
 }
 
@@ -104,6 +111,19 @@ export const useData = () => {
   const c = useContext(DataCtx)
   if (!c) throw new Error('useData outside DataProvider')
   return c
+}
+
+/** First-ever open, before anything's cached: grey shapes where the dashboard will be, instead of "Loading…". */
+function Skeleton() {
+  const block = 'animate-pulse rounded-2xl bg-surface'
+  return (
+    <div aria-busy aria-label="Loading" className="mx-auto w-full max-w-6xl space-y-5 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8 md:pt-10">
+      <div className="space-y-2"><div className="h-4 w-28 animate-pulse rounded bg-surface" /><div className="h-7 w-3/4 animate-pulse rounded bg-surface" /></div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[0, 1, 2, 3].map(i => <div key={i} className={`${block} h-24`} />)}</div>
+      <div className={`${block} h-60`} />
+      <div className={`${block} h-44`} />
+    </div>
+  )
 }
 
 /** Shown by a fresh copy until the login is in front of it (worker/index.ts refuses the API until then). */
