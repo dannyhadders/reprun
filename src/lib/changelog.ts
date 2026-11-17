@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'A finished exercise drops its rest picker and shows a green tick.',
       'Exercises slide shut and open in the logger instead of snapping.',
       'Swipe any set left to delete it, not just the last one. It asks first if the set has data, then offers Undo.',
       'Finish screen: share the workout as a picture (time, sets, volume, PBs, each exercise\'s best set) to Instagram, WhatsApp or anywhere.',

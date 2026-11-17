@@ -128,21 +128,25 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
                 <h2 className="min-w-0 truncate font-semibold">{ex.name}</h2>
                 <span key={done} className={`relative inline-block shrink-0 animate-bump text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>
-                  {done}/{ex.sets.length}{done === ex.sets.length ? ' ✓' : ''}
+                  {done}/{ex.sets.length}
                   {fx?.all && fx.i === i && <Burst key={fx.t} />}
                 </span>
               </button>
-              <select className="min-h-11 rounded-lg bg-surface-2 px-2 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
+              {/* Finished: no rest picker and no ✕, just a green tick on the right so it reads as done at a glance. */}
+              {done < ex.sets.length && <select className="min-h-11 rounded-lg bg-surface-2 px-2 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
                 onChange={e => (rememberRest(ex.name, +e.target.value), update(x => (x.exercises[i].restS = +e.target.value)))}>
                 {[...new Set([...RESTS, ex.restS])].sort((x, y) => x - y).map(s => <option key={s} value={s}>Rest {clock(s)}</option>)}
-              </select>
-              {/* A finished exercise stays: every set is ticked, so there's nothing left to remove it for. */}
+              </select>}
               {done < ex.sets.length ? <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={async () => {
                 if (!await ask(`Remove ${ex.name} from this workout?${done ? ` Its ${plural(done, 'ticked set')} go too.` : ''}`, 'Remove', true)) return
                 update(x => void x.exercises.splice(i, 1))
                 setFx(null) // indices shift: don't let the pop land on another exercise
                 setUndo({ msg: `Removed ${ex.name}`, put: x => void x.exercises.splice(Math.min(i, x.exercises.length), 0, ex) })
-              }}>✕</button> : <span className="size-11 shrink-0" />}
+              }}>✕</button> : (
+                <span className="grid size-11 shrink-0 animate-pop place-items-center rounded-full text-good" role="img" aria-label={`${ex.name} done`}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="size-6" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>
+                </span>
+              )}
             </div>
             {/* Folds by animating the row from 1fr to 0fr, so it slides shut instead of snapping. The sets stay mounted
                 (inert while folded); the side padding gives the ✓ pop room inside the clip. */}
