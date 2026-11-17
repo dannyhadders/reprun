@@ -109,6 +109,12 @@ function candidates(m: Model, s: Session, prevSame: Session | undefined, usedThi
   return out
 }
 
+/** For a workout the model hasn't got yet (the finish screen before it uploads): the "about N hippos" line, or a plain one. */
+export function workoutLine(volume: number, sets: number) {
+  const thing = pickThing(volume)
+  return thing ? `You moved ${kg(Math.round(volume))} today. That's about ${times(volume, thing)}.` : `${sets} sets in the bank. Turning up is most of the job.`
+}
+
 /** A unique line per session: walked oldest-first, never reusing a line and avoiding the same kind twice in a row. */
 export function sessionLines(m: Model): Map<string, string> {
   const lines = new Map<string, string>()

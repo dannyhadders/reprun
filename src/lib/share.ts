@@ -1,6 +1,10 @@
 // A finished workout as a 1080×1350 picture (Instagram's portrait size) for the share sheet.
 // ponytail: hand-drawn on a canvas. An HTML-to-image library would be a dependency for one card.
-import type { ImportWorkout } from '../../shared/types'
+/** What the card needs: an ImportWorkout fits, and so does a saved workout with its exercise names filled in. */
+export type CardWorkout = {
+  date: string; title: string | null; duration_s?: number | null
+  sets: { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null }[]
+}
 import { date, duration, num, plural, setText } from './format'
 
 const W = 1080, H = 1350, PAD = 90
@@ -15,7 +19,24 @@ function fit(ctx: CanvasRenderingContext2D, text: string, max: number) {
   return `${t}…`
 }
 
-export function drawCard(w: ImportWorkout, pbs: number): HTMLCanvasElement {
+/** Break text into lines no wider than `max` px; past `most` lines the last one ends in an ellipsis. */
+function wrap(ctx: CanvasRenderingContext2D, text: string, max: number, most: number) {
+  const lines: string[] = []
+  let cur = ''
+  for (const word of text.split(' ')) {
+    const next = cur ? `${cur} ${word}` : word
+    if (ctx.measureText(next).width <= max || !cur) cur = next
+    else {
+      lines.push(cur)
+      cur = word
+    }
+  }
+  if (cur) lines.push(cur)
+  return lines.length > most ? [...lines.slice(0, most - 1), fit(ctx, lines.slice(most - 1).join(' '), max)] : lines
+}
+
+/** `line`: the session's one-liner (motivation.ts), so no two cards read the same. */
+export function drawCard(w: CardWorkout, pbs: number, line?: string): HTMLCanvasElement {
   const canvas = Object.assign(document.createElement('canvas'), { width: W, height: H })
   const ctx = canvas.getContext('2d')!
   const grad = (x0: number, x1: number) => ctx.createLinearGradient(x0, 0, x1, 0)
@@ -75,6 +96,15 @@ export function drawCard(w: ImportWorkout, pbs: number): HTMLCanvasElement {
   ctx.textAlign = 'left'
 
   let y = 740
+  if (line) {
+    ctx.font = font(600, 40)
+    ctx.fillStyle = C.ink
+    for (const l of wrap(ctx, line, W - PAD * 2, 3)) {
+      ctx.fillText(l, PAD, y)
+      y += 54
+    }
+    y += 36
+  }
   if (pbs > 0) {
     ctx.fillStyle = C.pb
     ctx.font = font(700, 44)
@@ -83,9 +113,9 @@ export function drawCard(w: ImportWorkout, pbs: number): HTMLCanvasElement {
   }
 
   // Each exercise with its heaviest set, in the order done.
-  const byEx = new Map<string, ImportWorkout['sets']>()
+  const byEx = new Map<string, CardWorkout['sets']>()
   for (const s of w.sets) byEx.set(s.exercise, [...(byEx.get(s.exercise) ?? []), s])
-  const rows = [...byEx].slice(0, pbs > 0 ? 6 : 7)
+  const rows = [...byEx].slice(0, Math.max(0, Math.floor((H - 230 - y) / 70))) // whatever fits above the footer
   for (const [name, sets] of rows) {
     const top = sets.reduce((b, s) => ((s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b))
     const right = `${sets.length} × · ${setText(top)}`
@@ -115,9 +145,9 @@ export function drawCard(w: ImportWorkout, pbs: number): HTMLCanvasElement {
 }
 
 /** The card as a PNG file. Made ahead of the tap: iOS only lets navigator.share run straight off a tap, not after awaits. */
-export async function cardFile(w: ImportWorkout, pbs: number) {
+export async function cardFile(w: CardWorkout, pbs: number, line?: string) {
   await document.fonts?.load(font(800, 96)).catch(() => {})
-  const blob = await new Promise<Blob | null>(r => drawCard(w, pbs).toBlob(r, 'image/png'))
+  const blob = await new Promise<Blob | null>(r => drawCard(w, pbs, line).toBlob(r, 'image/png'))
   if (!blob) throw new Error("Couldn't make the picture")
   return new File([blob], `reprun-${w.date}.png`, { type: 'image/png' })
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { cardFile, shareFile, type CardWorkout } from '../lib/share'
 
 export const Icon = ({ d, className = 'h-5 w-5' }: { d: string; className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
@@ -101,6 +102,26 @@ export function CopyButton({ text, label = 'Copy', className = 'btn-ghost' }: { 
     <button type="button" className={className} onClick={() => void copy()}>
       <Icon d={state === 'done' ? CHECK : COPY} className={`h-4 w-4 ${state === 'done' ? 'animate-pop text-good' : ''}`} />
       {state === 'done' ? 'Copied' : state === 'failed' ? "Couldn't copy" : label}
+    </button>
+  )
+}
+
+const SHARE = 'M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'
+/**
+ * Shares a workout as a picture. The picture is drawn when the button appears (and again if its inputs change), because
+ * iOS only lets navigator.share run straight off a tap, not after the awaits that drawing takes. Spinner until it's ready.
+ */
+export function ShareButton({ w, pbs, line, label = 'Share', className = 'btn-ghost' }: { w: CardWorkout; pbs: number; line?: string; label?: string; className?: string }) {
+  const [card, setCard] = useState<File | null>(null)
+  useEffect(() => {
+    let live = true // a slower, older render (before the PBs arrived) mustn't win
+    void cardFile(w, pbs, line).then(f => live && setCard(f), () => live && setCard(null))
+    return () => void (live = false)
+  }, [w, pbs, line])
+  const share = () => card && shareFile(card, `${w.title || 'Workout'} · RepRun`).catch(e => alert(e instanceof Error ? e.message : String(e)))
+  return (
+    <button type="button" className={`${className} ${card ? '' : 'busy'}`} disabled={!card} aria-busy={!card} onClick={() => void share()}>
+      <Icon d={SHARE} className="h-4 w-4" />{label}
     </button>
   )
 }

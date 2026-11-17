@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { WorkoutSet } from '../../shared/types'
-import { ask, CopyButton, Empty, Icon, Line, PageHeader, PbBadge, SourceBadge, Tabs } from '../components/ui'
+import { ask, CopyButton, Empty, Icon, Line, PageHeader, PbBadge, ShareButton, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { duration, kg, monthLabel, plural, setText, weekday, workoutText, date as fmtDate } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
@@ -55,6 +55,8 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
   const { model, lines } = useData()
   const [editing, setEditing] = useState(false)
   const w = s.workout
+  // The workout with exercise names filled in, for the picture and the copied text. Memoised: the picture redraws when it changes.
+  const named = useMemo(() => w && w.sets.length ? { ...w, duration_s: s.durationSource === 'estimate' ? null : s.durationS, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) } : null, [w, s, model])
   const groups = useMemo(() => {
     const g = new Map<number, WorkoutSet[]>()
     for (const x of w?.sets ?? []) g.set(x.exercise_id, [...(g.get(x.exercise_id) ?? []), x])
@@ -119,8 +121,9 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
               Timed by {s.activity?.sample ? 'sample ' : ''}Strava ({s.activity?.name}{s.activity?.start ? `, started ${s.activity.start}` : ''}). No sets were logged for this one; once the logging app exists, they will be.
             </p>
           )}
-          <div className="mt-5 flex justify-end gap-2">
-            {w && groups.length > 0 && <CopyButton label="Copy as text" text={() => workoutText({ ...w, duration_s: s.durationSource === 'estimate' ? null : s.durationS, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) })} />}
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            {named && <ShareButton w={named} pbs={s.pbs} line={lines.get(s.key)} />}
+            {named && <CopyButton label="Copy as text" text={() => workoutText(named)} />}
             <button className="btn-ghost" onClick={() => setEditing(true)}><Icon d={PENCIL} className="h-4 w-4" /> Edit</button>
           </div>
         </div>

@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'Share any logged workout as a picture from the Workouts page, and each picture carries that workout\'s own one-liner ("that\'s about 2 hippos").',
       'Tap anywhere on an exercise\'s header to fold or open it, and a folded one hides everything below its name.',
       'A finished exercise drops its rest picker and shows a green tick.',
       'Exercises slide shut and open in the logger instead of snapping.',

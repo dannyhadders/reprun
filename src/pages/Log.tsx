@@ -9,8 +9,8 @@ import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { ago, clock, duration, num, plural, setText, workoutText } from '../lib/format'
-import { ask, Burst, CopyButton, Icon, useCountUp } from '../components/ui'
-import { cardFile, shareFile } from '../lib/share'
+import { ask, Burst, CopyButton, Icon, ShareButton, useCountUp } from '../components/ui'
+import { workoutLine } from '../lib/motivation'
 import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
 import { lastSets, livePb, MUSCLES } from '../lib/stats'
 
@@ -374,19 +374,14 @@ function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: Rea
 }
 
 function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
-  const { model, pending } = useData()
+  const { model, lines, pending } = useData()
   const nav = useNavigate()
-  const pbs = model.sessions.find(s => s.workout?.client_id === w.client_id)?.pbs ?? 0
+  const session = model.sessions.find(s => s.workout?.client_id === w.client_id) // once it's uploaded
+  const pbs = session?.pbs ?? 0
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
+  // The same one-liner the Workouts list will show; until it's uploaded, one from the weight lifted.
+  const line = (session && lines.get(session.key)) || workoutLine(volume, w.sets.length)
   const [secs, sets, kg] = [useCountUp(w.duration_s ?? 0), useCountUp(w.sets.length), useCountUp(volume)]
-  // The picture is drawn as soon as this screen opens (and again if the PB count arrives), so the tap can share at once.
-  const [card, setCard] = useState<File | null>(null)
-  useEffect(() => {
-    let live = true // a slower, older render (before the PBs arrived) mustn't win
-    void cardFile(w, pbs).then(f => live && setCard(f), () => live && setCard(null))
-    return () => void (live = false)
-  }, [w, pbs])
-  const share = () => card && shareFile(card, `${w.title || 'Workout'} · RepRun`).catch(e => alert(e instanceof Error ? e.message : String(e)))
   return (
     <div className="space-y-5 pt-10 text-center">
       <p className="animate-pop text-5xl">💪</p>
@@ -398,9 +393,7 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
       </div>
       {pbs > 0 && <p className="relative mx-auto w-fit animate-pop font-semibold text-pb">🏆 {plural(pbs, 'PB')}<Burst n={24} r={90} /></p>}
       {pending ? <Outbox /> : LOCAL ? <BackupNudge /> : <p className="text-sm text-muted">Uploaded.</p>}
-      <button className={`btn-ghost w-full ${card ? '' : 'busy'}`} disabled={!card} aria-busy={!card} onClick={() => void share()}>
-        <Icon d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" className="h-4 w-4" />Share as a picture
-      </button>
+      <ShareButton className="btn-ghost w-full" label="Share as a picture" w={w} pbs={pbs} line={line} />
       <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />
       <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>
     </div>
