@@ -30,4 +30,4 @@ export const cleanGoals = (v: unknown): GoalId[] =>
   Array.isArray(v) ? [...new Set(v.filter((g): g is GoalId => GOALS.some(x => x.id === g)))].slice(0, 2) : []
 /** A profile from a request body, as both the Worker and the phone-only copy store it. */
 export const cleanProfile = (b: Partial<Profile>): Profile =>
-  ({ age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg), goals: cleanGoals(b.goals) })
+  ({ age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg), goals: cleanGoals(b.goals), ...(Number.isInteger(b.weekly) && b.weekly! >= 1 && b.weekly! <= 7 ? { weekly: b.weekly } : {}) })

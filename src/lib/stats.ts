@@ -1,6 +1,6 @@
 // Everything the screens show is derived here from the raw /api/data payload. Pure functions, no fetching.
 import type { Activity, Data, Exercise, Muscle, Workout, WorkoutSet } from '../../shared/types.ts'
-import { daysAgo, parseISO, today, weekStart } from './format.ts'
+import { daysAgo, localISO, parseISO, today, weekStart } from './format.ts'
 
 export const RUN_SPORTS = new Set(['Run', 'TrailRun', 'VirtualRun'])
 export const GYM_SPORTS = new Set(['WeightTraining', 'Workout', 'Crossfit', 'HighIntensityIntervalTraining'])
@@ -236,17 +236,32 @@ export function weekly(m: Model, weeks = 12) {
   return out
 }
 
-/** Consecutive weeks (Mon-Sun) with at least one active day, counting back from this week (or last, if this week is still empty). */
-export function weekStreak(m: Model, until = today()) {
-  const weeks = new Set([...m.activeDays.keys()].filter(d => d <= until).map(weekStart))
+export const DEFAULT_WEEKLY = 1
+/** 1-7 whatever's stored: a bad value (say from a hand-edited backup) must never make the streak loop forever. */
+export const weeklyTarget = (v?: number | null) => Math.min(7, Math.max(1, Math.round(v || DEFAULT_WEEKLY)))
+/** Sessions (gym, runs, anything else from Strava) in each week, keyed by its Monday. */
+export function weekCounts(m: Model, until = today()) {
+  const out = new Map<string, number>()
+  for (const [d, n] of m.activeDays) if (d <= until) out.set(weekStart(d), (out.get(weekStart(d)) ?? 0) + n)
+  return out
+}
+
+/**
+ * Weeks in a row (Mon-Sun) that hit the weekly target, counting back from this week. This week only counts once it's
+ * hit; until then it doesn't break the streak either, so a Monday rest day never shows 0.
+ */
+export function weekStreak(m: Model, weekly?: number | null, until = today()) {
+  const target = weeklyTarget(weekly)
+  const counts = weekCounts(m, until)
+  const thisWeek = counts.get(weekStart(until)) ?? 0
   const d = parseISO(weekStart(until))
-  if (!weeks.has(weekStart(until))) d.setDate(d.getDate() - 7)
+  if (thisWeek < target) d.setDate(d.getDate() - 7)
   let n = 0
-  while (weeks.has(d.toISOString().slice(0, 10))) {
+  while ((counts.get(localISO(d)) ?? 0) >= target) {
     n++
     d.setDate(d.getDate() - 7)
   }
-  return n
+  return { weeks: n, thisWeek, target }
 }
 
 export function longestWeekStreak(dates: string[]) {

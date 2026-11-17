@@ -270,7 +270,7 @@ async function restoreRest(db: D1Database, b: Backup) {
     ...add.routines.map(r => db.prepare('INSERT INTO routines (name, body) VALUES (?, ?)').bind(r.name.trim(), r.body)),
     ...add.bodyWeight.map(w => db.prepare('INSERT OR IGNORE INTO body_weight (date, kg, source) VALUES (?, ?, ?)').bind(w.date, Number(w.kg), w.source ?? 'manual')),
     // Profile only if this copy has none yet.
-    ...(b.profile ? [db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('profile', ?)").bind(JSON.stringify(b.profile))] : []),
+    ...(b.profile ? [db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('profile', ?)").bind(JSON.stringify(cleanProfile(b.profile)))] : []),
     db.prepare("INSERT INTO settings (key, value) VALUES ('aliases', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
       .bind(JSON.stringify(mergeAliases(await getSetting<Aliases>(db, 'aliases', {}), b.aliases,
         ((await db.prepare('SELECT name FROM exercises').all()).results as { name: string }[]).map(e => e.name)))),

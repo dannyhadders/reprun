@@ -75,3 +75,15 @@ From running the Blueprint checklist (danielhadaway.dev/blueprint) against RepRu
 
 - [ ] **Keyboard focus rings**: `.input` sets `outline-none`; give buttons, tabs and inputs a `focus-visible` ring that shows on every surface.
 - [ ] **Hover states**: cards and list rows that open something get a hover border/background so they read as clickable on a laptop.
+
+## Fun, round 3
+
+Picked 2026-11-17 from the ideas list (plus Marchon Training's hybrid ideas, still open below).
+
+- [x] **Streak target**: weeks in a row at N sessions a week (Settings → Profile), flame grows, dots for this week.
+- [x] **Exercise history mid-workout**: press and hold an exercise (or tap "Last time").
+- [x] **Milestones** on Home, worked out from the data so past history counts.
+- [x] **Effort rating** per exercise (stored as RPE on its sets); Hard/Max holds the weight next time.
+- [x] **Share preview**: see the picture before sharing.
+- [ ] **Hybrid week plan** (from Marchon): lay routines and runs across the week, 5K–marathon plans over 12/16 weeks.
+- [ ] **Interval timer** (from Marchon): EMOM / AMRAP / Tabata in the logger.

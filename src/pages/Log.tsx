@@ -12,6 +12,7 @@ import { ago, clock, duration, EFFORT, effort, kg, num, plural, setText, workout
 import { ask, Burst, CopyButton, Empty, Icon, PbBadge, ShareButton, Sheet, useCountUp } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
 import { workoutLine } from '../lib/motivation'
+import { milestones } from '../lib/milestones'
 import { beep, loadActive, matchExercise, newExercise, queue, rememberRest, saveActive, toImport, totals, unlockAudio, useNow, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
@@ -411,6 +412,13 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
   // The same one-liner the Workouts list will show; until it's uploaded, one from the weight lifted.
   const line = (session && lines.get(session.key)) || workoutLine(volume, w.sets.length)
   const [secs, sets, kg] = [useCountUp(w.duration_s ?? 0), useCountUp(w.sets.length), useCountUp(volume)]
+  // Milestones this workout reached: what's earned once it's in, minus what was earned when this screen opened.
+  // ponytail: snapshot at mount works because the upload is always async, so the first render has the old data. If
+  // this screen is ever shown after the reload, compare against a model built without this workout instead.
+  const weekly = data.profile.weekly
+  const [before] = useState(() => new Set(milestones(model, weekly).filter(m => m.date).map(m => m.key)))
+  // One per kind: jumping from 45 to 65 kg is "First 60 kg lift", not that and 50 kg too. Ladders run low to high, so the last wins.
+  const reached = useMemo(() => [...new Map(milestones(model, weekly).filter(m => m.date && !before.has(m.key)).map(m => [m.key.split(':')[0], m])).values()], [model, weekly, before])
   return (
     <div className="space-y-5 pt-10 text-center">
       <p className="animate-pop text-5xl">💪</p>
@@ -421,6 +429,16 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
         <div><div className="text-xl font-bold tabular-nums">{num(Math.round(kg))} kg</div><div className="text-xs text-muted">Volume</div></div>
       </div>
       {pbs > 0 && <p className="relative mx-auto w-fit animate-pop font-semibold text-pb">🏆 {plural(pbs, 'PB')}<Burst n={24} r={90} /></p>}
+      {reached.length > 0 && (
+        <ul className="space-y-2" aria-label="Milestones reached">
+          {reached.map((m, i) => (
+            <li key={m.key} className="relative mx-auto flex w-fit animate-pop items-center gap-2 rounded-full border border-pb/40 bg-pb/10 py-1.5 pl-2 pr-4 text-sm font-semibold" style={{ animationDelay: `${0.3 + i * 0.15}s`, animationFillMode: 'backwards' }}>
+              <span aria-hidden className="text-lg">{m.emoji}</span>Milestone: {m.title}
+              {i === 0 && <Burst n={18} r={70} />}
+            </li>
+          ))}
+        </ul>
+      )}
       {pending ? <Outbox /> : LOCAL ? <BackupNudge /> : <p className="text-sm text-muted">Uploaded.</p>}
       <ShareButton className="btn-ghost w-full" label="Share as a picture" w={w} pbs={pbNames} line={line} />
       <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />

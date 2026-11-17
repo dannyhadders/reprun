@@ -182,7 +182,7 @@ function importLocal(d: Data, p: ImportPayload | Backup): ImportResult {
     for (const r of add.routines) d.routines.push({ id: nextId(d.routines), name: r.name.trim(), body: r.body, created })
     for (const w of add.bodyWeight) d.bodyWeight.push({ date: w.date, kg: Number(w.kg), source: w.source ?? 'manual' })
     // Profile only if this copy has none yet, like the Worker. ponytail: "none" = no age and no weight.
-    if (p.profile && d.profile.age === null && d.profile.weight_kg === null) d.profile = p.profile
+    if (p.profile && d.profile.age === null && d.profile.weight_kg === null) d.profile = cleanProfile(p.profile)
     d.aliases = mergeAliases(d.aliases, p.aliases, d.exercises.map(e => e.name))
     return { ...result, activities: add.activities.length, records: add.records.length, goals: add.goals.length, routines: add.routines.length, bodyWeight: add.bodyWeight.length }
   }

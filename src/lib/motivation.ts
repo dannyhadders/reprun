@@ -5,7 +5,7 @@ import { e1rm, longestWeekStreak, type Model, type Session } from './stats.ts'
 import { daysBetween, kg, num, weekStart } from './format.ts'
 
 // Rough weights, for "that's about N of these" comparisons.
-const THINGS: [string, string, number][] = [
+export const THINGS: [string, string, number][] = [
   ['a grand piano', 'grand pianos', 450],
   ['a horse', 'horses', 500],
   ['a classic Mini', 'classic Minis', 650],

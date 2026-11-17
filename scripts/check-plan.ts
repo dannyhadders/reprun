@@ -86,3 +86,42 @@ assert(pp.includes('ask me a few short questions') && pp.includes('Bicep Curl â€
 assert(!planPrompt([]).includes('About me') && !planPrompt([]).includes('exact exercise names'), 'prompt: nothing known, nothing said')
 console.log('prompt self-check passed')
 
+// Weekly streak and milestones (src/lib/stats.ts, milestones.ts).
+const { buildModel, weekStreak } = await import('../src/lib/stats.ts')
+const { milestones } = await import('../src/lib/milestones.ts')
+const set = (id: number, kg: number, reps: number, rpe: number | null = null) => ({ id, workout_id: 0, exercise_id: 1, position: 0, weight_kg: kg, reps, seconds: null, notes: null, rpe })
+// Weeks of Mon 2026-10-26, 11-02, 11-09 (3 each), then 11-16 with 1 so far.
+const days = ['2026-10-26', '2026-10-28', '2026-10-30', '2026-11-02', '2026-11-03', '2026-11-05', '2026-11-09', '2026-11-11', '2026-11-13', '2026-11-16']
+const data = {
+  exercises: [{ id: 1, name: 'Squat', muscle: 'legs' as const, lift: 'squat' as const }],
+  workouts: days.map((date, i) => ({ id: i + 1, date, title: 'Legs', notes: null, source: 'app', duration_s: 3600, client_id: null, sets: [set(i + 1, 90 + i * 2, 5)] })),
+  activities: [], records: [], goals: [], bodyWeight: [], routines: [], aliases: {}, demo: false,
+  profile: { age: null, sex: 'male' as const, weight_kg: null },
+  strava: { configured: false, connected: false, lastSync: null },
+}
+const model = buildModel(data)
+eq(weekStreak(model, 3, '2026-11-17'), { weeks: 3, thisWeek: 1, target: 3 }, 'streak: this week under target neither counts nor breaks it')
+eq(weekStreak(model, 4, '2026-11-17').weeks, 0, 'streak: target never hit')
+eq(weekStreak(model, 1, '2026-11-17').weeks, 4, 'streak: this week counts once hit')
+const ms = milestones(model, 3)
+const got = (k: string) => ms.find(x => x.key === k)
+eq(got('sessions:10')?.date, '2026-11-16', 'milestone: 10th workout on its date')
+eq(got('heaviest:100')?.date, '2026-11-05', 'milestone: first 100 kg lift (90 + 5Ã—2, the 6th)')
+eq(got('streak:2')?.date, '2026-11-05', 'milestone: 2-week streak on the day week 2 hit 3')
+eq([got('sessions:25')?.date, got('sessions:25')?.progress], [null, 0.4], 'milestone: next step with progress')
+assert(!got('sessions:50'), 'milestone: only the next step up is shown')
+console.log('streak + milestones self-check passed')
+eq([0, -2, null, 99].map(t => weekStreak(model, t, '2026-11-17').target), [1, 1, 1, 7], 'streak: a bad target is clamped (default 1), never loops')
+const { rpe, cleanProfile } = await import('../shared/rules.ts')
+eq([9, 1, 10, 0, 11, 8.5, '9', null, undefined].map(rpe), [9, 1, 10, null, null, null, null, null, null], 'rpe: whole 1-10 only')
+eq([cleanProfile({ weekly: 4 }).weekly, cleanProfile({ weekly: 0 }).weekly, cleanProfile({}).weekly], [4, undefined, undefined], 'profile: weekly kept only when 1-7')
+console.log('effort + profile self-check passed')
+// Running milestones: a half marathon and a sub-25 5K (24 min) from two runs.
+const run = (id: number, date: string, km: number, mins: number) => ({ id, date, start: null, sport: 'Run', name: null, distance_m: km * 1000, moving_s: mins * 60, elapsed_s: mins * 60, elevation_m: null, avg_hr: null, notes: null, source: 'strava', external_id: String(id), sample: 0 })
+const rm = milestones(buildModel({ ...data, workouts: [], activities: [run(1, '2026-11-01', 5, 24), run(2, '2026-11-08', 21.2, 130)] }), 1)
+const rgot = (k: string) => rm.find(x => x.key.startsWith(k))
+eq([rgot('distance:21')?.title, rgot('distance:21')?.date], ['First half marathon', '2026-11-08'], 'run: half marathon')
+eq(rgot('distance:42')?.date, null, 'run: marathon still to come')
+assert(rm.some(x => x.title === '5K in under 25 min' && x.date === '2026-11-01') && rm.some(x => x.title === '5K in under 22.5 min' && !x.date), 'run: 5K time ladder')
+assert(!milestones(buildModel({ ...data, activities: [] }), 1).some(x => x.key.startsWith('km:')), 'no running goals for someone who never runs')
+console.log('running milestones self-check passed')

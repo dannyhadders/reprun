@@ -4,9 +4,12 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-17',
     changes: [
+      'Finishing a workout shows any milestones it just reached.',
       'Share a workout and you see the picture first, like Strava, then Share it or press and hold to save it to Photos.',
       'Rate how hard each exercise felt once its sets are ticked (Easy, Good, Hard, Max). After a Hard or Max session RepRun keeps the same weight next time instead of adding more, and the copied text says how it felt.',
       'Press and hold an exercise in a workout (or tap "Last time") to see its last five sessions and estimated 1RM trend without leaving the workout.',
+      'Milestones on Home: workouts, hours trained, reps, different exercises, bodyweight reps, strength level for your size (bench, squat, deadlift, overhead press), first 5K, 10K, half and full marathon, 5K times, total km and total lifted (from a grand piano to a blue whale), with how close you are to the next one. Runners only see running goals if they run.',
+      'The streak counts weeks in a row where you hit your sessions-a-week target (1 a week to start; raise it in Settings → Profile). The flame grows with it, and dots show this week so far.',
       'Finishing the intro plays a short logo animation, then your dashboard builds itself in.',
       'The intro screens stay a readable width on a computer instead of stretching across the whole screen.',
       'The add-to-home-screen steps name the browser you\'re using (Chrome, Firefox, Edge…) instead of always saying Safari.',

@@ -1,5 +1,5 @@
 import type { ChartConfiguration } from 'chart.js'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { estimateS } from '../../shared/plan'
 import { routineRows, Time } from '../components/Planner'
@@ -7,11 +7,12 @@ import { Tap } from '../lib/haptic'
 import { fromRoutine, loadActive, saveActive } from '../lib/session'
 import { ACCENT, ACCENT_2, Chart, sparkConfig, STRAVA } from '../components/Chart'
 import { BodyMap } from '../components/BodyMap'
-import { Card, Empty, Line, SourceBadge, Stat, Tabs, useCountUp } from '../components/ui'
+import { Card, Empty, Line, Sheet, SourceBadge, Stat, Tabs, useCountUp } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { ago, daysAgo, duration, greeting, kg, km, num, pace, plural, shortDate, today, weekStart } from '../lib/format'
 import { overallLine } from '../lib/motivation'
 import { lastSets, mainExercises, MUSCLES, muscleSets, runPace, weekly, weekStreak } from '../lib/stats'
+import { milestones, type Milestone } from '../lib/milestones'
 
 export default function Home() {
   const { model, data } = useData()
@@ -24,7 +25,7 @@ export default function Home() {
     const r = model.runs.filter(x => x.date >= thisWeek)
     return { gym: s.length, runs: r.length, km: r.reduce((a, x) => a + (x.distance_m ?? 0), 0), volume: s.reduce((a, x) => a + x.volume, 0) }
   }, [model, thisWeek])
-  const streak = weekStreak(model)
+  const streak = weekStreak(model, data.profile.weekly)
   const headline = useMemo(() => overallLine(model, model.sessions, model.runs.reduce((a, r) => a + (r.distance_m ?? 0), 0)), [model])
 
   const main = useMemo(() => mainExercises(model, n), [model, n])
@@ -82,7 +83,7 @@ export default function Home() {
         <Card><Stat accent value={<Up to={week.gym} fmt={n => plural(Math.round(n), 'session')} />} label="Gym this week" /></Card>
         <Card><Stat accent value={<Up to={week.km} fmt={n => km(n, 1)} />} label={`${plural(week.runs, 'run')} this week`} /></Card>
         <Card><Stat accent value={<Up to={week.volume} fmt={n => kg(Math.round(n))} />} label="Lifted this week" /></Card>
-        <Card><Stat accent value={<Up to={streak} fmt={n => `${Math.round(n)} wk${Math.round(n) === 1 ? '' : 's'}`} />} label="Active streak" sub="Weeks in a row with a session" /></Card>
+        <Card><Streak {...streak} /></Card>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-5">
@@ -135,6 +136,8 @@ export default function Home() {
           {!recent.length && <Empty>Log your first workout with the + button{data.strava.configured && !data.strava.connected ? ', or connect Strava in Settings' : ''}.</Empty>}
         </Card>
       </div>
+
+      <Milestones />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <BodyWeight />
@@ -222,5 +225,73 @@ function BodyWeight() {
         <button className="btn" disabled={busy || !value}>Log</button>
       </form>
     </Card>
+  )
+}
+
+/**
+ * Weeks in a row at the weekly target (Settings → Profile). The flame grows with the streak and is grey at 0; the dots
+ * fill as this week's sessions land.
+ */
+function Streak({ weeks, thisWeek, target }: ReturnType<typeof weekStreak>) {
+  const size = weeks >= 12 ? 'text-3xl' : weeks >= 4 ? 'text-2xl' : weeks ? 'text-xl' : 'text-lg'
+  return (
+    <div className="min-w-0">
+      <div className="flex items-center gap-1.5">
+        <Stat accent value={<Up to={weeks} fmt={n => `${Math.round(n)} wk${Math.round(n) === 1 ? '' : 's'}`} />} label="Streak" />
+        <span aria-hidden className={`-mt-5 ${size} leading-none ${weeks ? (weeks >= 4 ? 'animate-flicker' : '') : 'opacity-40 grayscale'}`}>🔥</span>
+      </div>
+      <div className="mt-1 flex items-center gap-1" role="img" aria-label={`${thisWeek} of ${target} sessions this week`}>
+        {Array.from({ length: target }, (_, i) => <span key={i} className={`size-2 shrink-0 rounded-full ${i < thisWeek ? 'bg-accent-2' : 'bg-line'}`} />)}
+        <span className="ml-1 truncate text-xs text-muted">{thisWeek >= target ? 'week done' : `${thisWeek}/${target} this week`}</span>
+      </div>
+    </div>
+  )
+}
+
+const NEW_DAYS = 7
+/** Latest badges earned and the closest ones to come; All opens the whole list. */
+function Milestones() {
+  const { data, model } = useData()
+  const [all, setAll] = useState(false)
+  const close = useCallback(() => setAll(false), [])
+  const list = useMemo(() => milestones(model, data.profile.weekly), [model, data.profile.weekly])
+  const earned = list.filter(m => m.date).sort((a, b) => b.date!.localeCompare(a.date!))
+  const next = list.filter(m => !m.date).sort((a, b) => b.progress - a.progress)
+  if (!earned.length && !model.sessions.length && !model.runs.length) return null
+  return (
+    <Card title="Milestones" action={<button className="min-h-9 text-sm text-accent hover:underline" onClick={() => setAll(true)}>All {earned.length}</button>}>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {earned.slice(0, 2).map(m => <Badge key={m.key} m={m} />)}
+        {next.slice(0, 2).map(m => <Badge key={m.key} m={m} />)}
+      </ul>
+      {all && (
+        <Sheet close={close} label="Milestones">
+          <h2 className="text-lg font-bold">Milestones</h2>
+          <p className="mb-3 text-sm text-muted">{plural(earned.length, 'reached', 'reached')}, {next.length} on the way.</p>
+          <ul className="space-y-3">{[...next, ...earned].map(m => <Badge key={m.key} m={m} />)}</ul>
+        </Sheet>
+      )}
+    </Card>
+  )
+}
+
+function Badge({ m }: { m: Milestone }) {
+  const fresh = m.date && daysAgo(NEW_DAYS) <= m.date
+  return (
+    <li className={`flex items-center gap-3 ${m.date ? '' : 'opacity-80'}`}>
+      <span className={`grid size-11 shrink-0 place-items-center rounded-xl text-xl ${m.date ? 'bg-pb/15' : 'bg-surface-2 grayscale'}`} aria-hidden>{m.emoji}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold">{m.title}</span>
+          {fresh && <span className="shrink-0 rounded-full bg-pb/15 px-1.5 py-0.5 text-[10px] font-bold text-pb">NEW</span>}
+        </div>
+        {m.date ? <div className="text-xs text-muted">{ago(m.date)}</div> : (
+          <div className="mt-1.5 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-linear-to-r from-accent to-accent-2" style={{ width: `${Math.max(2, m.progress * 100)}%` }} /></div>
+            <span className="text-xs tabular-nums text-muted">{Math.floor(m.progress * 100)}%</span>
+          </div>
+        )}
+      </div>
+    </li>
   )
 }

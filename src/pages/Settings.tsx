@@ -4,6 +4,7 @@ import { isBackup } from '../../shared/backup'
 import { GOALS } from '../../shared/rules'
 import { showIntroAgain } from '../lib/intro'
 import type { ImportResult, Profile } from '../../shared/types'
+import { DEFAULT_WEEKLY } from '../lib/stats'
 import { ask, Card, PageHeader, SourceBadge } from '../components/ui'
 import { api, importStravaFile, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
@@ -65,6 +66,11 @@ function ProfileCard() {
           <select className="input mt-1" value={p.sex} onChange={e => setP({ ...p, sex: e.target.value as Profile['sex'] })}>
             <option value="male">Men</option>
             <option value="female">Women</option>
+          </select>
+        </label>
+        <label className="col-span-3 text-sm text-muted">Sessions a week <span className="text-xs">(for your streak 🔥: gym, runs, anything from Strava)</span>
+          <select className="input mt-1" value={p.weekly ?? DEFAULT_WEEKLY} onChange={e => setP({ ...p, weekly: +e.target.value })}>
+            {[1, 2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </label>
         <div className="col-span-3 flex items-center gap-3">

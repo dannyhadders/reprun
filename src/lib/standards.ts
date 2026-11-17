@@ -20,6 +20,10 @@ export const LIFT_NAMES: Record<Lift, string> = { bench: 'bench', squat: 'squat'
 
 export type Standing = { pct: number; level: string; ratio: number; next: { level: string; kg: number } | null }
 
+/** Estimated-1RM kg for each level (Beginner -> Elite) at this body weight, or null without one. */
+export const levelKgs = (lift: Lift, profile: Pick<Profile, 'sex' | 'weight_kg'>) =>
+  profile.weight_kg ? MALE[lift].map((r, i) => ({ level: LEVELS[i], kg: r * (profile.sex === 'female' ? FEMALE_FACTOR : 1) * profile.weight_kg! })) : null
+
 export function standing(lift: Lift, oneRepMax: number, profile: Profile): Standing | null {
   if (!profile.weight_kg) return null
   const bands = MALE[lift].map(r => r * (profile.sex === 'female' ? FEMALE_FACTOR : 1))
