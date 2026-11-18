@@ -69,6 +69,11 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
   // phone's browser, though: a home-screen app on iPhone keeps its own storage, so data set up here would stay behind.
   // Once chosen, page 1 lets go: the buttons would wipe what's been added since (they start the copy afresh).
   const locked = mode === 'local' && !install && !chosen && page === 0
+  // The home-screen how-to: Safari and Chrome on iPhone get a clip of a real phone doing it (InstallGuide), the rest a list.
+  const installSteps: Step[] = install === 'ios'
+    ? [[I.share, <>Tap <b>Share</b> in {browser === 'your browser' ? 'your browser' : `${browser}'s`} toolbar (or <b>•••</b>, then Share)</>], [I.add, <>Scroll down and tap <b>Add to Home Screen</b></>], [I.home, <>Tap <b>Add</b>, then open RepRun from your home screen</>]]
+    : [[I.dots, <>Tap <b>⋮</b> at the top right of Chrome</>], [I.add, <>Tap <b>Install app</b> (or <b>Add to home screen</b>)</>], [I.home, <>Open RepRun from your home screen</>]]
+  const clip = install !== 'ios' ? null : browser === 'Safari' ? 'safari' : browser === 'Chrome' ? 'chrome' : null
 
   return (
     <div ref={root} tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-bg px-[max(0px,calc(50%-15rem))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.5rem)] outline-none" role="dialog" aria-modal="true" aria-label="Welcome to RepRun">
@@ -106,17 +111,16 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
           <Page>
             <h2 className="text-3xl font-bold tracking-tight">Put it on your home screen</h2>
             <p className="mt-2 text-muted">Then RepRun opens like an app: full screen, one tap away, and it still works when the gym has no signal.</p>
-            <ol className="mt-7 w-full space-y-3 text-left">
-              {(install === 'ios'
-                ? [[I.share, <>Tap <b>Share</b> in {browser === 'your browser' ? 'your browser' : `${browser}'s`} toolbar (or <b>•••</b>, then Share)</>], [I.add, <>Scroll down and tap <b>Add to Home Screen</b></>], [I.home, <>Tap <b>Add</b>, then open RepRun from your home screen</>]]
-                : [[I.dots, <>Tap <b>⋮</b> at the top right of Chrome</>], [I.add, <>Tap <b>Install app</b> (or <b>Add to home screen</b>)</>], [I.home, <>Open RepRun from your home screen</>]]
-              ).map(([icon, text], i) => (
-                <li key={i} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
-                  <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><Icon d={icon as string} className="h-5 w-5" /></span>
-                  <span className="text-[15px] leading-snug"><span className="mr-1 text-muted">{i + 1}.</span>{text}</span>
-                </li>
-              ))}
-            </ol>
+            {clip ? <InstallGuide clip={clip} active={page === 1} /> : (
+              <ol className="mt-7 w-full space-y-3 text-left">
+                {installSteps.map(([icon, text], i) => (
+                  <li key={i} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
+                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><Icon d={icon} className="h-5 w-5" /></span>
+                    <span className="text-[15px] leading-snug"><span className="mr-1 text-muted">{i + 1}.</span>{text}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
             {install === 'android' && onInstall && <button className="btn relative mt-4 w-full py-3 text-base" onClick={onInstall}><Tap />Install RepRun</button>}
             {mode === 'local' && <p className="mt-4 text-sm text-muted">Do this before adding anything: the home-screen app keeps its own copy, separate from {browser}.</p>}
           </Page>
@@ -195,6 +199,76 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
     </div>
   )
 }
+
+type Step = [string, ReactNode]
+/**
+ * The home-screen how-to as a real iPhone doing it: a short looping clip (a recording, contacts and other apps blurred)
+ * above the three steps, with the step the clip is on lit up and the ones before it ticked. Made in the HyperFrames
+ * project reprun-install (build.py guide-safari / guide-chrome); the times below come from its renders/guide-*.json.
+ * Plays only while its page is showing; with Reduce Motion on it waits for a tap.
+ */
+const GUIDE = {
+  safari: { steps: [0, 4.9, 9.38], open: 13.2 },
+  chrome: { steps: [0, 2.35, 6.92], open: 10.64 },
+}
+// Short enough for the column beside the clip, and in the order the clip does them.
+const GUIDE_STEPS: Record<keyof typeof GUIDE, Step[]> = {
+  safari: [[I.share, <>Tap <b>Share</b> (or <b>•••</b>, then Share)</>], [I.add, <>Scroll, tap <b>Add to Home Screen</b></>], [I.home, <>Tap <b>Add</b>, then open RepRun</>]],
+  chrome: [[I.share, <>Tap <b>Share</b> by the address</>], [I.add, <>Tap <b>More</b>, then <b>Add to Home Screen</b></>], [I.home, <>Tap <b>Add</b>, then open RepRun</>]],
+}
+function InstallGuide({ clip, active }: { clip: keyof typeof GUIDE; active: boolean }) {
+  const video = useRef<HTMLVideoElement>(null)
+  const [t, setT] = useState(0)
+  const [still] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [started, setStarted] = useState(!still)
+  useEffect(() => {
+    const v = video.current
+    if (!v) return
+    if (active && started) void v.play().catch(() => setStarted(false)) // autoplay refused (Low Power Mode): show the play button
+    else v.pause()
+  }, [active, started])
+  const { steps: at, open } = GUIDE[clip]
+  const ends = [at[1], at[2], open + 0.4]       // when each step is done in the clip
+  const now = ends.findIndex(e => t < e)          // -1 once all three are done (RepRun has opened)
+  const replay = () => { const v = video.current; if (v) { v.currentTime = 0; setStarted(true); void v.play() } }
+  return (
+    // Side by side, so the clip and all three steps fit above the fold with Safari's bars on screen.
+    <div className="mt-6 flex w-full items-stretch gap-3 text-left">
+      <div className="relative aspect-[480/704] w-[46%] shrink-0 overflow-hidden rounded-3xl border border-line bg-black shadow-[0_0_50px_-12px_rgba(129,140,248,0.5)]">
+        <video ref={video} src={`/guide/add-${clip}.mp4`} poster={`/guide/add-${clip}.jpg`} muted loop playsInline preload="none" className="size-full object-cover"
+          onTimeUpdate={e => setT(e.currentTarget.currentTime)} aria-label={`A phone adding RepRun to its home screen in ${clip === 'safari' ? 'Safari' : 'Chrome'}`} />
+        {/* Story-style progress, one bar per step. */}
+        <div className="absolute inset-x-2 top-2 flex gap-1" aria-hidden>
+          {ends.map((e, i) => {
+            const from = i ? ends[i - 1] : 0
+            return <span key={i} className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/25"><span className="block h-full bg-white" style={{ width: `${Math.max(0, Math.min(1, (t - from) / (e - from))) * 100}%` }} /></span>
+          })}
+        </div>
+        {started
+          ? <button className="press absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-white/15 bg-bg/75 px-2.5 py-1 text-[11px] font-semibold backdrop-blur" onClick={replay}><Icon d={REPLAY} className="h-3 w-3" />Replay</button>
+          : <button className="press absolute inset-0 grid place-items-center bg-black/30" onClick={replay} aria-label="Play the how-to"><span className="grid size-12 place-items-center rounded-full bg-accent text-white"><Icon d={PLAY} className="h-5 w-5" /></span></button>}
+      </div>
+      <ol className="flex flex-1 flex-col justify-center gap-2">
+        {GUIDE_STEPS[clip].map(([icon, text], i) => {
+          const state = now === -1 || i < now ? 'done' : i === now && started ? 'now' : 'later'
+          return (
+            <li key={i} className={`relative rounded-2xl border p-2.5 transition ${state === 'now' ? 'border-accent bg-accent/10 ring-3 ring-accent/15' : 'border-line bg-surface'} ${state === 'done' ? 'opacity-60' : ''}`} aria-current={state === 'now' ? 'step' : undefined}>
+              <span className="flex items-center gap-2">
+                <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${state === 'done' ? 'bg-good/15 text-good' : 'bg-accent/15 text-accent'}`}><Icon d={state === 'done' ? TICK : icon} className="h-4 w-4" /></span>
+                <span className="text-xs text-muted">Step {i + 1}</span>
+                {state === 'now' && <span className="ml-auto rounded-full bg-accent-2 px-1.5 py-px text-[10px] font-semibold text-bg">now</span>}
+              </span>
+              <span className="mt-1.5 block text-[13px] leading-snug">{text}</span>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
+}
+const REPLAY = 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5'
+const PLAY = 'M8 5v14l11-7z'
+const TICK = 'M20 6 9 17l-5-5'
 
 const Page = ({ children }: { children: ReactNode }) => (
   <section className="flex w-full shrink-0 snap-center snap-always flex-col items-center overflow-y-auto px-6 pb-4 pt-6 text-center">{children}</section>
