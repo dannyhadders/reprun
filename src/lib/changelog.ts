@@ -2,6 +2,12 @@
 // Every user-facing change adds a line under today's date (see CLAUDE.md).
 export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
+    date: '2026-11-18',
+    changes: [
+      'On Android, RepRun\'s icon fills its shape like other apps instead of sitting in a white circle, and the install screen shows a description and screenshots.',
+    ],
+  },
+  {
     date: '2026-11-17',
     changes: [
       'When a new version of RepRun is out, a banner at the top says so. Tap Update to switch straight away (a workout in progress stays as it is), or ✕ to get it next time you open the app.',

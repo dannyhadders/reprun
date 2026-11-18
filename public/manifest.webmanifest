@@ -1,6 +1,9 @@
 {
+  "id": "/",
   "name": "RepRun",
   "short_name": "RepRun",
+  "description": "Log gym workouts and runs, see your PBs and progress, and get the next weight to lift. Works offline.",
+  "categories": ["health", "fitness", "sports"],
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -9,6 +12,12 @@
   "shortcuts": [{ "name": "Start workout", "short_name": "Start", "url": "/log" }],
   "icons": [
     { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/home.jpg", "sizes": "824x1784", "type": "image/jpeg", "form_factor": "narrow", "label": "Home: this week, streak and what's next" },
+    { "src": "/screenshots/workout.jpg", "sizes": "824x1784", "type": "image/jpeg", "form_factor": "narrow", "label": "Logging a workout with the rest timer" },
+    { "src": "/screenshots/exercise.jpg", "sizes": "824x1784", "type": "image/jpeg", "form_factor": "narrow", "label": "Progress and strength level for one exercise" }
   ]
 }
