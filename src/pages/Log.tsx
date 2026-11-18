@@ -217,8 +217,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
             )}
-            <div className="grid grid-cols-[1.25rem_auto_minmax(6.5rem,1.4fr)_minmax(4.75rem,1fr)_2.75rem] items-center gap-1.5 text-sm">
-              <span className="text-xs text-muted">Set</span><button type="button" className="-my-2 py-2 text-left text-xs text-muted underline decoration-dotted underline-offset-4" onClick={() => setPeek(ex.name)} aria-label="Last time: open history">Last</button><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
+            <div className="grid grid-cols-[1.25rem_minmax(6.5rem,1.4fr)_minmax(4.75rem,1fr)_2.75rem] items-center gap-1.5 text-sm">
+              <span className="text-xs text-muted">Set</span><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
               {ex.sets.map((s, j) => {
                 const p = prev[j] ?? prev.at(-1)
                 // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
@@ -230,8 +230,6 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>
-                  {/* Weight over reps: the − / + boxes leave this column narrow, and "102.5×10" on one line would cut off. */}
-                  <span className="flex flex-col truncate text-xs leading-tight text-muted">{p ? setText(p).replace(' kg', '').split(' × ').map((t, k) => <span key={k}>{k ? `× ${t}` : t}</span>) : '–'}</span>
                   <Stepper done={s.done} by={2.5} min={0} label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} set={v => update(x => (x.exercises[i].sets[j].weight = v))} />
                   <Stepper done={s.done} by={1} min={1} label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} set={v => update(x => (x.exercises[i].sets[j].reps = v))} />
                   <button aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
@@ -265,14 +263,14 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     }}><Tap />✓{j === pbAt && <span className="absolute right-0.5 top-0 animate-pop text-xs" role="img" aria-label="PB">🏆</span>}</button>
                   </SwipeRow>,
                   // Last time's note for this set, so "wide bar, upstairs machine" is there when you need it.
-                  prev[j]?.notes && <p key={`l${j}`} className="col-span-5 -mt-1 truncate px-1 text-xs text-muted">Last time: {prev[j].notes}</p>,
+                  prev[j]?.notes && <p key={`l${j}`} className="col-span-4 -mt-1 truncate px-1 text-xs text-muted">Last time: {prev[j].notes}</p>,
                   s.note !== undefined ? (
-                    <input key={`t${j}`} className="input col-span-5 py-2" placeholder={`Note for set ${j + 1}, e.g. wide bar, felt easy`} aria-label={`Set ${j + 1} note`}
+                    <input key={`t${j}`} className="input col-span-4 py-2" placeholder={`Note for set ${j + 1}, e.g. wide bar, felt easy`} aria-label={`Set ${j + 1} note`}
                       autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))}
                       onBlur={e => !e.target.value.trim() && update(x => void (x.exercises[i].sets[j] && (x.exercises[i].sets[j].note = undefined)))} />
                   ) : j === cur && (
                     // Only under the set you're on; earlier sets still take a note by tapping their number.
-                    <button key={`a${j}`} type="button" className="press col-span-5 flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-line px-3 text-left text-[13px] text-muted active:bg-surface-2"
+                    <button key={`a${j}`} type="button" className="press col-span-4 flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-line px-3 text-left text-[13px] text-muted active:bg-surface-2"
                       onClick={() => update(x => void (x.exercises[i].sets[j].note = ''))}>
                       <Icon d={PLUS} className="size-3.5" />Add note for set {j + 1}
                     </button>
@@ -379,9 +377,9 @@ const SPEAKER_OFF = 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6' // Lucide volume-x
 /** A kg or reps box with − and + either side, so a sweaty hand can nudge it instead of typing. An empty box steps from its grey number. */
 function Stepper({ value, placeholder, by, min, label, done, set }: { value: string; placeholder: string; by: number; min: number; label: string; done: boolean; set: (v: string) => void }) {
   const step = (d: number) => set(String(Math.max(min, Math.round(((value === '' ? +placeholder || 0 : +value) + d) * 100) / 100)))
-  const btn = 'press relative w-6 shrink-0 text-lg text-accent'
+  const btn = 'press relative w-7 shrink-0 rounded-lg bg-line text-lg text-accent' // own tone, so you can see where to press
   return (
-    <div className={`flex h-11 rounded-xl border bg-surface-2 focus-within:border-accent ${done ? 'border-good/30' : 'border-line'}`}>
+    <div className={`flex h-11 rounded-xl border bg-surface-2 p-[3px] focus-within:border-accent ${done ? 'border-good/30' : 'border-line'}`}>
       <button type="button" className={btn} aria-label={`${label} down`} onClick={() => step(-by)}><Tap />−</button>
       <input className={`min-w-0 flex-1 bg-transparent p-0 text-center text-sm outline-none placeholder:text-muted ${done ? 'text-muted' : 'text-ink'}`} type="number" min={min} step={by === 1 ? 1 : 0.5}
         inputMode={by === 1 ? 'numeric' : 'decimal'} aria-label={label} placeholder={placeholder} value={value} onChange={e => set(e.target.value)} />
@@ -494,7 +492,7 @@ function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: Rea
     document.addEventListener('touchstart', away, { passive: true })
     return () => document.removeEventListener('touchstart', away)
   }, [open])
-  const cells = 'col-span-5 grid grid-cols-subgrid items-center'
+  const cells = 'col-span-4 grid grid-cols-subgrid items-center'
   if (!onDelete) return <div className={cells}>{children}</div>
   return (
     // Clipped on the left only (where the row slides out), so the ✓'s pop and 🏆 aren't cut off.

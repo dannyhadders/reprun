@@ -126,9 +126,11 @@
     .next { border: 1px solid rgba(129, 140, 248, 0.4); background: linear-gradient(135deg, rgba(129, 140, 248, 0.08), transparent); border-radius: 16px; padding: 16px 18px; display: flex; align-items: center; gap: 12px; }
     .next .k { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
     .next .t { font-size: 19px; font-weight: 700; }
-    .setrow { display: grid; grid-template-columns: 20px 1fr 64px 64px 48px; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .setrow { display: grid; grid-template-columns: 20px 1.4fr 1fr 48px; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; font-size: 14px; }
     .setrow + .setrow { margin-top: 8px; }
-    .setrow .in { height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); display: grid; place-items: center; }
+    .setrow .in { height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); display: flex; align-items: center; justify-content: space-between; padding: 3px; }
+    /* − / + in their own tone (--line), so the button's edge shows: kg ±2.5, reps ±1. */
+    .setrow .in i { font-style: normal; width: 28px; height: 100%; display: grid; place-items: center; border-radius: 8px; background: var(--line); color: var(--accent); font-size: 18px; }
     .setrow.done .in { border-color: rgba(52, 211, 153, 0.35); }
     .tick { position: relative; height: 40px; border-radius: 12px; background: var(--surface-2); color: var(--muted); display: grid; place-items: center; border: 0; cursor: pointer; }
     .setrow.done .tick { background: var(--good); color: var(--bg); }
@@ -341,10 +343,10 @@
       <div class="grid wide" style="margin-top: 16px;">
         <div class="card">
           <div class="row" style="justify-content: space-between; margin-bottom: 14px;"><b>Bench Press <span class="muted" style="font-weight: 400;">2/3</span></b><span class="badge pbb">🏆 PB</span></div>
-          <div class="setrow done"><span class="muted">1</span><span class="muted">57.5 × 8</span><span class="in">60</span><span class="in">8</span><button class="tick" aria-label="Done">✓<span class="pb">🏆</span></button></div>
-          <div class="setrow done"><span class="muted">2</span><span class="muted">57.5 × 6</span><span class="in">60</span><span class="in">8</span><button class="tick" aria-label="Done">✓</button></div>
-          <div class="setrow" id="tickDemo"><span class="muted">3</span><span class="muted">57.5 × 5</span><span class="in">60</span><span class="in">7</span><button class="tick" aria-label="Tick set">✓</button></div>
-          <p class="mono muted" style="margin-top: 12px;">Green = done. Gold = personal best. Tap set 3.</p>
+          <div class="setrow done"><span class="muted">1</span><span class="in"><i>−</i>60<i>+</i></span><span class="in"><i>−</i>8<i>+</i></span><button class="tick" aria-label="Done">✓<span class="pb">🏆</span></button></div>
+          <div class="setrow done"><span class="muted">2</span><span class="in"><i>−</i>60<i>+</i></span><span class="in"><i>−</i>8<i>+</i></span><button class="tick" aria-label="Done">✓</button></div>
+          <div class="setrow" id="tickDemo"><span class="muted">3</span><span class="in"><i>−</i>60<i>+</i></span><span class="in"><i>−</i>7<i>+</i></span><button class="tick" aria-label="Tick set">✓</button></div>
+          <p class="mono muted" style="margin-top: 12px;">Green = done. Gold = personal best. − / + step kg by 2.5, reps by 1. Last time lives behind the history button. Tap set 3.</p>
         </div>
         <div style="display: grid; gap: 16px; align-content: start;">
           <div class="dock"><div class="bar"><i></i></div><div class="body"><span class="clock">1:01</span><button class="a-ghost">−15</button><button class="a-ghost">+15</button><button class="a-btn">Skip</button></div></div>
