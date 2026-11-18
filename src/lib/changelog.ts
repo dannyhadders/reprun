@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'A PB now gets a proper celebration when you finish: confetti, a trophy and what each PB beat ("Best was 60 kg, +2.5 kg"). It changes each time: a trophy, a gold card for each PB, your old best rolling up to the new one, or a sheet from the bottom.',
       'Ask ChatGPT for one workout now includes your runs (and rides) from the last 7 days, so it won\'t plan heavy legs the day after a long run.',
       'The welcome screens show RepRun in action: short clips of logging a workout, turning an AI-written plan into a routine and, on the phone-only version, saving a backup. There\'s a Back button now too.',
       'Ask ChatGPT for one workout: tap + Import / create plan on the workout screen, choose Just today (or Full weekly plan for a whole week) and pick from the three muscle groups you\'ve trained least this week. RepRun copies a prompt with your last 5 workouts in it; paste ChatGPT\'s reply back in and it becomes a routine.',

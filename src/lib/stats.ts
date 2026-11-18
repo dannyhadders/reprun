@@ -34,18 +34,26 @@ type LiveSet = Pick<WorkoutSet, 'weight_kg' | 'reps'> & { done: boolean }
  * exercise, and nothing until there's a past session to beat. -1 for none.
  */
 export function livePb(history: ExerciseSession[], sets: LiveSet[]): number {
+  return livePbHit(history, sets)?.at ?? -1
+}
+
+/** What each kind of PB measures: the weight, the estimated one-rep max, or reps with no weight. */
+export const PB_METRIC: Record<PbKind, (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => number> = {
+  weight: s => s.weight_kg ?? 0,
+  e1rm: s => e1rm(s) ?? 0,
+  reps: s => (s.weight_kg ? 0 : s.reps ?? 0),
+}
+
+/** livePb, plus which kind of PB it is and the best it beat (for the finish screen's PB moment). */
+export function livePbHit(history: ExerciseSession[], sets: LiveSet[]): { at: number; kind: PbKind; before: number; now: number } | null {
   const past = history.flatMap(h => h.sets)
-  const max = (f: (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => number) => Math.max(0, ...past.map(f))
   // Only sets that will be saved: toImport drops a ticked set with no reps.
   const pick = (f: (s: LiveSet) => number) => sets.reduce((b, s, i) => (s.done && (s.reps ?? 0) > 0 && f(s) > 0 && (b < 0 || f(s) > f(sets[b])) ? i : b), -1)
-  const weight = (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => s.weight_kg ?? 0
-  const est = (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => e1rm(s) ?? 0
-  const bwReps = (s: Pick<WorkoutSet, 'weight_kg' | 'reps'>) => (s.weight_kg ? 0 : s.reps ?? 0)
-  for (const f of [weight, est, bwReps]) {
-    const before = max(f), at = pick(f)
-    if (at >= 0 && before > 0 && f(sets[at]) > before) return at
+  for (const kind of ['weight', 'e1rm', 'reps'] as const) {
+    const f = PB_METRIC[kind], before = Math.max(0, ...past.map(f)), at = pick(f)
+    if (at >= 0 && before > 0 && f(sets[at]) > before) return { at, kind, before, now: f(sets[at]) }
   }
-  return -1
+  return null
 }
 
 export type Model = ReturnType<typeof buildModel>

@@ -63,8 +63,8 @@ UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pas
 - [x] **Fold a finished exercise** automatically once every set is ticked. (No auto-scroll: tried it, it jumped the page.)
 - [x] **Rest timer bar** that drains, with the numbers going green near the end and a buzz (Android) at 0.
 - [x] **PB badge on the set** the moment it's ticked, not only on the finish screen.
+- [x] **PB moment on the finish screen**: today it's a small "🏆 2 PBs" line with a little burst. Make it a proper pop-up: a big trophy, full-screen confetti, and which lifts were PBs ("Squat 105 kg × 5, +5 kg"). Tap to carry on to the summary. Also the website's demo of the finish screen. Asked for 2026-11-18.
 - [ ] **`enterKeyHint="next"`** on kg/reps so Return moves kg → reps → next set.
-- [ ] **PB moment on the finish screen**: today it's a small "🏆 2 PBs" line with a little burst. Make it a proper pop-up: a big trophy, full-screen confetti, and which lifts were PBs ("Squat 105 kg × 5, +5 kg"). Tap to carry on to the summary. Also the website's demo of the finish screen. Asked for 2026-11-18.
 - [ ] **Plate calculator**: tap the kg for "20 kg bar + 15 + 2.5 each side".
 - [x] **More menu slides up**, and swipes down to close.
 - [x] **Next up on Home**: the routine due next, one tap to start it.

@@ -44,6 +44,12 @@
   50% { box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.6), 0 0 0 6px rgb(129 140 248 / 0.16), 0 0 36px 2px rgb(129 140 248 / 0.5); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* The PB moment (components/PbMoment.tsx): trophy drops in, rows rise, cards slide up and shine, the stamp lands. */
+@keyframes pbm-cup { 0% { transform: scale(0.2) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.15) rotate(4deg); opacity: 1; } 100% { transform: none; } }
+@keyframes pbm-rise { from { opacity: 0; transform: translateY(16px); } }
+@keyframes pbm-card { from { opacity: 0; transform: translateY(60px) rotate(-4deg) scale(0.9); } }
+@keyframes pbm-shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes pbm-stamp { from { opacity: 0; transform: rotate(-6deg) scale(2.4); } to { opacity: 1; transform: rotate(-6deg) scale(1); } }
 /* Burst particles: each flies out to its own --dx/--dy and fades. */
 @keyframes burst { to { transform: translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; } }
 

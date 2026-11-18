@@ -12,6 +12,8 @@ import { Tap } from '../lib/haptic'
 import { ago, clock, duration, EFFORT, effort, kg, num, plural, setText, workoutText } from '../lib/format'
 import { ask, Burst, CopyButton, Empty, Icon, PbBadge, ShareButton, Sheet, useCountUp } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
+import { PbMoment } from '../components/PbMoment'
+import { pbShow } from '../lib/pbMoment'
 import { workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
 import { loadActive, matchExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
@@ -563,8 +565,15 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
   const [before] = useState(() => new Set(milestones(model, weekly).filter(m => m.date).map(m => m.key)))
   // One per kind: jumping from 45 to 65 kg is "First 60 kg lift", not that and 50 kg too. Ladders run low to high, so the last wins.
   const reached = useMemo(() => [...new Map(milestones(model, weekly).filter(m => m.date && !before.has(m.key)).map(m => [m.key.split(':')[0], m])).values()], [model, weekly, before])
+  // The PB moment: worked out once at mount, like the milestones above, before the upload adds this workout to the history.
+  const [moment, setMoment] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches ? [] : [...new Set(w.sets.map(s => s.exercise))].flatMap(n => {
+    const p = pbShow(n, model.exHistory.get(matchExercise(n, data.exercises, data.aliases)?.id ?? -1) ?? [], w.sets.filter(s => s.exercise === n))
+    return p ? [p] : []
+  }))
+  const endMoment = useCallback(() => setMoment([]), [])
   return (
     <div className="space-y-5 pt-10 text-center">
+      {moment.length > 0 && <PbMoment pbs={moment} close={endMoment} />}
       <p className="animate-pop text-5xl">💪</p>
       <h1 className="text-3xl font-bold tracking-tight">{w.title || 'Workout'} done</h1>
       <div className="grid grid-cols-3 gap-3 rounded-2xl border border-line bg-surface p-4">

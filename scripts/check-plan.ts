@@ -187,3 +187,18 @@ const { swapExercise } = await import(sessionPath)
   eq(r0.title, 'A quiet week', 'quiet week recap')
   console.log('reminders self-check passed')
 }
+
+// The PB moment: what each PB says, and which look plays.
+{
+  const { pbShow, pickStyle } = await import('../src/lib/pbMoment.ts')
+  const hist = (sets: [number | null, number][]): ExerciseSession[] => sets.map(([w, r], i) => ({ date: `2026-11-0${i + 1}`, workoutId: i, sets: [{ id: i, workout_id: i, exercise_id: 1, set_no: 1, weight_kg: w, reps: r, seconds: null, rpe: null, notes: null } as never] }))
+  const heavier = pbShow('Bench Press', hist([[55, 8], [60, 8]]), [{ weight_kg: 62.5, reps: 8 }])!
+  eq([heavier.kind, heavier.set, heavier.was, heavier.up, heavier.from, heavier.to, heavier.series], ['weight', '62.5 kg × 8', 'Best was 60 kg', '+2.5 kg', 60, 62.5, [55, 60, 62.5]], 'pb moment: weight')
+  const reps = pbShow('Pull-up', hist([[null, 10]]), [{ weight_kg: null, reps: 12 }])!
+  eq([reps.kind, reps.set, reps.was, reps.up, reps.unit], ['reps', 'BW × 12', 'Best was 10 reps', '+2 reps', 'reps'], 'pb moment: bodyweight reps')
+  assert(pbShow('Bench Press', hist([[60, 8]]), [{ weight_kg: 60, reps: 8 }]) === null, 'pb moment: no PB, nothing')
+  assert(pbShow('Squat', [], [{ weight_kg: 100, reps: 5 }]) === null, 'pb moment: first time is the baseline, not a PB')
+  eq(['A', 'B', 'C', 'D'].map(last => [0, 0.5, 0.99].map(r => pickStyle(2, last, r))).flat().filter((s, k) => s === ['A', 'B', 'C', 'D'][Math.floor(k / 3)]), [], 'pb moment: never the same look twice running')
+  assert([0, 0.34, 0.67, 0.99].every(r => pickStyle(3, null, r) !== 'C'), 'pb moment: no roll-up for 3+ PBs')
+  console.log('pb moment self-check passed')
+}
