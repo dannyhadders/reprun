@@ -67,6 +67,16 @@ const CHECKS = {
     await t.page.getByRole('button', { name: 'Set 2 done' }).first().click()
     await t.expect(t.page.getByText(/· 2 sets ·/), 'Header counts 2 sets')
     await finish(t)
+    // Set 2 went up 2.5 kg on last time's best, so finishing is a PB: the celebration sheet comes first.
+    // It comes in several styles (PbMoment.tsx): some play through and close, some wait for "Nice". Tap through either.
+    const moment = t.page.getByRole('dialog', { name: '1 new PB' })
+    await t.expect(moment, 'A PB celebration shows (set 2 beat last time)')
+    await t.shot('PB celebration')
+    for (let i = 0; i < 6 && await moment.count(); i++) {
+      const nice = moment.getByRole('button', { name: 'Nice' })
+      await (await nice.isVisible() ? nice : moment).click({ timeout: 2000 }).catch(() => {})
+      await t.page.waitForTimeout(300)
+    }
     await t.shot('Summary')
     await t.page.getByRole('button', { name: 'Done' }).click()
     await t.page.waitForURL(/\/workouts/)
@@ -137,7 +147,7 @@ const CHECKS = {
   'plan-import': ['Paste a plan: preview, save, it becomes a routine', async t => {
     await begin(t, false)
     await planner(t)
-    await t.page.getByRole('button', { name: '+ Import plan' }).click()
+    await t.page.getByRole('button', { name: /^\+ Import/ }).click()
     await t.page.getByRole('textbox', { name: 'Plan text' }).fill(PLAN)
     await t.expect(t.page.getByRole('heading', { name: /Arm day · 2 exercises/ }), 'Preview reads 1 day, 2 exercises')
     await t.shot('Plan preview')
@@ -176,6 +186,103 @@ const CHECKS = {
     await t.expect(t.page.locator('main h1 + p'), `Workouts back to "${before}"`, before)
     await t.shot('Restored')
   }],
+
+  'logger-tools': ['Mid-workout: + / − Set, rest time, set note, swap an exercise', async t => {
+    await begin(t, true)
+    await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
+    const first = t.page.locator('button[aria-expanded]').first()
+    const name = (await first.locator('h2').innerText()).trim()
+    await first.click()
+    await t.page.getByRole('button', { name: '+ Set' }).first().click()
+    await t.expect(first.getByText('0/4'), '+ Set makes it 4 sets')
+    await t.page.getByRole('button', { name: 'Remove last set' }).first().click()
+    await t.expect(first.getByText('0/3'), '− Set takes it back to 3')
+    await t.page.getByRole('button', { name: /^Rest between sets: .*Change$/ }).first().click()
+    await t.shot('Rest picker')
+    await t.page.getByRole('button', { name: '1:30', exact: true }).click()
+    await t.expect(t.page.getByRole('button', { name: /^Rest between sets: / }).first(), 'Rest is now 1:30', '1:30')
+    await t.page.getByRole('button', { name: 'Add note for set 1' }).first().click()
+    await t.page.getByRole('textbox', { name: 'Set 1 note' }).first().fill('wide grip')
+    await t.expect(null, 'Set 1 keeps its note', (await t.page.getByRole('textbox', { name: 'Set 1 note' }).first().inputValue()) === 'wide grip')
+    await t.page.getByRole('button', { name: `Swap ${name} for another exercise` }).click()
+    await t.page.getByRole('textbox', { name: 'Search exercises' }).fill('Floor Press')
+    await t.shot('Swap sheet')
+    await t.page.getByRole('button', { name: 'Use "Floor Press"' }).click()
+    await t.expect(t.page.getByRole('heading', { level: 2, name: 'Floor Press' }), `${name} swapped for Floor Press`)
+    await t.expect(t.page.getByRole('heading', { level: 2, name, exact: true }), `${name} is gone from the workout`, 0)
+    await t.shot('After the swap')
+  }],
+
+  'workout-edit': ['Edit a past workout (rename, drop a set), then delete it', async t => {
+    await begin(t, true)
+    await tab(t, '/workouts')
+    const top = topWorkout(t)
+    const title = await top.getByRole('heading', { level: 3 }).innerText()
+    await top.getByRole('button').first().click()
+    await top.getByRole('button', { name: 'Edit', exact: true }).click()
+    await t.page.getByRole('textbox', { name: 'Workout name' }).fill('Edited day')
+    await t.page.getByRole('button', { name: 'Remove set 1' }).first().click()
+    await t.shot('Editor')
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(topWorkout(t).getByRole('heading', { level: 3, name: 'Edited day' }), `"${title}" renamed to Edited day`)
+    await t.expect(topWorkout(t).getByText('14 sets'), 'with one set fewer (14)')
+    await topWorkout(t).getByRole('button', { name: 'Edit', exact: true }).click()
+    await t.page.getByRole('button', { name: 'Delete workout' }).click()
+    await t.page.getByRole('dialog').last().getByRole('button', { name: /Delete/ }).click()
+    await t.expect(t.page.getByRole('heading', { level: 3, name: 'Edited day' }), 'It is gone from Workouts', 0)
+  }],
+
+  'exercise-edit': ['Rename an exercise; its history follows', async t => {
+    await begin(t, true)
+    await tab(t, '/exercises')
+    await t.page.getByRole('textbox', { name: 'Search exercises' }).fill('bench')
+    await t.page.getByRole('link', { name: /^BE Bench Press/ }).click()
+    const sessions = (await t.page.getByText(/\d+ sessions/).first().innerText()).match(/\d+ sessions/)[0]
+    await t.page.getByRole('button', { name: 'Edit' }).click()
+    await t.page.getByLabel('Name', { exact: true }).filter({ visible: true }).fill('Flat Bench')
+    await t.shot('Exercise editor')
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(t.page.getByRole('heading', { level: 1, name: 'Flat Bench' }), 'The page is now Flat Bench')
+    await t.expect(t.page.getByText(sessions).first(), `with its ${sessions}`)
+  }],
+
+  'run-delete': ['Delete a run', async t => {
+    await begin(t, true)
+    await tab(t, '/runs')
+    const del = t.page.getByRole('button', { name: /^Delete / })
+    const before = await del.count()
+    await del.first().click()
+    await t.shot('Delete asks first')
+    await t.page.getByRole('dialog').last().getByRole('button', { name: 'Delete', exact: true }).click()
+    await t.expect(del, `One run fewer (${before - 1})`, before - 1)
+  }],
+
+  'settings-profile': ['Profile saves and survives a reload; the intro can be shown again', async t => {
+    await begin(t, true)
+    await tab(t, '/settings')
+    await t.page.getByRole('spinbutton', { name: 'Age' }).fill('41')
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(t.page.getByText('Saved', { exact: true }), 'It says Saved')
+    await t.page.reload()
+    await t.expect(null, 'Age is still 41 after a reload', (await t.page.getByRole('spinbutton', { name: 'Age' }).inputValue()) === '41')
+    await t.page.getByRole('button', { name: 'Show the intro again' }).click()
+    await t.expect(t.page.getByRole('dialog', { name: 'Welcome to RepRun' }), 'The intro opens again')
+    await t.shot('Intro again')
+  }],
+
+  'offline': ['Opened once, the app still opens with no signal', async t => {
+    await begin(t, true)
+    await t.page.evaluate(() => navigator.serviceWorker.ready.then(() => true))
+    await t.page.reload() // the service worker controls the page from here, and caches what it loads
+    await t.page.locator('main h1').first().waitFor()
+    t.offline = true // offline, failed font and network requests are expected; only what's on screen counts
+    await t.ctx.setOffline(true)
+    await t.page.reload()
+    await t.expect(t.page.locator('main h1').first(), 'Home opens offline')
+    await tab(t, '/workouts')
+    await t.expect(t.page.getByRole('article').first(), 'Workouts lists the history offline')
+    await t.shot('Offline')
+  }],
 }
 
 // --- runner -------------------------------------------------------------------------------------------------------
@@ -186,23 +293,26 @@ async function run(id, device, browser) {
   await ctx.addInitScript(() => Object.defineProperty(navigator, 'standalone', { get: () => true }))
   const page = await ctx.newPage()
   const errors = []
-  page.on('pageerror', e => errors.push(e.message))
-  page.on('console', m => m.type() === 'error' && errors.push(m.text()))
+  page.on('pageerror', e => !t.offline && errors.push(e.message))
+  page.on('console', m => m.type() === 'error' && !t.offline && errors.push(m.text()))
   page.setDefaultTimeout(8000)
   const res = { id, title, device, steps: [], status: 'PASS' }
   let n = 0
   const t = {
-    id: `${id}-${device}`, page, device,
+    id: `${id}-${device}`, page, ctx, device,
     async shot(label, full = false) {
       const shot = `${id}-${device}-${String(++n).padStart(2, '0')}.png`
-      await page.screenshot({ path: OUT + shot, fullPage: full }).catch(() => {})
+      await page.waitForTimeout(400) // let an opening card or sheet settle: a half-open frame reads as a layout bug
+      await page.screenshot({ path: OUT + shot, fullPage: full, animations: 'disabled' }).catch(() => {})
       res.steps.push({ step: label, ok: true, shot })
     },
     // locator visible, or (count) exactly that many, or (string) has that text; locator null: a plain boolean.
     async expect(loc, label, want) {
       let ok
       if (loc === null) ok = !!want
-      else if (typeof want === 'number') ok = (await loc.count()) === want
+      else if (typeof want === 'number') { // the list may still be refreshing: give it the usual 8 seconds
+        for (let i = 0; i < 16 && !(ok = (await loc.count()) === want); i++) await page.waitForTimeout(500)
+      }
       else if (typeof want === 'string') ok = await loc.filter({ hasText: want }).waitFor().then(() => true, () => false)
       else ok = await loc.waitFor().then(() => true, () => false)
       res.steps.push({ step: label, ok })

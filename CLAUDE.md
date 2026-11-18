@@ -9,6 +9,7 @@ Worker with a D1 (SQLite) database, behind Cloudflare Access. Mostly used as an 
 
 - Commit straight to `main`; a push deploys the live site and the public demo (Workers Builds). No branches.
 - Before committing: `npx tsc -b`, `npx oxlint`, `npm run build`.
+- Before committing a user-facing change, also run `/reprun-e2e` (`node .claude/skills/reprun-e2e/run.cjs`; add `DEVICE=iphone,desktop` for layout changes) and look at the screenshots. A failure is either the app or a renamed label in the harness: say which. When a feature ships, add a check for it to `CHECKS` in `.claude/skills/reprun-e2e/run.cjs` in the same commit.
 - One feature per commit, so any one can be reverted on its own.
 - **Every user-facing change adds a line to `src/lib/changelog.ts`** under today's date (newest first, plain words, no jargon). It shows in Settings → About.
 - Tick the item in `TODO.md` when it ships.

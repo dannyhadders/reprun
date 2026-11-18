@@ -20,7 +20,7 @@ ONLY=log-routine,pb node .claude/skills/reprun-e2e/run.cjs             # just th
 | `DEVICE` | `iphone` (default), `desktop`, or `iphone,desktop` |
 | `ONLY` | check ids, comma-separated (an unknown id is a setup error) |
 | `OUT` | run folder, default `~/reprun-e2e-runs/<time>`: screenshots, `results.json`, the backup file |
-| `BASE` | test a copy that's already running instead of building one, e.g. `http://localhost:5173`. Only the phone-only build has the welcome screen the checks start from |
+| `BASE` | test a copy that's already running instead of building one, e.g. `http://localhost:5173`. Only the phone-only build has the welcome screen the checks start from. A `vite preview` keeps serving the file list it started with: after a rebuild, restart it, or every check fails on a blank page |
 
 Without `BASE`, `run.cjs` builds the phone-only copy of the working tree into `node_modules/.reprun-e2e`
 (never `dist/`, which other sessions rebuild), serves it on port 4317 for the run, and stops it afterwards.
@@ -51,4 +51,4 @@ screenshot with `t.shot('label')`. When a feature ships, add a check for it in t
   (`shared/`) but not its code. `scripts/check-local.ts` and a manual look at `npm run dev` cover the server side.
 - **A real iPhone.** WebKit on a Mac isn't iOS Safari: number boxes show desktop spinner arrows, no haptics, no
   keyboard, no safe-area notch, no iOS share sheet (the backup check forces the download path).
-- **Strava, push alerts, the service worker offline, the share pictures' contents.**
+- **Strava, push alerts, the share pictures' contents.**
