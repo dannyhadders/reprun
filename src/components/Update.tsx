@@ -1,12 +1,30 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Tap } from '../lib/haptic'
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
+
+// "Updated ✓" once per new version, however it arrived (the Update button, or the app restarting by itself after ✕).
+// Pages load network-first, so the open that finds an update already runs the new code while the old service worker is
+// still in charge. The update has only finished once the worker in charge is this build's (its address carries the sha),
+// so that's when the build counts as seen. No worker yet (first install) counts too, without a toast.
+const SEEN = 'reprun.build'
+const updated = (() => {
+  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return false
+  const ctl = navigator.serviceWorker.controller
+  if (ctl && new URL(ctl.scriptURL).searchParams.get('v') !== __BUILD__.sha) return false // switch still to come
+  try {
+    const before = localStorage.getItem(SEEN)
+    localStorage.setItem(SEEN, __BUILD__.sha)
+    return !!before && before !== __BUILD__.sha
+  } catch { return false } // storage blocked: skip the toast rather than show it every open
+})()
 
 /**
  * Registers the service worker and, when a new version has downloaded, offers to switch to it.
  * Update: the waiting worker takes over and the page reloads once. A workout in progress is in localStorage, so it survives.
  * ✕: the new version still starts by itself the next time the app is fully closed and reopened.
+ * Either way the first open on the new version says "Updated ✓".
  */
 export function UpdateBanner() {
   const [waiting, setWaiting] = useState<ServiceWorker | null>(null)
@@ -26,7 +44,7 @@ export function UpdateBanner() {
       document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void reg.update().catch(() => {}))
     })
   }, [])
-  if (!waiting || hidden) return null
+  if (!waiting || hidden) return <Updated />
   return (
     <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 mx-auto flex max-w-md animate-toast-in items-center gap-3 rounded-2xl border border-accent/50 bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg" role="status">
       <span className="flex-1 text-sm">
@@ -35,6 +53,24 @@ export function UpdateBanner() {
       </span>
       <button className="relative btn min-h-11" onClick={() => waiting.postMessage('update')}><Tap />Update</button>
       <button className="icon-btn" onClick={() => setHidden(true)} aria-label="Later">✕</button>
+    </div>
+  )
+}
+
+/** "Updated ✓" for a few seconds after a new version takes over, with a way to see what changed. */
+function Updated() {
+  const [show, setShow] = useState(updated)
+  useEffect(() => {
+    if (!show) return
+    const t = setTimeout(() => setShow(false), 6000)
+    return () => clearTimeout(t)
+  }, [show])
+  if (!show) return null
+  return (
+    <div className="fixed inset-x-3 top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 mx-auto flex max-w-md animate-toast-in items-center gap-3 rounded-2xl border border-good/40 bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg" role="status">
+      <span className="flex-1 text-sm"><span className="font-semibold text-good">Updated ✓</span> You're on the latest RepRun.</span>
+      <Link to="/settings?about" className="btn-ghost min-h-11" onClick={() => setShow(false)}>What's new</Link>
+      <button className="icon-btn" onClick={() => setShow(false)} aria-label="Close">✕</button>
     </div>
   )
 }
