@@ -3,7 +3,7 @@ import { GOALS, type GoalId } from '../../shared/rules'
 import type { Profile } from '../../shared/types'
 import { Tap } from '../lib/haptic'
 import { browserName, useInstallPrompt } from '../lib/intro'
-import { pushSupported, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
+import { pushSupported, RemindersChoice, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
 import { CopyButton, Icon } from './ui'
 
 export type Answers = { goals: GoalId[]; weight_kg: number | null; age: number | null; sex: Profile['sex'] | null }
@@ -136,7 +136,7 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
           <Demo />
         </Page>
 
-        {alerts && <RestAlertsPage />}
+        {alerts && <RestAlertsPage demo={mode === 'demo'} />}
 
         <Page>
           <h2 className="text-3xl font-bold tracking-tight">What are you here for?</h2>
@@ -206,14 +206,15 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
   )
 }
 
-function RestAlertsPage() {
+function RestAlertsPage({ demo }: { demo: boolean }) {
   const alerts = useRestAlerts()
   return (
     <Page>
       <span className="grid size-16 place-items-center rounded-2xl bg-accent/15 text-accent"><Icon d={I.bell} className="h-8 w-8" /></span>
       <h2 className="mt-5 text-3xl font-bold tracking-tight">Rest alerts</h2>
-      <p className="mt-2 text-muted">Get a buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket. Plus a nudge when your streak needs a session, and your week in numbers on Sunday evening.</p>
+      <p className="mt-2 text-muted">Get a buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket.</p>
       <RestAlertsButton {...alerts} className="mt-7 w-full" />
+      {alerts.state !== 'denied' && !demo && <RemindersChoice />}{/* the demo's made-up week gets no nudges */}
       <div className="mt-4 w-full"><WhatsSent /></div>
     </Page>
   )

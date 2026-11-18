@@ -3,6 +3,7 @@
 // phone's push address and when each is due, never workout data; it sends an empty push and public/sw.js shows
 // "Rest over", or the reminder whose words this phone saved for that time. Every copy of RepRun uses it, opt-in.
 import { useEffect, useState } from 'react'
+import { Tap } from './haptic'
 import type { Note } from './reminders'
 
 // The public half of the push Worker's key (push/keys.mjs). Fine in a public repo; the private half is a Cloudflare secret.
@@ -32,22 +33,23 @@ export function scheduleRest(at: number | null) {
 
 // ---------- streak nudge and Sunday recap ----------
 const NOTES = 'reprun-notes' // read by public/sw.js, which keeps this cache through updates
-const OFF = 'reprun.reminders.off'
-export const remindersOn = () => { try { return localStorage.getItem(OFF) !== '1' } catch { return true } }
+// Each is on unless switched off (in the intro's "Choose", or Settings). Per phone, like the rest of these.
+const off = (kind: Note['kind']) => `reprun.${kind}.off`
+export const reminderOn = (kind: Note['kind']) => { try { return localStorage.getItem(off(kind)) !== '1' } catch { return true } }
 let last: Note[] = []
 
 /** Save the words where the service worker can read them, then ask for each push at its time (or cancel it). */
 export async function scheduleReminders(notes: Note[]) {
   last = notes
   if (!pushSupported()) return
-  const keep = remindersOn() ? notes : []
+  const keep = notes.filter(n => reminderOn(n.kind))
   try { await (await caches.open(NOTES)).put('/notes', new Response(JSON.stringify(keep))) } catch { return }
   for (const kind of ['nudge', 'recap'] as const) post(kind, keep.find(n => n.kind === kind)?.at ?? null)
 }
 /** A workout's started: no "time for a session?" in the middle of it. Worked out again once it's saved. */
 export const pauseReminders = () => void scheduleReminders([])
-export function setRemindersOn(v: boolean) {
-  try { if (v) localStorage.removeItem(OFF); else localStorage.setItem(OFF, '1') } catch { /* stays as it was */ }
+export function setReminderOn(kind: Note['kind'], v: boolean) {
+  try { if (v) localStorage.removeItem(off(kind)); else localStorage.setItem(off(kind), '1') } catch { /* stays as it was */ }
   void scheduleReminders(last)
 }
 
@@ -113,16 +115,35 @@ export function WhatsSent() {
   )
 }
 
-/** The switch for the nudge and recap, under rest alerts once they're on. */
-export function RemindersSwitch() {
-  const [on, setOn] = useState(remindersOn)
+/** The streak nudge and Sunday recap, a switch each: in the intro (folded away under "Choose") and in Settings. */
+export function ReminderSwitches() {
+  const [on, setOn] = useState({ nudge: reminderOn('nudge'), recap: reminderOn('recap') })
+  const row = (kind: Note['kind'], title: string, sub: string) => (
+    // The whole row is the switch: a big target, and its words are the switch's name.
+    <button role="switch" aria-checked={on[kind]} className="relative flex w-full items-center gap-3 px-3.5 py-3 text-left"
+      onClick={() => (setReminderOn(kind, !on[kind]), setOn(o => ({ ...o, [kind]: !o[kind] })))}>
+      <Tap />
+      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{title}</span><span className="block text-xs text-muted">{sub}</span></span>
+      <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on[kind] ? 'bg-good' : 'bg-line'}`} aria-hidden>
+        <span className={`absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow transition-transform ${on[kind] ? 'translate-x-5' : ''}`} />
+      </span>
+    </button>
+  )
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        <p className="font-medium">Streak nudges and Sunday recap</p>
-        <p className="mt-0.5 text-sm text-muted">A nudge when your streak needs a session, and your week in numbers on Sunday evening.</p>
-      </div>
-      <button className="btn-ghost shrink-0" aria-pressed={on} onClick={() => (setRemindersOn(!on), setOn(!on))}>{on ? 'Turn off' : 'Turn on'}</button>
+    <div className="w-full divide-y divide-line rounded-2xl border border-line bg-surface">
+      {row('nudge', 'Streak nudge', '11am, only when your week still needs a session')}
+      {row('recap', 'Sunday recap', 'Your week in numbers, 7pm')}
     </div>
+  )
+}
+
+/** The intro's quiet line under the button: most people leave it, "Choose" folds out the two switches. */
+export function RemindersChoice() {
+  const [open, setOpen] = useState(false)
+  return open ? <div className="mt-4 w-full"><ReminderSwitches /></div> : (
+    <p className="mt-4 text-sm leading-relaxed text-muted">
+      Also a streak nudge when your week needs a session, and a Sunday recap.{' '}
+      <button className="font-medium text-accent" onClick={() => setOpen(true)}>Choose</button>
+    </p>
   )
 }
