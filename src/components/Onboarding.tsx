@@ -13,7 +13,7 @@ type Props = {
   mode: 'self' | 'local' | 'demo'
   stravaConfigured?: boolean
   /** Open in a phone's browser rather than from the home screen: show how to add it. null once installed, or on a computer. */
-  install?: 'ios' | 'android' | null
+  install?: 'ios' | 'android' | 'other' | null
   /** Phone-only, page 1: set up the phone's copy with or without sample data. */
   onData?: (sample: boolean) => Promise<void>
   /** The ChatGPT prompt for these answers (Planner's, with the goals in). */
@@ -34,21 +34,22 @@ const I = {
   share: 'M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7', // iOS's share glyph
   add: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 8v8M8 12h8',
   home: 'M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
-  dots: 'M12 5h.01M12 12h.01M12 19h.01',
   bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
 }
 
 /** First-run intro: five swipeable pages (plus the home-screen how-to, or rest alerts once it's installed, and a backup page on the phone-only copy), every question optional, Skip on every page. */
 export function Onboarding({ mode, stravaConfigured, install, onData, prompt, onStarters, onStravaFile, onFinish }: Props) {
   // Rest alerts need the installed app on iPhone, so they're offered once it is (the intro runs again in there).
-  const [alerts] = useState(() => !install && pushSupported())
+  // A phone still in its browser; on a computer the how-to shows, but nothing waits on it.
+  const phone = install === 'ios' || install === 'android'
+  const [alerts] = useState(() => !phone && pushSupported())
   // The pages in order; `at` gives a page's index, so a clip plays only while its page is showing.
   const ORDER = ['welcome', install && 'install', 'gym', alerts && 'alerts', mode === 'local' && 'backup', 'goals', 'about', 'training'].filter(Boolean) as string[]
   const PAGES = ORDER.length
   const at = (name: string) => ORDER.indexOf(name)
   const track = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
-  const onInstall = useInstallPrompt() // Android: Chrome's own install prompt, once it offers one
+  const onInstall = useInstallPrompt() // Chrome's own install prompt (Android, computers), once it offers one
   const browser = browserName()
   // A dialog over the app: focus starts inside it (the app behind is inert, see DataProvider).
   const root = useRef<HTMLDivElement>(null)
@@ -75,12 +76,10 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
   // Page 1 on the phone-only copy has its own buttons (fresh or sample), so swiping waits for that choice. Not in the
   // phone's browser, though: a home-screen app on iPhone keeps its own storage, so data set up here would stay behind.
   // Once chosen, page 1 lets go: the buttons would wipe what's been added since (they start the copy afresh).
-  const locked = mode === 'local' && !install && !chosen && page === 0
-  // The home-screen how-to: Safari and Chrome on iPhone get a clip of a real phone doing it (InstallGuide), the rest a list.
-  const installSteps: Step[] = install === 'ios'
-    ? [[I.share, <>Tap <b>Share</b> in {browser === 'your browser' ? 'your browser' : `${browser}'s`} toolbar (or <b>•••</b>, then Share)</>], [I.add, <>Scroll down and tap <b>Add to Home Screen</b></>], [I.home, <>Tap <b>Add</b>, then open RepRun from your home screen</>]]
-    : [[I.dots, <>Tap <b>⋮</b> at the top right of Chrome</>], [I.add, <>Tap <b>Install app</b> (or <b>Add to home screen</b>)</>], [I.home, <>Open RepRun from your home screen</>]]
-  const clip = install !== 'ios' ? null : browser === 'Safari' ? 'safari' : browser === 'Chrome' ? 'chrome' : null
+  const locked = mode === 'local' && !phone && !chosen && page === 0
+  // The home-screen how-to: a clip of a real iPhone doing it (InstallGuide), on every device.
+  // ponytail: Android gets the iPhone Chrome clip, whose buttons differ a little; record an Android one if that confuses people.
+  const clip = install === 'android' || (install === 'ios' && browser === 'Chrome') ? 'chrome' : 'safari'
 
   return (
     <div ref={root} tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-bg px-[max(0px,calc(50%-15rem))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.5rem)] outline-none" role="dialog" aria-modal="true" aria-label="Welcome to RepRun">
@@ -105,9 +104,9 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
             </ul>
           </div>
           {mode === 'demo' && <p className="mt-6 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">This is the demo, filled with made-up training. Have a look around, nothing here is saved for long.</p>}
-          {mode === 'local' && install && <p className="mt-8 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">Add RepRun to your home screen first (next page), then open it from there. Your training lives in the home-screen app.</p>}
-          {mode === 'local' && !install && chosen && <p className="mt-8 flex items-center justify-center gap-2 text-sm text-good"><Icon d="M20 6 9 17l-5-5" className="h-4 w-4" />All set on this phone. Swipe on, or Skip.</p>}
-          {mode === 'local' && !install && !chosen && (
+          {mode === 'local' && phone && <p className="mt-8 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">Add RepRun to your home screen first (next page), then open it from there. Your training lives in the home-screen app.</p>}
+          {mode === 'local' && !phone && chosen && <p className="mt-8 flex items-center justify-center gap-2 text-sm text-good"><Icon d="M20 6 9 17l-5-5" className="h-4 w-4" />All set on this phone. Swipe on, or Skip.</p>}
+          {mode === 'local' && !phone && !chosen && (
             <div className="mt-8 w-full space-y-2">
               <button className={`btn relative w-full py-3 text-base ${starting === 'fresh' ? 'busy' : ''}`} disabled={!!starting} onClick={() => void begin(false)}><Tap />Start fresh</button>
               <button className={`btn-ghost relative w-full py-3 ${starting === 'sample' ? 'busy' : ''}`} disabled={!!starting} onClick={() => void begin(true)}><Tap />Try it with sample data first</button>
@@ -121,18 +120,10 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
           <Page>
             <h2 className="text-3xl font-bold tracking-tight">Put it on your home screen</h2>
             <p className="mt-2 text-muted">Then RepRun opens like an app: full screen, one tap away, and it still works when the gym has no signal.</p>
-            {clip ? <InstallGuide clip={clip} active={page === at('install')} /> : (
-              <ol className="mt-7 w-full space-y-3 text-left">
-                {installSteps.map(([icon, text], i) => (
-                  <li key={i} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
-                    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><Icon d={icon} className="h-5 w-5" /></span>
-                    <span className="text-[15px] leading-snug"><span className="mr-1 text-muted">{i + 1}.</span>{text}</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {install === 'android' && onInstall && <button className="btn relative mt-4 w-full py-3 text-base" onClick={onInstall}><Tap />Install RepRun</button>}
-            {mode === 'local' && <p className="mt-4 text-sm text-muted">Do this before adding anything: the home-screen app keeps its own copy, separate from {browser}.</p>}
+            {install === 'other' && <p className="mt-2 text-sm text-accent-2">On a computer? Open this page on your iPhone in Safari.</p>}
+            <InstallGuide clip={clip} active={page === at('install')} />
+            {onInstall && <button className="btn relative mt-4 w-full py-3 text-base" onClick={onInstall}><Tap />Install RepRun</button>}
+            {mode === 'local' && phone && <p className="mt-4 text-sm text-muted">Do this before adding anything: the home-screen app keeps its own copy, separate from {browser}.</p>}
           </Page>
         )}
 

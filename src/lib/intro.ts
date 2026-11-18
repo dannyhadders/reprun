@@ -12,13 +12,13 @@ export const introAgain = () => get(AGAIN) === '1'
 export const markIntroDone = () => (put(DONE, '1'), put(AGAIN, null))
 export const showIntroAgain = () => (put(DONE, null), put(AGAIN, '1'))
 
-/** Open in a phone's browser rather than from the home screen: which how-to to show. null once installed, or on a computer. */
-export function installHint(): 'ios' | 'android' | null {
+/** Open in a browser rather than from the home screen: which how-to to show. null once installed. 'other' is a computer or an unknown device. */
+export function installHint(): 'ios' | 'android' | 'other' | null {
   const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone
   if (standalone) return null
   const ua = navigator.userAgent
   if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios' // iPadOS says it's a Mac
-  return /Android/.test(ua) ? 'android' : null
+  return /Android/.test(ua) ? 'android' : 'other'
 }
 
 // Android Chrome offers its install prompt when it decides to, often after the intro is already up. Keep the latest
