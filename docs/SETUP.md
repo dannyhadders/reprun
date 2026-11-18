@@ -88,14 +88,16 @@ Log a workout, or paste a plan from your PT: **+ → Import plan**.
 ## Rest alerts (nothing to set up)
 
 **Settings → Notifications → Rest alerts** (also offered in the intro) buzzes your lock screen and Apple Watch when
-rest is over, even with the phone in your pocket. It's off until you turn it on.
+rest is over, even with the phone in your pocket. It also sends a nudge at 6pm when your weekly streak needs a session,
+and your week in numbers at 7pm on Sunday (switch those two off under it). It's all off until you turn it on.
 
 - **Needs:** iPhone with iOS 16.4 or later, RepRun opened from the home screen (not a Safari tab), and
   notifications allowed. Android and desktop Chrome work too.
 - **Where it comes from:** your copy uses RepRun's own alert server, `push.reprun.co.uk`. The phone talks to it
   directly, so your Cloudflare Access login doesn't get in the way. It only ever gets your phone's notification
-  address (a random code from Apple or Google) and the time your rest ends, never your workouts, and deletes both
-  once the alert is sent. The alert itself is empty: your phone writes "Rest over".
+  address (a random code from Apple or Google) and the time each alert is due, never your workouts, and deletes both
+  once the alert is sent. The alert itself is empty: your phone writes "Rest over", or the nudge or recap it worked
+  out from your data and kept for that time.
 - **No alert?** Check **iPhone Settings → Notifications → RepRun**: Allow Notifications and Sounds on. On silent,
   or in a Focus, you get a vibration or nothing. If the app is still on screen when rest ends, it beeps instead.
 - **AirPods:** iOS doesn't play notification sounds in AirPods, but **Settings → Notifications → Announce

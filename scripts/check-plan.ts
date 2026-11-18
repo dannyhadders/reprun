@@ -148,3 +148,31 @@ const { swapExercise } = await import(sessionPath)
   eq(swapExercise({ ...ex, target: undefined }, 'Dips', 'chest', []).suggest, undefined, 'swap: no plan, no suggestion')
   console.log('swap self-check passed')
 }
+
+// Streak nudge and Sunday recap (src/lib/reminders.ts). Same data: weeks of 3, then 1 so far in the week of Mon 2026-11-16.
+{
+  const { reminders } = await import('../src/lib/reminders.ts')
+  const withTarget = (weekly: number) => buildModel({ ...data, profile: { ...data.profile, weekly } })
+  const at = (d: number, h: number) => new Date(2026, 10, d, h).getTime() // November 2026, local time
+  const tue = new Date(2026, 10, 17, 10)
+
+  const [nudge, recap] = reminders(withTarget(3), 'Legs', tue)
+  eq([nudge.kind, nudge.at, nudge.title], ['nudge', at(20, 18), 'Keep your 3-week streak going 🔥'], 'nudge: 2 to go on Tuesday → Friday 6pm, a spare day left')
+  assert(nudge.body.startsWith('2 more sessions this week keeps it alive. Next up: Legs.'), nudge.body)
+  eq([recap.kind, recap.at, recap.title], ['recap', at(22, 19), 'Your week: 1 session'], 'recap: Sunday 7pm, under target so no tick')
+  assert(recap.body.startsWith('1 gym session · 1 PB 🏆. Streak: 3 weeks 🔥.'), recap.body)
+
+  eq(reminders(withTarget(3), null, new Date(2026, 10, 21, 10))[0].at, at(21, 18), 'nudge: past the spare day, today at 6pm')
+  eq(reminders(withTarget(3), null, new Date(2026, 10, 21, 19)).map(n => n.kind), ['recap'], 'nudge: 2 to go with only Sunday left, none')
+  const hit = reminders(withTarget(1), null, tue)
+  eq(hit.map(n => n.kind), ['recap'], 'nudge: week already hit, none')
+  assert(hit[0].title === 'Your week: 1 session ✅' && hit[0].body.includes('Streak: 4 weeks 🔥.'), hit[0].title + hit[0].body)
+  eq(reminders(withTarget(1), null, new Date(2026, 10, 22, 20)), [], 'recap: Sunday evening gone, none until next week')
+
+  const none = buildModel({ ...data, workouts: [] })
+  const [n0, r0] = reminders(none, 'Push day', new Date(2026, 10, 16, 9))
+  eq([n0.title, n0.at], ['Time for a session?', at(21, 18)], 'nothing yet, target 1: Saturday 6pm')
+  assert(n0.body.startsWith('One more session this week hits your target of 1. Next up: Push day.'), n0.body)
+  eq(r0.title, 'A quiet week', 'quiet week recap')
+  console.log('reminders self-check passed')
+}

@@ -119,3 +119,11 @@ Not planned, just what Hevy has that we don't (compared 2026-11-18). Keep RepRun
 - [ ] **How-to link per exercise**: a link out to a video, instead of a library of our own.
 - [ ] **Apple Watch app / Apple Health sync / lock-screen Live Activity**: not possible from a PWA, would need a native app. Web Push (Rest-over notification above) is the closest we can get.
 - Skipped on purpose: social feed (likes, comments, following) and a ready-made programme library (paste-a-plan covers it). Plate calculator and Photos are already above.
+
+## PWA ideas, round 4
+
+Picked 2026-11-18 from a list of web-app abilities not explored yet.
+
+- [x] **Streak nudges and a Sunday recap** (on the rest alerts server): "1 more session keeps your 6-week streak · Next up: Push day", and Sunday evening "Your week: 3 sessions, 12 km, 2 PBs", each with a fact or a motivating line. The phone writes the words and schedules the time; the server still only sees the push address and when.
+- [ ] **Rest timer over other apps** (picture-in-picture): the countdown keeps showing while you scroll between sets. Prototype first: unknown if PiP works (and keeps counting) in the home-screen app on iPhone.
+- [ ] **Face ID lock** (a passkey via WebAuthn, checked on the phone): optional, so whoever picks up your phone can't browse your history. Mainly for phone-only.

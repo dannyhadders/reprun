@@ -7,6 +7,9 @@ import { loadActive, outbox, restOver, saveActive, totals, useNow } from '../lib
 import { ask, CopyButton, Icon } from './ui'
 import { Tap } from '../lib/haptic'
 import { AddWorkout } from './AddWorkout'
+import { routineRows } from './Planner'
+import { pauseReminders, scheduleReminders } from '../lib/push'
+import { reminders } from '../lib/reminders'
 
 const I = {
   home: 'M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
@@ -31,6 +34,14 @@ const NAV = [
 
 export function Layout() {
   const { pathname } = useLocation()
+  // Streak nudge and Sunday recap, worked out again whenever the data changes (lib/reminders.ts). Not on the demo's
+  // shared made-up data, and not mid-workout: the logger's own page leaves them paused until it's saved.
+  const { data, model, reload } = useData()
+  useEffect(() => {
+    if (data.demo) return
+    if (loadActive()) return pauseReminders()
+    void scheduleReminders(reminders(model, routineRows(data, model).next?.r.name ?? null))
+  }, [data, model])
   const navigate = useNavigate()
   const [more, setMore] = useState(false)
   // Drag the More sheet down to close it, like an iOS sheet. Styles set directly: no re-render per touchmove.
@@ -53,7 +64,6 @@ export function Layout() {
       drag.current = null
     },
   }
-  const { data, reload } = useData()
   const on = (to: string) => (to === '/' ? pathname === '/' : pathname.startsWith(to))
   // Like Link: tapping where you already are doesn't stack another back-swipe.
   const go = (to: string) => navigate(to, { replace: pathname === to })

@@ -5,7 +5,7 @@ import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
 import { BackupNudge } from '../components/PhoneOnly'
 import { LOCAL } from '../lib/local'
-import { scheduleRest } from '../lib/push'
+import { pauseReminders, scheduleRest } from '../lib/push'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
@@ -26,6 +26,9 @@ export default function Log() {
   const [finished, setFinished] = useState<ImportWorkout | null>(null)
   // Finished or discarded: no rest alert still to come.
   const setActive = (a: Active | null) => (a || scheduleRest(null), saveActive(a), setActiveRaw(a))
+  // No streak nudge in the middle of a workout. Home works them out again once you're back (Layout).
+  const running = !!active
+  useEffect(() => { if (running) pauseReminders() }, [running])
 
   const finish = (a: Active) => {
     if (!totals(a).sets) return void ask('No sets ticked off. Discard this workout?', 'Discard', true).then(ok => ok && setActive(null))

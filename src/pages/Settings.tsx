@@ -10,7 +10,7 @@ import { api, importStravaFile, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
 import { lastBackup, saveBackup } from '../lib/backupFile'
 import { ThisPhoneCard } from '../components/PhoneOnly'
-import { pushSupported, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
+import { pushSupported, RemindersSwitch, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
 import { CHANGELOG } from '../lib/changelog'
 import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/format'
 
@@ -240,6 +240,7 @@ function StravaCard() {
 const badgeSupported = !LOCAL && 'setAppBadge' in navigator && 'Notification' in window // phone-only has no uploads to count
 
 function NotificationsCard() {
+  const { data } = useData()
   const alerts = useRestAlerts()
   const [perm, setPerm] = useState(() => 'Notification' in window ? Notification.permission : 'denied')
   return (
@@ -249,6 +250,7 @@ function NotificationsCard() {
           <p className="font-medium">Rest alerts</p>
           <p className="mt-0.5 text-sm text-muted">A buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket.</p>
           <RestAlertsButton {...alerts} className="mt-3" />
+          {alerts.state === 'on' && !data.demo && <div className="mt-5 border-t border-line pt-4"><RemindersSwitch /></div>}
           <div className="mt-3"><WhatsSent /></div>
         </div>
       )}

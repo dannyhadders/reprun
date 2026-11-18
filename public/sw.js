@@ -22,7 +22,7 @@ self.addEventListener('message', e => e.data === 'update' && self.skipWaiting())
 
 // Taking over: delete every other build's cache. Workouts and settings are in localStorage, which this never touches.
 self.addEventListener('activate', e => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k)
+  for (const k of await caches.keys()) if (k !== CACHE && k !== NOTES) await caches.delete(k) // NOTES: reminders still to come
   await self.clients.claim()
 })()))
 
@@ -42,13 +42,24 @@ self.addEventListener('fetch', e => {
     : fetch(e.request).then(save).catch(() => caches.match(key).then(hit => hit ?? Response.error())))
 })
 
-// Rest alerts (src/lib/push.tsx): the push arrives empty, so the words are written here. Tapping it opens the workout.
-self.addEventListener('push', e => e.waitUntil(self.registration.showNotification('Rest over', {
-  body: 'Time for your next set.', tag: 'rest', icon: '/icon-512.png',
-})))
+// Alerts (src/lib/push.tsx): every push arrives empty. A streak nudge or Sunday recap due about now has its words saved
+// by the app in NOTES; anything else is a rest alert. Each reminder shows once, then it's taken out.
+const NOTES = 'reprun-notes'
+self.addEventListener('push', e => e.waitUntil((async () => {
+  const c = await caches.open(NOTES)
+  const notes = await c.match('/notes').then(r => r?.json() ?? []).catch(() => [])
+  const now = Date.now()
+  // Due within the last hour (the server keeps a reminder for an hour if the phone's offline), or a minute early.
+  const note = notes.filter(n => n.at <= now + 60_000 && n.at > now - 3_600_000).sort((a, b) => Math.abs(a.at - now) - Math.abs(b.at - now))[0]
+  if (note) await c.put('/notes', new Response(JSON.stringify(notes.filter(n => n !== note))))
+  await self.registration.showNotification(note?.title ?? 'Rest over', {
+    body: note?.body ?? 'Time for your next set.', tag: note?.kind ?? 'rest', icon: '/icon-512.png', data: { url: note ? '/' : '/log' },
+  })
+})()))
 self.addEventListener('notificationclick', e => {
   e.notification.close()
+  const url = e.notification.data?.url ?? '/log'
   e.waitUntil(self.clients.matchAll({ type: 'window' }).then(open => open[0]
-    ? open[0].focus().then(c => c.navigate?.('/log'))
-    : self.clients.openWindow('/log')))
+    ? open[0].focus().then(c => c.navigate?.(url))
+    : self.clients.openWindow(url)))
 })
