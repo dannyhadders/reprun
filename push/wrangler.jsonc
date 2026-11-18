@@ -10,6 +10,7 @@
   "workers_dev": false,
   "routes": [{ "pattern": "push.reprun.co.uk", "custom_domain": true }],
   "dev": { "port": 8788 },
+  "observability": { "enabled": true }, // Logs tab: "push sent 201" or "push failed <status>", never the address
   "durable_objects": { "bindings": [{ "name": "REST", "class_name": "Rest" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Rest"] }]
 }

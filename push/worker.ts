@@ -36,7 +36,7 @@ export class Rest extends DurableObject<Env> {
       headers: { TTL: '60', Urgency: 'high', Authorization: await vapid(endpoint, JSON.parse(this.env.VAPID_PRIVATE), Date.now()) },
       body: '',
     })
-    if (!res.ok) console.log('push failed', res.status, (await res.text()).slice(0, 200)) // never the address
+    console.log(res.ok ? 'push sent' : 'push failed', res.status, res.ok ? '' : (await res.text()).slice(0, 200)) // never the address
   }
 
   private async clear() {
