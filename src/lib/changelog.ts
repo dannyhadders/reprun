@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'Planks and other holds: a plan line like "Plank – 3x45s" is seconds, not reps. The box says Secs, − and + move 5 seconds, and ✓ starts a countdown that beeps, ticks the set and starts your rest when it\'s done (or tap Done or Cancel). Next time it suggests 5 seconds longer than your best.',
       'The ChatGPT prompts ask it to leave the weight out when it doesn\'t know it, instead of writing "@ choose a challenging weight". RepRun asks for a weight the first time instead.',
       'The intro asks for a moment on each page: Next fills up from left to right and lights up when it\'s ready, and Skip checks you\'re sure, since the first steps (your goals and a plan) make RepRun a lot more useful.',
       'Paste a plan in the intro now brings you back to the intro once it\'s saved (or you tap Back), with your answers kept, so you can still add starter routines or your Strava history before Let\'s go.',

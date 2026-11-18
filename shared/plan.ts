@@ -10,7 +10,8 @@
 import { GOALS, type GoalId } from './rules.ts'
 import type { Profile } from './types.ts'
 
-export type PlanItem = { name: string; sets: number; repsMin: number; repsMax: number; weight: number | null; restS: number | null; note: string | null }
+// timed: repsMin/repsMax are seconds held ("Plank – 3x45s"), not reps.
+export type PlanItem = { name: string; sets: number; repsMin: number; repsMax: number; weight: number | null; restS: number | null; note: string | null; timed?: boolean }
 export type ParsedRoutine = { name: string; items: PlanItem[]; unparsed: string[] }
 
 const SETS = /(\d+)\s*(?:x|×|\*|sets?\s*(?:of|x)?)\s*(\d+)(?:\s*(?:-|–|to)\s*(\d+))?/i
@@ -46,6 +47,8 @@ export function parseLine(raw: string): PlanItem | null {
   if (!name) return null
   const w = line.slice(s.index! + s[0].length).match(WEIGHT) ?? before.match(WEIGHT)
   const repsMin = Number(s[2])
+  // "3x45s", "2x45-60 sec", "3 sets of 30 seconds": held for that long, not reps.
+  const timed = /^\s*(?:s|secs?|seconds?)\b/i.test(line.slice(s.index! + s[0].length))
   return {
     name: before ? name.replace(WEIGHT, '').trim() : name,
     sets: Number(s[1]),
@@ -55,6 +58,7 @@ export function parseLine(raw: string): PlanItem | null {
     // "rest 2" with no unit means minutes; "rest 90" means seconds.
     restS: restVal === null ? null : /^m/i.test(restUnit) || (!restUnit && restVal <= 5) ? Math.round(restVal * 60) : Math.round(restVal),
     note,
+    ...(timed && { timed: true }),
   }
 }
 
@@ -85,7 +89,7 @@ export function parsePlan(text: string): ParsedRoutine[] {
 }
 
 export const formatLine = (p: PlanItem) =>
-  `${p.name} – ${p.sets}x${p.repsMin}${p.repsMax > p.repsMin ? `-${p.repsMax}` : ''}${p.weight !== null ? ` @ ${p.weight}kg` : ''}${p.restS ? `, rest ${p.restS}s` : ''}${p.note ? `; ${p.note}` : ''}`
+  `${p.name} – ${p.sets}x${p.repsMin}${p.repsMax > p.repsMin ? `-${p.repsMax}` : ''}${p.timed ? 's' : ''}${p.weight !== null ? ` @ ${p.weight}kg` : ''}${p.restS ? `, rest ${p.restS}s` : ''}${p.note ? `; ${p.note}` : ''}`
 
 /**
  * Rough session length: ~40 s per set plus its rest, and a minute per exercise to set up.
@@ -100,14 +104,19 @@ export function roughTime(s: number) {
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} hr${m % 60 ? ` ${m % 60} min` : ''}`
 }
 
-export const targetText = (p: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax'>) => `${p.sets} × ${p.repsMin}${p.repsMax > p.repsMin ? `–${p.repsMax}` : ''}`
+export const targetText = (p: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax' | 'timed'>) => `${p.sets} × ${p.repsMin}${p.repsMax > p.repsMin ? `–${p.repsMax}` : ''}${p.timed ? 's' : ''}`
 
 /**
  * Double progression: hit the top of the rep range on every set at your working weight and the
  * weight goes up (+2.5 kg, or +1 kg under 20 kg); otherwise same weight, one more rep. Rated 9-10 for effort last
  * time (hard or all-out): the weight holds even at the top of the range, and `held` says why.
  */
-export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight'>, last: { weight_kg: number | null; reps: number | null; rpe?: number | null }[]): { weight: number | null; reps: number; held?: true } {
+export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight' | 'timed'>, last: { weight_kg: number | null; reps: number | null; seconds?: number | null; rpe?: number | null }[]): { weight: number | null; reps: number; held?: true } {
+  // Timed (a plank): 5 seconds longer than your best hold last time, or the plan's shortest the first time.
+  if (p.timed) {
+    const best = Math.max(0, ...last.map(s => s.seconds ?? 0))
+    return { weight: p.weight, reps: best ? best + 5 : p.repsMin }
+  }
   const done = last.filter(s => s.reps)
   if (!done.length) return { weight: p.weight, reps: p.repsMin }
   const top = Math.max(...done.map(s => s.weight_kg ?? 0))
@@ -135,6 +144,7 @@ const aboutMe = (me: Me) => {
 const planFormat = (names: string[]) => `Start each workout day with its name on its own line, ending with a colon.
 Then one line per exercise, exactly like this:
 Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
+For exercises you hold, give the seconds with an s, like: Plank – 3x45s, rest 45s
 Use kg. Leave out the "@ ...kg" part for bodyweight exercises, and when you don't know my weight: never write a placeholder like "@ choose a weight".
 Put it all inside one code block, with nothing but the workout lines in it, so I can copy it in one tap.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
 

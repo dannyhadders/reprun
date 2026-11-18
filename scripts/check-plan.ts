@@ -74,6 +74,15 @@ eq(chatty.map(r => [r.name, r.items.map(i => i.name)]), [['Legs – Wednesday', 
 const fenced = parsePlan("Here you go!\n\n```\nPush:\nBench Press – 4x8 @ 60kg\nDips – 3x12\n```\n\nIf 4x8 is easy, add 2.5 kg.\nPull:\nRow – 3x10")
 eq(fenced.map(r => [r.name, r.items.length]), [['Push', 2]], 'code block: only the block')
 eq(parseLine('Squat 3x5 @ 100 kg.')?.name, 'Squat', 'a short line ending in a full stop is still an exercise')
+// Timed exercises: "2x45-60s" is seconds held, not reps, and it survives a save (formatLine) and reload (parseLine).
+const plank = parseLine('Plank – 2x45-60s, rest 45s')!
+eq([plank.name, plank.sets, plank.repsMin, plank.repsMax, plank.restS, plank.timed], ['Plank', 2, 45, 60, 45, true], 'timed: seconds, not reps')
+eq(formatLine(plank), 'Plank – 2x45-60s, rest 45s', 'timed: written back with its s')
+eq(parseLine(formatLine(plank)), plank, 'timed: round trip')
+eq(parseLine('Wall Sit – 3 sets of 30 seconds')?.timed, true, 'timed: "sets of 30 seconds"')
+eq(parseLine('Bench – 3x8, rest 90s')?.timed, undefined, 'rest in seconds does not make it timed')
+eq(suggest(plank, []), { weight: null, reps: 45 }, 'timed: first time, the shortest hold')
+eq(suggest(plank, [{ weight_kg: null, reps: null, seconds: 50 }, { weight_kg: null, reps: null, seconds: 40 }]), { weight: null, reps: 55 }, 'timed: 5 s past the best hold')
 console.log('plan.ts self-check passed')
 
 // Live PB in the logger: same rule as buildModel's PBs.

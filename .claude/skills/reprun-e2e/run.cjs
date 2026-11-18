@@ -237,6 +237,24 @@ const CHECKS = {
     await t.expect(t.page.getByText('Arm day').first(), 'The pasted routine is in the planner, and the paste box is closed')
   }],
 
+  'timed': ['A held exercise (Plank – 2x5s): seconds box, ✓ starts the countdown, which ticks the set and starts rest', async t => {
+    await begin(t, false)
+    await planner(t)
+    await t.page.getByRole('button', { name: /^\+ Import/ }).click()
+    await t.page.getByRole('textbox', { name: 'Plan text' }).fill('Core:\nPlank – 2x5s, rest 30s')
+    await t.page.getByRole('button', { name: 'Save 1 routine' }).click()
+    await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
+    await t.page.locator('button[aria-expanded]').first().click()
+    await t.expect(t.page.getByText('Secs', { exact: true }), 'The column says Secs, not Reps')
+    await t.expect(t.page.getByRole('spinbutton', { name: 'Set 1 seconds' }), 'The box is for seconds')
+    await t.page.getByRole('button', { name: 'Set 1 done' }).click()
+    await t.expect(t.page.getByRole('timer', { name: 'Hold' }), 'The hold countdown starts')
+    await t.shot('Holding')
+    await t.expect(t.page.getByRole('button', { name: 'Set 1 done', pressed: true }), 'Its end ticks the set')
+    await t.expect(t.page.getByRole('button', { name: 'Skip' }), 'and rest starts')
+    await t.shot('Ticked, resting')
+  }],
+
   'body-weight': ['Log body weight on Home', async t => {
     await begin(t, true)
     await t.page.getByRole('spinbutton', { name: 'Body weight in kg' }).fill('77.4')

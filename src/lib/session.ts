@@ -14,12 +14,15 @@ export type LogExercise = {
   muscle: Muscle
   restS: number
   sets: LogSet[]
-  target?: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax' | 'note'> // from a routine
+  target?: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax' | 'note' | 'timed'> // from a routine
+  timed?: boolean // held for seconds (a plank): each set's `reps` box holds the seconds, saved as `seconds`
   suggest?: { weight: string; reps: string; fresh?: boolean; held?: boolean } // progression pick, shown as placeholders; fresh = no history and no weight in the plan; held = weight kept because last time felt hard
   collapsed?: boolean // folded away in the logger; ticked count still shows
   rpe?: number // how hard it felt, rated once it's done; saved on each of its sets
 }
-export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null } // restFrom: when the rest began, for the timer bar
+export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null; hold?: Hold | null } // restFrom: when the rest began, for the timer bar
+/** A timed set's countdown: exercise i, set j, ends at endsAt; it ticks the set when it runs out. */
+export type Hold = { i: number; j: number; endsAt: number; from: number }
 
 const KEY = { active: 'reprun.active', outbox: 'reprun.outbox', rest: 'reprun.rest' }
 const DEFAULT_REST = 90
@@ -69,8 +72,10 @@ export function fromRoutine(r: Routine, known: Exercise[], last: Last, aliases: 
     return {
       ...e,
       restS: p.restS ?? e.restS,
-      target: { sets: p.sets, repsMin: p.repsMin, repsMax: p.repsMax, note: p.note },
-      suggest: { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last(e.name).length, held: s.held },
+      ...(p.timed && { timed: true }),
+      target: { sets: p.sets, repsMin: p.repsMin, repsMax: p.repsMax, note: p.note, ...(p.timed && { timed: true }) },
+      // A hold with no weight is just bodyweight: nothing to ask the first time.
+      suggest: { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: !p.timed && s.weight === null && !last(e.name).length, held: s.held },
     }
   }))
 }
@@ -81,7 +86,8 @@ export function fromWorkout(w: Workout, exById: Map<number, Exercise>): Active {
   for (const s of w.sets) if (!order.includes(s.exercise_id)) order.push(s.exercise_id)
   return start(w.title ?? '', order.flatMap(id => {
     const ex = exById.get(id)
-    return ex ? [newExercise(ex.name, ex.muscle, w.sets.filter(s => s.exercise_id === id).length)] : []
+    const sets = w.sets.filter(s => s.exercise_id === id)
+    return ex ? [{ ...newExercise(ex.name, ex.muscle, sets.length), ...(isTimed(sets) && { timed: true }) }] : []
   }))
 }
 
@@ -94,7 +100,7 @@ export function swapExercise(ex: LogExercise, name: string, muscle: Muscle, last
   const target = ex.target && { ...ex.target, note: null }
   const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last)
   return {
-    name, muscle, restS: ex.restS, target,
+    name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }),
     sets: ex.sets.map(x => (x.done ? x : { ...x, weight: '', reps: '' })),
     suggest: s && { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last.length, held: s.held },
   }
@@ -104,9 +110,13 @@ export const rememberRest =(name: string, s: number) => write(KEY.rest, { ...rea
 
 const validSet = (s: LogSet) => s.done && +s.reps > 0 && (s.weight === '' || +s.weight >= 0)
 
+/** Sets held for time, not counted in reps: what makes an exercise timed when it comes from history, not a plan. */
+export const isTimed = (sets: Pick<WorkoutSet, 'reps' | 'seconds'>[]) => sets.length > 0 && sets.every(s => s.reps === null && (s.seconds ?? 0) > 0)
+
 export const totals = (a: Active) => {
   const sets = a.exercises.flatMap(e => e.sets.filter(validSet))
-  return { sets: sets.length, volume: sets.reduce((v, s) => v + (+s.weight || 0) * +s.reps, 0) }
+  const lifted = a.exercises.flatMap(e => (e.timed ? [] : e.sets.filter(validSet))) // seconds held aren't kilos lifted
+  return { sets: sets.length, volume: lifted.reduce((v, s) => v + (+s.weight || 0) * +s.reps, 0) }
 }
 
 /** Only ticked sets with reps go up; untouched planned sets are dropped. */
@@ -123,7 +133,7 @@ export function toImport(a: Active, endedAt = Date.now()): ImportWorkout {
       const lift = resolveExercise(e.name, null).lift ?? null
       return e.sets.filter(validSet).map(s => ({
         exercise: e.name, muscle: e.muscle, lift, position: position++,
-        weight_kg: s.weight === '' ? null : +s.weight, reps: +s.reps, seconds: null, notes: s.note?.trim() || null, rpe: e.rpe ?? null,
+        weight_kg: s.weight === '' ? null : +s.weight, reps: e.timed ? null : +s.reps, seconds: e.timed ? +s.reps : null, notes: s.note?.trim() || null, rpe: e.rpe ?? null,
       }))
     }),
   }
@@ -196,7 +206,7 @@ export function nextUp(a: Active) {
     if (!s) continue
     const w = s.weight || ex.suggest?.weight
     const r = s.reps || ex.suggest?.reps
-    return [ex.name, w && `${w} kilos`, r && `${r} reps`].filter(Boolean).join(', ')
+    return [ex.name, w && `${w} kilos`, r && `${r} ${ex.timed ? 'seconds' : 'reps'}`].filter(Boolean).join(', ')
   }
   return null
 }

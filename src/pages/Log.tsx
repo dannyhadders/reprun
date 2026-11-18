@@ -16,7 +16,7 @@ import { PbMoment } from '../components/PbMoment'
 import { pbShow } from '../lib/pbMoment'
 import { workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { loadActive, matchExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { beep, isTimed, loadActive, matchExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -105,10 +105,28 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     return () => (clearTimeout(t), clearTimeout(early))
   })
 
+  // The hold's countdown ran out (or Done): tick the set and start the rest, as a tap on ✓ would.
+  const finishHold = () => update(x => {
+    const h = x.hold
+    x.hold = null
+    const y = h && x.exercises[h.i]?.sets[h.j]
+    if (!h || !y || y.done) return
+    y.done = true
+    const finished = x.exercises.every(e => e.sets.every(z => z.done))
+    x.restFrom = Date.now()
+    x.restEndsAt = finished ? null : x.restFrom + x.exercises[h.i].restS * 1000
+  })
+  useEffect(() => {
+    if (!a.hold) return
+    const t = setTimeout(() => (beep(), finishHold()), a.hold.endsAt - Date.now())
+    return () => clearTimeout(t)
+  })
+
   const known = name.trim() ? matchExercise(name, data.exercises, data.aliases) : null // follows renames, merges and the catalogue
   const isNew = name.trim() && !known && newExercise(name).muscle === 'other'
   const t = totals(a)
-  const add = (n: string, m?: Muscle) => (update(x => void x.exercises.push(newExercise(n, m))), setName(''))
+  // Held for seconds last time (a plank): timed again.
+  const add = (n: string, m?: Muscle) => (update(x => void x.exercises.push({ ...newExercise(n, m), ...(isTimed(lastSets(model, n)) && { timed: true }) })), setName(''))
   // Search as you type: what you've logged, most recently done first.
   const q = name.trim().toLowerCase()
   const matches = q ? data.exercises.filter(e => e.name.toLowerCase().includes(q))
@@ -216,17 +234,17 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             )}
             {ex.target && (<>
               <p className="mb-3 text-xs text-muted">
-                Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
+                Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.timed ? 's' : ''}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
               {/* From a routine the grey numbers are today's suggestion, so last time goes here: every set, one line. */}
               {prev[0] && <p className="-mt-2 mb-3 text-xs text-muted">Last time: {prev.map(x => setText(x).replace(' kg', '')).join(' · ')}</p>}
             </>)}
             <div className="grid grid-cols-[1.25rem_minmax(6.5rem,1.4fr)_minmax(4.75rem,1fr)_2.75rem] items-center gap-1.5 text-sm">
-              <span className="text-xs text-muted">Set</span><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
+              <span className="text-xs text-muted">Set</span><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">{ex.timed ? 'Secs' : 'Reps'}</span><span />
               {ex.sets.map((s, j) => {
                 const p = prev[j] ?? prev.at(-1)
                 // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
-                const hint = ex.suggest ?? { weight: p?.weight_kg?.toString() ?? '', reps: p?.reps?.toString() ?? '' }
+                const hint = ex.suggest ?? { weight: p?.weight_kg?.toString() ?? '', reps: (ex.timed ? p?.seconds : p?.reps)?.toString() ?? '' }
                 return [
                   <SwipeRow key={`row${j}`} onDelete={ex.sets.length > 1 ? () => void removeSet(j) : undefined}>
                   {/* Tap the set number for a note on that set. */}
@@ -235,11 +253,23 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>
                   <Stepper done={s.done} by={2.5} min={0} label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} set={v => update(x => (x.exercises[i].sets[j].weight = v))} />
-                  <Stepper done={s.done} by={1} min={1} label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} set={v => update(x => (x.exercises[i].sets[j].reps = v))} />
+                  <Stepper done={s.done} by={ex.timed ? 5 : 1} min={ex.timed ? 5 : 1} label={`Set ${j + 1} ${ex.timed ? 'seconds' : 'reps'}`} placeholder={hint.reps} value={s.reps} set={v => update(x => (x.exercises[i].sets[j].reps = v))} />
                   <button aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
                     className={`press relative h-11 rounded-xl text-lg font-bold ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'} ${s.done && fx?.i === i && fx.j === j ? 'animate-pop' : ''}`}
                     onClick={async () => {
                       unlockAudio()
+                      // A timed set (a plank): ✓ starts its countdown, which ticks it at the end. ✓ again mid-hold ticks it now.
+                      if (ex.timed && !s.done) {
+                        if (a.hold?.i === i && a.hold.j === j) return finishHold()
+                        const secs = +(s.reps || hint.reps) || 30
+                        return update(x => {
+                          const y = x.exercises[i].sets[j]
+                          y.reps ||= String(secs)
+                          y.weight ||= hint.weight
+                          x.hold = { i, j, from: Date.now(), endsAt: Date.now() + secs * 1000 }
+                          x.restEndsAt = null // holding, not resting
+                        })
+                      }
                       // First time with no weight in the plan: a blank weight would save as bodyweight, so ask once.
                       if (!s.done && s.weight === '' && ex.suggest?.fresh && !await ask(`No weight entered for ${ex.name}. Log it as bodyweight?`, 'Bodyweight')) return
                       const all = !s.done && done + 1 === ex.sets.length
@@ -349,13 +379,30 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       {/* One dock at the bottom: Undo stacks on top of the rest timer, so neither can cover the other. */}
       <div className="fixed inset-x-0 bottom-0 z-20">
       {undo && (
-        <div className={`mx-4 mb-3 flex animate-toast-in items-center gap-3 rounded-2xl border border-line bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg sm:mx-auto sm:max-w-md ${a.restEndsAt ? '' : 'mb-[max(1rem,env(safe-area-inset-bottom))]'}`} role="status">
+        <div className={`mx-4 mb-3 flex animate-toast-in items-center gap-3 rounded-2xl border border-line bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg sm:mx-auto sm:max-w-md ${a.restEndsAt || a.hold ? '' : 'mb-[max(1rem,env(safe-area-inset-bottom))]'}`} role="status">
           <span className="min-w-0 flex-1 truncate text-sm">{undo.msg}</span>
           <button className="press relative min-h-11 rounded-xl px-4 text-sm font-semibold text-accent" onClick={() => (update(undo.put), setUndo(null), setFx(null))}><Tap />Undo</button>
         </div>
       )}
 
-      {a.restEndsAt && (
+      {a.hold && (
+        <div className="relative border-t border-line bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur" role="timer" aria-label="Hold">
+          {/* Fills as the hold goes on: the opposite of rest, which drains. */}
+          <div className="absolute inset-x-0 top-0 h-1 bg-line">
+            <div className="h-full bg-linear-to-r from-accent-2 to-good transition-[width] duration-1000 ease-linear"
+              style={{ width: `${Math.max(0, Math.min(1, (now - a.hold.from) / Math.max(1, a.hold.endsAt - a.hold.from))) * 100}%` }} />
+          </div>
+          <div className="mx-auto flex max-w-xl items-center gap-2">
+            <span className="flex min-w-0 flex-1 items-baseline gap-2">
+              <span className={`text-3xl font-bold tabular-nums ${a.hold.endsAt - now <= 5_000 ? 'text-good' : ''}`}>{clock(Math.max(0, (a.hold.endsAt - now) / 1000))}</span>
+              <span className="truncate text-sm text-muted">Hold · {a.exercises[a.hold.i]?.name}</span>
+            </span>
+            <button className="btn-ghost min-h-11" onClick={() => update(x => (x.hold = null))}>Cancel</button>
+            <button className="btn min-h-11" onClick={finishHold}>Done</button>
+          </div>
+        </div>
+      )}
+      {a.restEndsAt && !a.hold && (
         <div className="relative border-t border-line bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
           {/* Drains from full to empty over the rest; ±15 stretches or shrinks what's left. */}
           <div className="absolute inset-x-0 top-0 h-1 bg-line">
