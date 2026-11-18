@@ -212,11 +212,13 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 }}><Icon d={BIN} /></button>
               </div>
             )}
-            {ex.target && (
+            {ex.target && (<>
               <p className="mb-3 text-xs text-muted">
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
-            )}
+              {/* From a routine the grey numbers are today's suggestion, so last time goes here: every set, one line. */}
+              {prev[0] && <p className="-mt-2 mb-3 text-xs text-muted">Last time: {prev.map(x => setText(x).replace(' kg', '')).join(' · ')}</p>}
+            </>)}
             <div className="grid grid-cols-[1.25rem_minmax(6.5rem,1.4fr)_minmax(4.75rem,1fr)_2.75rem] items-center gap-1.5 text-sm">
               <span className="text-xs text-muted">Set</span><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
               {ex.sets.map((s, j) => {
