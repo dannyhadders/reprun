@@ -57,8 +57,8 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 
 UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pass.
 
-- [ ] **Tap "Last time" to copy it** into that set's kg and reps.
-- [ ] **− / + on kg (±2.5) and reps (±1)**, or swipe up/down on the field: less typing with sweaty hands.
+- [x] ~~**Tap "Last time" to copy it**~~: not needed. The boxes already show last time (or today's suggestion) in grey, ticking an empty set takes them, and − / + steps from them.
+- [x] **− / + on kg (±2.5) and reps (±1)** either side of each box. (No swipe up/down: it fights page scroll, and swipe left deletes.)
 - [x] **Fold a finished exercise** automatically once every set is ticked. (No auto-scroll: tried it, it jumped the page.)
 - [x] **Rest timer bar** that drains, with the numbers going green near the end and a buzz (Android) at 0.
 - [x] **PB badge on the set** the moment it's ticked, not only on the finish screen.

@@ -217,8 +217,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
             )}
-            <div className="grid grid-cols-[1.5rem_1fr_4.5rem_4.5rem_2.75rem] items-center gap-2 text-sm">
-              <span className="text-xs text-muted">Set</span><button type="button" className="-my-2 py-2 text-left text-xs text-muted underline decoration-dotted underline-offset-4" onClick={() => setPeek(ex.name)}>Last time</button><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
+            <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_6.5rem_4.75rem_2.75rem] items-center gap-1.5 text-sm">
+              <span className="text-xs text-muted">Set</span><button type="button" className="-my-2 py-2 text-left text-xs text-muted underline decoration-dotted underline-offset-4" onClick={() => setPeek(ex.name)} aria-label="Last time: open history">Last</button><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
               {ex.sets.map((s, j) => {
                 const p = prev[j] ?? prev.at(-1)
                 // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
@@ -230,9 +230,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>
-                  <span className="truncate text-muted">{p ? setText(p) : '–'}</span>
-                  <input className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} onChange={e => update(x => (x.exercises[i].sets[j].weight = e.target.value))} />
-                  <input className={`input h-11 px-2 text-center ${s.done ? 'border-good/30 text-muted' : ''}`} type="number" min="1" inputMode="numeric" aria-label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} onChange={e => update(x => (x.exercises[i].sets[j].reps = e.target.value))} />
+                  {/* Weight over reps: the − / + boxes leave this column narrow, and "102.5×10" on one line would cut off. */}
+                  <span className="flex flex-col truncate text-xs leading-tight text-muted">{p ? setText(p).replace(' kg', '').split(' × ').map((t, k) => <span key={k}>{k ? `× ${t}` : t}</span>) : '–'}</span>
+                  <Stepper done={s.done} by={2.5} min={0} label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} set={v => update(x => (x.exercises[i].sets[j].weight = v))} />
+                  <Stepper done={s.done} by={1} min={1} label={`Set ${j + 1} reps`} placeholder={hint.reps} value={s.reps} set={v => update(x => (x.exercises[i].sets[j].reps = v))} />
                   <button aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
                     className={`press relative h-11 rounded-xl text-lg font-bold ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'} ${s.done && fx?.i === i && fx.j === j ? 'animate-pop' : ''}`}
                     onClick={async () => {
@@ -375,6 +376,20 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 const BIN_W = 72 // px the row slides to show the bin; also the bin's width
 const SPEAKER_ON = 'M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14' // Lucide volume-2
 const SPEAKER_OFF = 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6' // Lucide volume-x
+/** A kg or reps box with − and + either side, so a sweaty hand can nudge it instead of typing. An empty box steps from its grey number. */
+function Stepper({ value, placeholder, by, min, label, done, set }: { value: string; placeholder: string; by: number; min: number; label: string; done: boolean; set: (v: string) => void }) {
+  const step = (d: number) => set(String(Math.max(min, Math.round(((value === '' ? +placeholder || 0 : +value) + d) * 100) / 100)))
+  const btn = 'press relative w-6 shrink-0 text-lg text-accent'
+  return (
+    <div className={`flex h-11 rounded-xl border bg-surface-2 focus-within:border-accent ${done ? 'border-good/30' : 'border-line'}`}>
+      <button type="button" className={btn} aria-label={`${label} down`} onClick={() => step(-by)}><Tap />−</button>
+      <input className={`min-w-0 flex-1 bg-transparent p-0 text-center text-sm outline-none placeholder:text-muted ${done ? 'text-muted' : 'text-ink'}`} type="number" min={min} step={by === 1 ? 1 : 0.5}
+        inputMode={by === 1 ? 'numeric' : 'decimal'} aria-label={label} placeholder={placeholder} value={value} onChange={e => set(e.target.value)} />
+      <button type="button" className={btn} aria-label={`${label} up`} onClick={() => step(by)}><Tap />+</button>
+    </div>
+  )
+}
+
 const TOOL = 'press relative grid size-11 shrink-0 place-items-center rounded-xl border border-line text-muted active:bg-surface-2 hover:text-ink'
 const HISTORY = 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2' // Lucide history
 const SHUFFLE = 'M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22M18 2l4 4-4 4M2 6h1.9c1.5 0 2.9.9 3.6 2.2M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8M18 14l4 4-4 4' // Lucide shuffle

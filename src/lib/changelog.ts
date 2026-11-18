@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'Less typing mid-set: − and + either side of the kg and reps boxes nudge the weight by 2.5 kg and the reps by 1. An empty box starts from the grey number.',
       'Rest alerts: a buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket. Turn them on in the intro or Settings → Notifications. Only "rest over" is sent, never your workouts.',
       'Streak nudges and a Sunday recap: with rest alerts on, RepRun nudges you in the late morning when your streak needs a session (Saturday 11am with one to go, so Sunday is still free), and on Sunday evening sends your week in numbers, with a fact or a push to keep going. The words are worked out on your phone. Turn either off with Choose in the intro, or in Settings → Notifications.',
       'Back in the app after checking another one, the rest timer catches up straight away instead of looking stuck.',
