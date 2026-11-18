@@ -14,5 +14,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["worker", "shared/types.ts", "shared/strava.ts", "shared/catalogue.ts", "shared/demo.ts", "shared/plan.ts"]
+  "include": ["worker", "push", "shared/types.ts", "shared/strava.ts", "shared/catalogue.ts", "shared/demo.ts", "shared/plan.ts"]
 }

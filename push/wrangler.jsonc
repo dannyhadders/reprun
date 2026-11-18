@@ -1,0 +1,15 @@
+{
+  // Rest alerts for every copy of RepRun (push/worker.ts). Its own Worker, like site/: nothing shared with the app's build.
+  // Workers Builds: no build command, deploy command `npx wrangler deploy -c push/wrangler.jsonc`.
+  // Secret VAPID_PRIVATE: the private key, made by `node push/keys.mjs` (it must match VAPID in src/lib/push.tsx).
+  // Locally: `npx wrangler dev -c push/wrangler.jsonc` (http://localhost:8788), reading push/.dev.vars.
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "reprun-push",
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "routes": [{ "pattern": "push.reprun.co.uk", "custom_domain": true }],
+  "dev": { "port": 8788 },
+  "durable_objects": { "bindings": [{ "name": "REST", "class_name": "Rest" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Rest"] }]
+}
