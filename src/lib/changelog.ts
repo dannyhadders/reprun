@@ -4,7 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
-      'Ask ChatGPT for one workout: on Import a plan, pick from the three muscle groups you\'ve trained least this week. RepRun copies a prompt with your last 5 workouts in it; paste ChatGPT\'s reply back in and it becomes a routine.',
+      'Ask ChatGPT for one workout: tap + Import / create plan on the workout screen, choose Just today (or Full weekly plan for a whole week) and pick from the three muscle groups you\'ve trained least this week. RepRun copies a prompt with your last 5 workouts in it; paste ChatGPT\'s reply back in and it becomes a routine.',
       'Year in review on a phone no longer slides sideways: the PBs and Hall of fame cards fit the screen, with long exercise names cut short.',
       'Less typing mid-set: − and + either side of the kg and reps boxes nudge the weight by 2.5 kg and the reps by 1. An empty box starts from the grey number. The boxes are wider now, and an exercise from a routine shows last time\'s sets on one line under the plan.',
       'Rest alerts: a buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket. Turn them on in the intro or Settings → Notifications. Only "rest over" is sent, never your workouts.',

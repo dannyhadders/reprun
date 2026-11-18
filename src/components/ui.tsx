@@ -7,8 +7,8 @@ export const Icon = ({ d, className = 'h-5 w-5' }: { d: string; className?: stri
     <path d={d} />
   </svg>
 )
-const COPY = 'M9 3h6v3H9zM9 4.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H15'
-const CHECK = 'M5 12.5 10 17.5 19 7'
+export const COPY = 'M9 3h6v3H9zM9 4.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H15'
+export const CHECK = 'M5 12.5 10 17.5 19 7'
 
 export function Card({ title, action, children, className = '' }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
@@ -55,7 +55,7 @@ export function PbBadge({ kinds }: { kinds?: string[] }) {
   return <span className="rounded-full bg-pb/15 px-1.5 py-0.5 text-[10px] font-bold text-pb">🏆 {label}</span>
 }
 
-export function Tabs<T extends string>({ value, options, onChange, size = 'md' }: { value: T; options: readonly T[] | { value: T; label: string }[]; onChange: (v: T) => void; size?: 'sm' | 'md' }) {
+export function Tabs<T extends string>({ value, options, onChange, size = 'md' }: { value: T; options: readonly T[] | { value: T; label: ReactNode }[]; onChange: (v: T) => void; size?: 'sm' | 'md' }) {
   const opts = options.map(o => (typeof o === 'string' ? { value: o, label: o } : o))
   return (
     <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-surface-2 p-1">
