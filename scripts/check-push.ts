@@ -1,14 +1,21 @@
 // Assert-based self-check for the rest alerts Worker (push/rules.ts): what it accepts, and that its signature verifies.
 // npx tsx scripts/check-push.ts
 import assert from 'node:assert/strict'
-import { fromB64url, MAX_AHEAD, parse, publicKey, vapid } from '../push/rules.ts'
+import { fromB64url, KINDS, MAX_AHEAD, parse, publicKey, vapid } from '../push/rules.ts'
 
 const now = 1_800_000_000_000
 const apple = 'https://web.push.apple.com/QGuQyavXut'
 
-assert.deepEqual(parse({ endpoint: apple, at: now + 90_000 }, now), { endpoint: apple, at: now + 90_000 })
-assert.deepEqual(parse({ endpoint: apple, at: null }, now), { endpoint: apple, at: null })
-assert.deepEqual(parse({ endpoint: apple, at: now - 1000 }, now), { endpoint: apple, at: now }) // a touch late: send now
+assert.deepEqual(parse({ endpoint: apple, at: now + 90_000 }, now), { endpoint: apple, at: now + 90_000, kind: 'rest' })
+assert.deepEqual(parse({ endpoint: apple, at: null }, now), { endpoint: apple, at: null, kind: 'rest' })
+assert.deepEqual(parse({ endpoint: apple, at: now - 1000 }, now), { endpoint: apple, at: now, kind: 'rest' }) // a touch late: send now
+// Reminders can be days ahead; rest alerts can't, and unknown kinds are refused.
+assert.deepEqual(parse({ endpoint: apple, at: now + 3 * 86_400_000, kind: 'recap' }, now), { endpoint: apple, at: now + 3 * 86_400_000, kind: 'recap' })
+assert.ok(parse({ endpoint: apple, at: now + KINDS.nudge, kind: 'nudge' }, now))
+assert.equal(parse({ endpoint: apple, at: now + KINDS.nudge + 1, kind: 'nudge' }, now), null)
+assert.equal(parse({ endpoint: apple, at: now + 3 * 86_400_000 }, now), null)
+assert.equal(parse({ endpoint: apple, at: now, kind: 'spam' }, now), null)
+assert.equal(parse({ endpoint: apple, at: now, kind: 'toString' }, now), null)
 assert.ok(parse({ endpoint: 'https://fcm.googleapis.com/fcm/send/x', at: now }, now))
 assert.ok(parse({ endpoint: 'https://wns2-par02p.notify.windows.com/w/?token=x', at: now }, now))
 // Anything else is refused: other hosts, look-alikes, http, too far ahead, no time, junk.

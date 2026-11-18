@@ -1,22 +1,28 @@
 // The push Worker's pure parts, so scripts/check-push.ts can run them in Node.
 
-export const MAX_AHEAD = 10 * 60_000 // rest alerts at most 10 minutes ahead
+// What a push is for, and how far ahead it can be: rest alerts within minutes, streak nudges and the Sunday recap within
+// a week. Each phone has at most one waiting per kind. The push is empty either way: the phone knows what it's for.
+export const KINDS = { rest: 10 * 60_000, nudge: 8 * 86_400_000, recap: 8 * 86_400_000 }
+export type Kind = keyof typeof KINDS
+export const MAX_AHEAD = KINDS.rest
 
 // Only real push services, or anyone could use this Worker to send requests to any address.
 const HOSTS = ['web.push.apple.com', 'fcm.googleapis.com', 'updates.push.services.mozilla.com']
 const pushHost = (h: string) => HOSTS.includes(h) || h.endsWith('.notify.windows.com')
 
-/** The app's request: { endpoint, at } schedules the alert, { endpoint, at: null } cancels it. null if it's neither. */
-export function parse(body: unknown, now: number): { endpoint: string; at: number | null } | null {
+/** The app's request: { endpoint, at, kind? } schedules the push, at: null cancels it. kind defaults to rest. null if it's neither. */
+export function parse(body: unknown, now: number): { endpoint: string; at: number | null; kind: Kind } | null {
   if (!body || typeof body !== 'object') return null
-  const { endpoint, at } = body as Record<string, unknown>
+  const { endpoint, at, kind = 'rest' } = body as Record<string, unknown>
+  if (typeof kind !== 'string' || !Object.hasOwn(KINDS, kind)) return null
+  const k = kind as Kind
   if (typeof endpoint !== 'string' || endpoint.length > 1000) return null
   let u: URL
   try { u = new URL(endpoint) } catch { return null }
   if (u.protocol !== 'https:' || !pushHost(u.hostname)) return null
-  if (at === null) return { endpoint, at }
-  if (typeof at !== 'number' || !Number.isFinite(at) || at < now - 5000 || at > now + MAX_AHEAD) return null
-  return { endpoint, at: Math.max(at, now) }
+  if (at === null) return { endpoint, at, kind: k }
+  if (typeof at !== 'number' || !Number.isFinite(at) || at < now - 5000 || at > now + KINDS[k]) return null
+  return { endpoint, at: Math.max(at, now), kind: k }
 }
 
 const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
