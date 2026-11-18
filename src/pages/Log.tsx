@@ -93,7 +93,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   useEffect(() => {
     if (!a.restEndsAt) return
     const t = setTimeout(() => (restOver(loadActive() ?? a), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
-    const early = setTimeout(() => document.visibilityState === 'visible' && scheduleRest(null), a.restEndsAt - Date.now() - 2000)
+    // "On screen" means the screen is drawing: a locked iPhone can keep running timers (the beep's audio keeps the page
+    // awake) and still say 'visible', but it stops animation frames. No frame within a second: leave the alert to go.
+    const ends = a.restEndsAt
+    const early = setTimeout(() => requestAnimationFrame(() => Date.now() < ends - 1000 && scheduleRest(null)), ends - Date.now() - 2000)
     return () => (clearTimeout(t), clearTimeout(early))
   })
 

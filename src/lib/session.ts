@@ -159,8 +159,12 @@ async function send() {
 export function useNow() {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
+    const tick = () => setNow(Date.now())
+    const t = setInterval(tick, 1000)
+    // Back from the home screen: catch up at once, as iOS can leave the interval asleep for a while after it.
+    addEventListener('pageshow', tick)
+    document.addEventListener('visibilitychange', tick)
+    return () => (clearInterval(t), removeEventListener('pageshow', tick), document.removeEventListener('visibilitychange', tick))
   }, [])
   return now
 }
