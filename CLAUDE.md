@@ -15,6 +15,16 @@ Worker with a D1 (SQLite) database, behind Cloudflare Access. Mostly used as an 
 - The repo is public: no emails, secrets, database IDs or personal data in code or commits. Secrets live in Cloudflare (`ALLOWED_EMAIL`, `ACCESS_TEAM`, `ACCESS_AUD`, `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`).
 - Never run `wrangler deploy` or remote D1 commands against the owner's live `reprun` / `reprun-demo` Workers; deploys happen by pushing, and the owner runs anything remote by hand.
 
+## Brand
+
+**Always follow the brand book** for anything people see: app screens, the website, share pictures, reels, carousels and copy (including changelog lines).
+It's `site/public/brand/index.html`, live at https://reprun.co.uk/brand/ (unlisted). It covers colour tokens (with contrast), type scale,
+the mark, buttons, components, motion timings, iPhone feel, voice (with say/don't-say examples), and every asset made so far.
+
+- Use the tokens, never a new hex. The real values live in `src/index.css` (`@theme`, the app) and `site/public/index.html` (`:root`, the website); change a token in all three places at once.
+- Adding a colour, component, animation or rule? Add it to the brand book in the same commit.
+- New logos, screenshots, reels or carousels go in `site/public/brand/assets/` and get a card in section 09. Screenshots only from the demo's made-up data, never real history.
+
 ## Commands
 
 ```sh
