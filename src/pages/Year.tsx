@@ -77,7 +77,7 @@ export default function Year() {
         <Heatmap year={year} days={y.activeDates} />
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         <Card className="lg:col-span-3" title="Month by month"><Chart height={240} label="Sessions per month" config={monthChart} /></Card>
         <Card className="lg:col-span-2" title="Best month">
           {best && best.days > 0 ? (
@@ -95,7 +95,7 @@ export default function Year() {
         </Card>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card title="Top exercises">
           <ol className="space-y-3">
             {y.topExercises.map((t, i) => (
@@ -122,7 +122,7 @@ export default function Year() {
         </Card>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card title={`PBs in ${year}`} action={<span className="text-sm text-muted">{plural(y.pbSets.length, 'PB')}</span>}>
           {y.pbSets.length ? (
             <ul className="divide-y divide-line">
