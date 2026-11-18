@@ -71,7 +71,7 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
   const locked = mode === 'local' && !install && !chosen && page === 0
 
   return (
-    <div ref={root} tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-bg px-[max(0px,calc(50%-15rem))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] outline-none" role="dialog" aria-modal="true" aria-label="Welcome to RepRun">
+    <div ref={root} tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-bg px-[max(0px,calc(50%-15rem))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.5rem)] outline-none" role="dialog" aria-modal="true" aria-label="Welcome to RepRun">
       <div className="flex h-12 items-center justify-end px-2">
         {!locked && <button className="press min-h-11 rounded-xl px-4 text-sm font-medium text-muted" onClick={() => onFinish(null)}>Skip</button>}
       </div>

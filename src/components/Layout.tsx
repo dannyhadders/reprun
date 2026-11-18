@@ -92,7 +92,7 @@ export function Layout() {
         <p className="mt-auto px-2 text-xs text-muted">Lift. Run. Repeat.</p>
       </aside>
 
-      <main className={`mx-auto w-full max-w-6xl px-4 ${loadActive() ? 'pb-48' : 'pb-28'} pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8 md:pb-12 md:pt-10`}>
+      <main className={`mx-auto w-full max-w-6xl px-4 ${loadActive() ? 'pb-48' : 'pb-28'} pt-[calc(env(safe-area-inset-top)+1rem)] md:px-8 md:pb-12 md:pt-10`}>
         {data.demo && (
           <p className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">
             <b>Demo</b> with made-up data: click around, log a workout, break things. It all resets every night.{' '}
@@ -166,7 +166,7 @@ function Uploaded() {
   }, [n])
   if (!n) return null
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex justify-center px-4" role="status">
+    <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 flex justify-center px-4" role="status">
       <p className="flex animate-toast-in items-center gap-2 rounded-full border border-good/40 bg-surface px-4 py-2 text-sm font-medium shadow-lg">
         <Icon d="M5 12.5 10 17.5 19 7" className="h-4 w-4 text-good" />{plural(n, 'workout')} uploaded
       </p>

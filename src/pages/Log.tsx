@@ -35,7 +35,7 @@ export default function Log() {
   }
 
   return (
-    <div className="mx-auto min-h-dvh max-w-xl animate-fade-in px-4 pb-40 pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="mx-auto min-h-dvh max-w-xl animate-fade-in px-4 pb-40 pt-[calc(env(safe-area-inset-top)+1rem)]">
       {finished ? <Summary w={finished} done={() => setFinished(null)} />
         : active ? <Workout a={active} set={setActive} finish={() => finish(active)} />
         : <Planner begin={setActive}><Outbox /></Planner>}
@@ -101,7 +101,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 
   return (
     <div className="space-y-4">
-      <header className="sticky top-0 z-10 -mx-4 flex items-center gap-3 border-b border-line bg-bg/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+      <header className="sticky top-0 z-10 -mx-4 flex items-center gap-3 border-b border-line bg-bg/95 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] backdrop-blur">
         {/* The workout stays saved on the phone; a bar on every page brings you back. */}
         <Link to="/" className="icon-btn -ml-2 text-xl" aria-label="Back to the menu, workout keeps running">‹</Link>
         <div className="min-w-0 flex-1">

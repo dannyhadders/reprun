@@ -198,7 +198,7 @@ export const useData = () => {
 function Skeleton() {
   const block = 'animate-pulse rounded-2xl bg-surface'
   return (
-    <div aria-busy aria-label="Loading" className="mx-auto w-full max-w-6xl space-y-5 px-4 pt-[max(1.5rem,env(safe-area-inset-top))] md:px-8 md:pt-10">
+    <div aria-busy aria-label="Loading" className="mx-auto w-full max-w-6xl space-y-5 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] md:px-8 md:pt-10">
       <div className="space-y-2"><div className="h-4 w-28 animate-pulse rounded bg-surface" /><div className="h-7 w-3/4 animate-pulse rounded bg-surface" /></div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[0, 1, 2, 3].map(i => <div key={i} className={`${block} h-24`} />)}</div>
       <div className={`${block} h-60`} />

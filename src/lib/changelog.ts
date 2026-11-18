@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'The top line of each page sits a little lower on iPhone, clear of the blur under the clock and battery.',
       'After an update, a short "Updated ✓" message says you\'re on the latest version, with a What\'s new button that opens this list.',
       'Updates no longer pile up old copies of the app on your phone: each new version clears out the last one, and it still opens with no signal.',
       'RepRun gets ready to work offline as soon as it opens again, even while it\'s still loading your data or showing the welcome screen.',
