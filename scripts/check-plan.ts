@@ -48,6 +48,9 @@ eq(focusChoices(['legs', 'legs', 'back', 'chest', 'core', 'other']).map(c => [c.
 const wp = workoutPrompt('Legs', 'Wed, 18 Nov 2026', ['Push day · Mon 16 Nov 2026\nBench Press: 60 kg × 8'], ['Squat'])
 assert(wp.includes('training legs') && wp.includes('Today is Wed, 18 Nov 2026. Here are my most recent workouts') && wp.includes('Bench Press: 60 kg × 8') && wp.includes('exact exercise names: Squat') && wp.includes('ending with a colon'), 'workout prompt: focus, week, names, format')
 assert(workoutPrompt('Arms', 'Wed, 18 Nov 2026', [], []).includes("haven't logged any workouts"), 'workout prompt: nothing logged')
+assert(!wp.includes('My runs'), 'workout prompt: no runs, no runs line')
+const wr = workoutPrompt('Legs', 'Wed, 18 Nov 2026', [], ['Squat'], {}, ['Run · Tue 17 Nov 2026 · 10.2 km · 52 min'])
+assert(wr.includes("haven't logged any workouts yet.\nMy runs and other training in the last 7 days") && wr.includes('Run · Tue 17 Nov 2026 · 10.2 km · 52 min\n\nDon\'t ask me'), 'workout prompt: runs listed')
 console.log('plan.ts self-check passed')
 
 // Live PB in the logger: same rule as buildModel's PBs.

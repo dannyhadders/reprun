@@ -4,7 +4,7 @@ import { estimateS, focusChoices, formatLine, parsePlan, planPrompt, roughTime, 
 import { startersFor } from '../../shared/starter'
 import type { Data, Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
-import { ago, date as fmtDate, plural, workoutText } from '../lib/format'
+import { activityText, ago, date as fmtDate, plural, workoutText } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets, type Model } from '../lib/stats'
 import { ask, CHECK, COPY, Icon, Sheet, Tabs } from './ui'
@@ -221,7 +221,9 @@ function AskChatGPT() {
   const choices = focusChoices(workouts.filter(w => w.date >= from).flatMap(w => w.sets.map(x => model.exById.get(x.exercise_id)?.muscle ?? 'other')))
   const copy = async (label: string) => {
     const recent = workouts.slice(0, 5).map(w => workoutText({ ...w, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) }))
-    await navigator.clipboard.writeText(workoutPrompt(label, today, recent, data.exercises.map(e => e.name), me))
+    // Runs and rides count too: a long run yesterday means no heavy legs today.
+    const runs = [...model.runs, ...model.otherActivities].filter(a => a.date >= from).sort((a, b) => b.date.localeCompare(a.date)).map(activityText)
+    await navigator.clipboard.writeText(workoutPrompt(label, today, recent, data.exercises.map(e => e.name), me, runs))
     setCopied(label)
   }
   const copyPlan = async () => (await navigator.clipboard.writeText(planPrompt(data.exercises.map(e => e.name), me)), setCopied('plan'))
@@ -232,7 +234,7 @@ function AskChatGPT() {
       <div className="flex justify-center"><Tabs value={tab} options={[{ value: 'today', label: tabLabel(ZAP, 'Just today') }, { value: 'plan', label: tabLabel(CALENDAR, 'Full weekly plan') }]} onChange={t => (setTab(t), setCopied(null))} /></div>
       {tab === 'today' ? (
         <>
-          <p className="mb-2 mt-3 text-xs text-muted">One workout for what you've trained least this week, planned around your last 5 workouts. Tap one to copy its prompt.</p>
+          <p className="mb-2 mt-3 text-xs text-muted">One workout for what you've trained least this week, planned around your last 5 workouts and this week's runs. Tap one to copy its prompt.</p>
           <div className="grid grid-cols-3 gap-2">
             {choices.map(c => (
               <button key={c.id} className={`relative btn-ghost flex-col gap-0 py-2 ${copied === c.label ? 'border-good' : ''}`} onClick={() => void copy(c.label)}><Tap />

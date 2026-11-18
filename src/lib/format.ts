@@ -66,6 +66,11 @@ export const effort = (rpe: number | null | undefined) => (rpe ? EFFORT.find(e =
 
 type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null; rpe?: number | null }
 /** A workout as plain text, one line per exercise, for pasting into ChatGPT or sending to a PT. */
+/** A run or other activity on one line, for the ChatGPT prompt: "Run · Tue 17 Nov 2026 · 10.2 km · 52 min · avg HR 151". */
+export const activityText = (a: { sport: string; date: string; distance_m: number | null; moving_s: number | null; elapsed_s: number | null; avg_hr: number | null }) =>
+  [a.sport, date(a.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }), a.distance_m ? `${num(a.distance_m / 1000, 1)} km` : null,
+    a.moving_s || a.elapsed_s ? duration(a.moving_s || a.elapsed_s) : null, a.avg_hr ? `avg HR ${Math.round(a.avg_hr)}` : null].filter(Boolean).join(' · ')
+
 export function workoutText(w: { date: string; title: string | null; duration_s?: number | null; notes?: string | null; sets: TextSet[] }) {
   const byEx = new Map<string, TextSet[]>()
   for (const s of w.sets) byEx.set(s.exercise, [...(byEx.get(s.exercise) ?? []), s])
