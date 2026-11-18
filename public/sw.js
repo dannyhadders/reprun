@@ -38,8 +38,9 @@ self.addEventListener('fetch', e => {
     return res
   }
   e.respondWith(url.pathname.startsWith('/assets/')
-    ? caches.match(key).then(hit => hit ?? fetch(e.request).then(save))
-    : fetch(e.request).then(save).catch(() => caches.match(key).then(hit => hit ?? Response.error())))
+    // ignoreVary: a host that adds Vary: Origin (vite preview does) would otherwise miss every module script offline.
+    ? caches.match(key, { ignoreVary: true }).then(hit => hit ?? fetch(e.request).then(save))
+    : fetch(e.request).then(save).catch(() => caches.match(key, { ignoreVary: true }).then(hit => hit ?? Response.error())))
 })
 
 // Alerts (src/lib/push.tsx): every push arrives empty. A streak nudge or Sunday recap due about now has its words saved
