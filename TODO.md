@@ -78,7 +78,8 @@ What else a home-screen web app can do on iPhone, picked 2026-11-17.
 - [x] **Spoken cues** (`speechSynthesis`, works through AirPods while the app is open): "Rest over. Next: squat, 100 kilos, 5 reps." On by default; speaker button in the logger header mutes it (the beep stays).
 - [x] **Android install polish**: maskable icon (the logo fills Android's icon shape), `id`, description, categories, and three phone screenshots from the demo so Chrome's install screen looks like a store listing. iPhone ignores all of it.
 - [ ] **Page transitions** (View Transitions API, Safari 18+): slide/fade between pages instead of a flash. Skip where the browser doesn't have it.
-- [x] **"New version" prompt**: a new `sw.js` waits; a banner says "New version ready", Update switches and reloads once (a running workout survives), ✕ leaves it for the next cold start. Checks for a new version each time the app comes to the front. Not done: pruning old cached files.
+- [x] **"New version" prompt**: a new `sw.js` waits; a banner says "New version ready", Update switches and reloads once (a running workout survives), ✕ leaves it for the next cold start. Checks for a new version each time the app comes to the front.
+- [x] **Clear old cached files**: one cache per build (`reprun-<sha>`), filled with the shell and its files when the new version installs, every other build's cache deleted when it takes over. Tested: update, then reopen offline.
 
 ## Later: desktop
 

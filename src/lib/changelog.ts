@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'Updates no longer pile up old copies of the app on your phone: each new version clears out the last one, and it still opens with no signal.',
       'RepRun gets ready to work offline as soon as it opens again, even while it\'s still loading your data or showing the welcome screen.',
       'On Android, RepRun\'s icon fills its shape like other apps instead of sitting in a white circle, and the install screen shows a description and screenshots.',
     ],
