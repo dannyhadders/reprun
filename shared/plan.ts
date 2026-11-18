@@ -135,7 +135,7 @@ const aboutMe = (me: Me) => {
 const planFormat = (names: string[]) => `Start each workout day with its name on its own line, ending with a colon.
 Then one line per exercise, exactly like this:
 Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
-Use kg. Leave out "@ ...kg" for bodyweight exercises.
+Use kg. Leave out the "@ ...kg" part for bodyweight exercises, and when you don't know my weight: never write a placeholder like "@ choose a weight".
 Put it all inside one code block, with nothing but the workout lines in it, so I can copy it in one tap.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
 
 export function planPrompt(names: string[], me: Me = {}) {
