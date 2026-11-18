@@ -20,8 +20,9 @@ document.addEventListener('touchstart', () => {}, { passive: true })
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
+      {/* Outside DataProvider: it registers the service worker, which mustn't wait for data to load (or fail). */}
+      <UpdateBanner />
       <DataProvider>
-        <UpdateBanner />
         <Routes>
           <Route path="log" element={<Log />} />
           <Route element={<Layout />}>
