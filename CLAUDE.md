@@ -23,6 +23,7 @@ the mark, buttons, components, motion timings, iPhone feel, voice (with say/don'
 
 - Use the tokens, never a new hex. The real values live in `src/index.css` (`@theme`, the app) and `site/public/index.html` (`:root`, the website); change a token in all three places at once.
 - Adding a colour, component, animation or rule? Add it to the brand book in the same commit.
+- The link-preview image (`og.jpg`, used by the website and the app) is rendered from `site/og/og.html`; the steps are in that file.
 - New logos, screenshots, reels or carousels go in `site/public/brand/assets/` and get a card in section 09. Screenshots only from the demo's made-up data, never real history.
 
 ## Commands
