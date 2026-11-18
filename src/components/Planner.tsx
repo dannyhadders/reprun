@@ -52,7 +52,7 @@ function PickNext({ rows, auto, current, close }: { rows: ReturnType<typeof rout
 
 /** The logger's start screen: next routine up, all routines, recent workouts to repeat, or an empty one. */
 export function Planner({ begin, children }: { begin: (a: Active) => void; children?: ReactNode }) {
-  const { data, model, reload } = useData()
+  const { data, model, reload, backToIntro } = useData()
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState(false) // hides the button once saved, even if the reload after it fails
   const addStarters = async () => {
@@ -78,7 +78,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
   const { routines, next, auto, picked } = routineRows(data, model)
   const recent = model.sessions.filter(s => s.workout?.sets.length).slice(0, 5)
 
-  if (editing) return <ImportPlan routine={editing === 'new' ? null : editing} close={() => setEditing(null)} />
+  if (editing) return <ImportPlan routine={editing === 'new' ? null : editing} close={() => (setEditing(null), backToIntro?.())} />
   return (
     <div className="space-y-6 pt-6">
       <div className="space-y-2">

@@ -206,6 +206,23 @@ const CHECKS = {
     await t.shot('Chatty reply preview')
   }],
 
+  'intro-paste': ["Intro's Paste a plan: save it and land back in the intro, then Let's go", async t => {
+    await t.page.goto(BASE + '/')
+    await t.page.getByRole('button', { name: 'Start fresh' }).click()
+    const intro = t.page.getByRole('dialog', { name: 'Welcome to RepRun' })
+    const go = intro.getByRole('button', { name: "Let's go" })
+    for (let i = 0; i < 12 && !(await go.isVisible()); i++) { await intro.getByRole('button', { name: 'Next' }).click(); await t.page.waitForTimeout(500) }
+    await t.page.getByRole('button', { name: 'Paste a plan' }).click()
+    await t.page.getByRole('textbox', { name: 'Plan text' }).fill(PLAN)
+    await t.page.getByRole('button', { name: 'Save 1 routine' }).click()
+    await t.expect(go, "Back on the intro's last page after saving")
+    await t.shot('Back in the intro')
+    await go.click()
+    await intro.waitFor({ state: 'detached' })
+    await planner(t)
+    await t.expect(t.page.getByText('Arm day').first(), 'The pasted routine is in the planner, and the paste box is closed')
+  }],
+
   'body-weight': ['Log body weight on Home', async t => {
     await begin(t, true)
     await t.page.getByRole('spinbutton', { name: 'Body weight in kg' }).fill('77.4')
