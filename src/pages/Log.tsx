@@ -385,7 +385,7 @@ function Stepper({ value, placeholder, by, min, label, done, set }: { value: str
   return (
     <div className={`flex h-11 rounded-xl border bg-surface-2 p-[3px] focus-within:border-accent ${done ? 'border-good/30' : 'border-line'}`}>
       <button type="button" className={btn} aria-label={`${label} down`} onClick={() => step(-by)}><Tap />−</button>
-      <input className={`min-w-0 flex-1 bg-transparent p-0 text-center text-sm outline-none placeholder:text-muted ${done ? 'text-muted' : 'text-ink'}`} type="number" min={min} step={by === 1 ? 1 : 0.5}
+      <input className={`min-w-0 flex-1 bg-transparent p-0 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-sm outline-none placeholder:text-muted ${done ? 'text-muted' : 'text-ink'}`} type="number" min={min} step={by === 1 ? 1 : 0.5}
         inputMode={by === 1 ? 'numeric' : 'decimal'} aria-label={label} placeholder={placeholder} value={value} onChange={e => set(e.target.value)} />
       <button type="button" className={btn} aria-label={`${label} up`} onClick={() => step(by)}><Tap />+</button>
     </div>

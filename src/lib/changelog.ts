@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'On a computer, the kg and reps boxes in a workout no longer show little up and down arrows next to the − and + buttons.',
       'A PB now gets a proper celebration when you finish: confetti, a trophy and what each PB beat ("Best was 60 kg, +2.5 kg"). It changes each time: a trophy, a gold card for each PB, your old best rolling up to the new one, or a sheet from the bottom.',
       'Ask ChatGPT for one workout now includes your runs (and rides) from the last 7 days, so it won\'t plan heavy legs the day after a long run.',
       'The welcome screens show RepRun in action: short clips of logging a workout, turning an AI-written plan into a routine and, on the phone-only version, saving a backup. There\'s a Back button now too.',
