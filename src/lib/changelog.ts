@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'Choose what\'s next: tap Change on the Next up card and pick any routine. It shows on Home too, and goes back to automatic (the one done longest ago) once you\'ve done it.',
       'The "workout in progress" bar stands out: a soft indigo glow that slowly breathes, so you can\'t miss a workout that\'s still running.',
       'A workout starts with every exercise folded: open the one you\'re doing. Each open exercise has a row of buttons for rest time, history, swap and remove, and "Add note" sits under the next set in every exercise.',
       'Swap an exercise mid-workout with the shuffle button (machine taken?). Pick from the same muscle group or search; sets you\'ve ticked stay. Just for today: your routine doesn\'t change.',

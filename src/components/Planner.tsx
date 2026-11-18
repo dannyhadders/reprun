@@ -7,14 +7,47 @@ import { api, useData } from '../lib/data'
 import { ago, date as fmtDate, plural } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets, type Model } from '../lib/stats'
-import { ask, Icon } from './ui'
+import { ask, Icon, Sheet } from './ui'
 import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../lib/session'
 
-/** Routines with their exercises and when each was last done; `next` is the one done longest ago (never-done first). Home shows it too. */
+// A routine picked as next up, with when it was last done at the time. Once it's done again `last` moves on and the pick lapses.
+// ponytail: per device in localStorage; move it to the profile if a second phone should see the same pick.
+type Pick = { id: number; since: string | null }
+const PICK = 'reprun.nextPick'
+const getPick = (): Pick | null => { try { return JSON.parse(localStorage.getItem(PICK) ?? 'null') as Pick | null } catch { return null } }
+const setPick = (p: Pick | null) => { try { if (p) localStorage.setItem(PICK, JSON.stringify(p)); else localStorage.removeItem(PICK) } catch { /* stays automatic */ } }
+
+/** Routines with their exercises and when each was last done; `next` is your pick, else the one done longest ago (never-done first). Home shows it too. */
 export function routineRows(data: Data, model: Model) {
   // A routine counts as done when a workout carries its name (starting one sets the title).
   const routines = data.routines.map(r => ({ r, items: parsePlan(r.body).flatMap(x => x.items), last: model.sessions.find(s => s.workout && s.title === r.name)?.date ?? null }))
-  return { routines, next: [...routines].sort((a, b) => (a.last ?? '').localeCompare(b.last ?? ''))[0] }
+  const auto = [...routines].sort((a, b) => (a.last ?? '').localeCompare(b.last ?? ''))[0]
+  const p = getPick()
+  const picked = p ? routines.find(x => x.r.id === p.id && x.last === p.since) : undefined
+  return { routines, auto, next: picked ?? auto, picked: !!picked }
+}
+
+/** "What's next?": Automatic or any routine. One tap picks and closes. */
+function PickNext({ rows, auto, current, close }: { rows: ReturnType<typeof routineRows>['routines']; auto: string; current: number | null; close: () => void }) {
+  const choose = (p: Pick | null) => (setPick(p), close())
+  const row = (on: boolean, title: string, sub: string, pick: Pick | null, key: string) => (
+    <li key={key}>
+      <button role="radio" aria-checked={on} className="relative flex w-full items-center gap-3 p-3 text-left" onClick={() => choose(pick)}><Tap />
+        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${on ? 'border-accent' : 'border-line'}`}>{on && <span className="h-2.5 w-2.5 rounded-full bg-accent" />}</span>
+        <span className="min-w-0"><span className="block truncate font-semibold">{title}</span><span className="block truncate text-xs text-muted">{sub}</span></span>
+      </button>
+    </li>
+  )
+  return (
+    <Sheet close={close} label="What's next?">
+      <h2 className="text-lg font-bold">What's next?</h2>
+      <p className="mb-3 text-sm text-muted">Pick the routine for your next workout.</p>
+      <ul role="radiogroup" className="divide-y divide-line rounded-2xl border border-line bg-surface-2">
+        {row(current === null, 'Automatic', `The one done longest ago: ${auto}`, null, 'auto')}
+        {rows.map(({ r, last }) => row(current === r.id, r.name, last ? `Last done ${ago(last).toLowerCase()}` : 'Not done yet', { id: r.id, since: last }, String(r.id)))}
+      </ul>
+    </Sheet>
+  )
 }
 
 /** The logger's start screen: next routine up, all routines, recent workouts to repeat, or an empty one. */
@@ -41,7 +74,8 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
   const last = (name: string) => lastSets(model, name)
   const go = (a: Active) => begin(a)
 
-  const { routines, next } = routineRows(data, model)
+  const [choosing, setChoosing] = useState(false)
+  const { routines, next, auto, picked } = routineRows(data, model)
   const recent = model.sessions.filter(s => s.workout?.sets.length).slice(0, 5)
 
   if (editing) return <ImportPlan routine={editing === 'new' ? null : editing} close={() => setEditing(null)} />
@@ -55,7 +89,10 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
 
       {next && (
         <section className="rounded-2xl border border-accent/40 bg-accent/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">Next up</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-accent">Next up{picked && <span className="normal-case tracking-normal text-muted"> · your pick</span>}</p>
+            {routines.length > 1 && <button className="relative -my-1 px-1 py-1 text-sm font-medium text-accent" onClick={() => setChoosing(true)}><Tap />Change</button>}
+          </div>
           <h2 className="mt-1 text-xl font-bold">{next.r.name}</h2>
           <button className="relative mt-1 w-full text-left text-sm text-muted" aria-expanded={open === 'next'} onClick={() => toggle('next')}><Tap />
             {open === 'next' ? 'Hide exercises' : <>{next.items.slice(0, 4).map(i => i.name).join(' · ')}{next.items.length > 4 ? ` · +${next.items.length - 4} more` : ''}</>} <Chevron open={open === 'next'} />
@@ -65,6 +102,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
           <button className="relative btn mt-3 w-full py-3 text-base" onClick={() => go(fromRoutine(next.r, data.exercises, last, data.aliases))}><Tap />Start {next.r.name}</button>
         </section>
       )}
+      {choosing && auto && <PickNext rows={routines} auto={auto.r.name} current={picked ? next.r.id : null} close={() => setChoosing(false)} />}
 
       <section>
         <div className="mb-2 flex items-center justify-between">
