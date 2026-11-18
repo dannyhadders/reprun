@@ -1,10 +1,10 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { estimateS, formatLine, parsePlan, planPrompt, roughTime, targetText, type PlanItem } from '../../shared/plan'
+import { estimateS, focusChoices, formatLine, parsePlan, planPrompt, roughTime, targetText, workoutPrompt, type PlanItem } from '../../shared/plan'
 import { startersFor } from '../../shared/starter'
 import type { Data, Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
-import { ago, date as fmtDate, plural } from '../lib/format'
+import { ago, date as fmtDate, plural, workoutText } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets, type Model } from '../lib/stats'
 import { ask, Icon, Sheet } from './ui'
@@ -195,6 +195,34 @@ function Preview({ rows }: { rows: [string, string, string | null][] }) {
   )
 }
 
+/** "Ask ChatGPT for one workout": three muscle groups trained least in the last 7 days; tapping one copies a prompt with that week in it. */
+function AskForWorkout() {
+  const { data, model } = useData()
+  const [copied, setCopied] = useState<string | null>(null)
+  const [from] = useState(() => new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10))
+  const week = model.sessions.filter(s => s.workout?.sets.length && s.date >= from).map(s => s.workout!)
+  const choices = focusChoices(week.flatMap(w => w.sets.map(x => model.exById.get(x.exercise_id)?.muscle ?? 'other')))
+  const copy = async (label: string) => {
+    const recent = week.map(w => workoutText({ ...w, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) }))
+    await navigator.clipboard.writeText(workoutPrompt(label, recent, data.exercises.map(e => e.name), { goals: data.profile.goals, age: data.profile.age, weight_kg: data.profile.weight_kg }))
+    setCopied(label)
+  }
+  return (
+    <section className="rounded-2xl border border-line bg-surface p-4">
+      <h2 className="font-semibold">Or ask ChatGPT for one workout</h2>
+      <p className="mt-0.5 text-xs text-muted">Pick what to train. The prompt includes your last 7 days, so it plans around them.</p>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {choices.map(c => (
+          <button key={c.id} className={`relative btn-ghost flex-col gap-0 py-2 ${copied === c.label ? 'border-good' : ''}`} onClick={() => void copy(c.label)}><Tap />
+            <span className="font-semibold">{copied === c.label ? 'Copied ✓' : c.label}</span>
+            <span className="text-[11px] text-muted">{c.sets ? plural(c.sets, 'set') : 'none yet'}</span>
+          </button>
+        ))}
+      </div>
+      {copied && <p className="mt-2 text-xs text-good">Paste it into ChatGPT, then paste its reply in the box below.</p>}
+    </section>
+  )
+}
 
 function ImportPlan({ routine, close }: { routine: Routine | null; close: () => void }) {
   const { data, reload } = useData()
@@ -237,6 +265,7 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
       <button className="btn-ghost w-full" onClick={async () => { await navigator.clipboard.writeText(planPrompt(data.exercises.map(e => e.name), { goals: data.profile.goals, age: data.profile.age, weight_kg: data.profile.weight_kg }) /* not sex: it defaults to male, so it may never have been said */); setCopied(true) }}>
         {copied ? 'Copied: paste it into ChatGPT and answer its questions' : 'Copy a prompt for ChatGPT'}
       </button>
+      {!routine && <AskForWorkout />}
       <textarea className="input min-h-48 font-mono text-[13px]" placeholder={'Arm day:\nEZ-bar Curl – 3x10-12 @ 19kg, rest 75s\n…'} value={text} onChange={e => setText(e.target.value)} aria-label="Plan text" />
 
       {parsed.map((r, i) => (

@@ -116,14 +116,38 @@ export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight'>, las
  * The ChatGPT prompt (Planner and onboarding): who they are and what they're after, then ask ChatGPT to quiz them
  * before writing a plan in the format the importer reads. Unknown details are just left out.
  */
-export function planPrompt(names: string[], me: { goals?: GoalId[]; weight_kg?: number | null; age?: number | null; sex?: Profile['sex'] | null } = {}) {
+type Me = { goals?: GoalId[]; weight_kg?: number | null; age?: number | null; sex?: Profile['sex'] | null }
+const aboutMe = (me: Me) => {
   const goals = (me.goals ?? []).map(g => GOALS.find(x => x.id === g)!.label.toLowerCase())
   const about = [goals.length && `I want to ${goals.join(' and ')}`, me.age && `I'm ${me.age}`, me.weight_kg && `I weigh ${me.weight_kg} kg`, me.sex && `I'm ${me.sex === 'female' ? 'a woman' : 'a man'}`].filter(Boolean)
-  return `Help me plan my gym training. I log it in an app called RepRun, which imports the plan you write.
-${about.length ? `About me: ${about.join(', ')}.\n` : ''}Before you write anything, ask me a few short questions, one at a time: how many days a week I can train, how long a session can be, what equipment I have, any injuries, and how experienced I am.
-Then write my gym plan as plain text, no tables or markdown.
-Start each workout day with its name on its own line, ending with a colon.
+  return about.length ? `About me: ${about.join(', ')}.\n` : ''
+}
+// The format parsePlan reads, so the reply pastes straight into Import a plan.
+const planFormat = (names: string[]) => `Start each workout day with its name on its own line, ending with a colon.
 Then one line per exercise, exactly like this:
 Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
 Use kg. Leave out "@ ...kg" for bodyweight exercises.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
+
+export function planPrompt(names: string[], me: Me = {}) {
+  return `Help me plan my gym training. I log it in an app called RepRun, which imports the plan you write.
+${aboutMe(me)}Before you write anything, ask me a few short questions, one at a time: how many days a week I can train, how long a session can be, what equipment I have, any injuries, and how experienced I am.
+Then write my gym plan as plain text, no tables or markdown.
+${planFormat(names)}`
+}
+
+/** What "Ask ChatGPT for one workout" offers, in tie-break order (legs first: the most skipped). */
+export const FOCUSES = [{ id: 'legs', label: 'Legs' }, { id: 'back', label: 'Back' }, { id: 'chest', label: 'Chest' }, { id: 'shoulders', label: 'Shoulders' }, { id: 'arms', label: 'Arms' }] as const
+export type Focus = (typeof FOCUSES)[number]
+
+/** The three muscle groups with the fewest sets in `sets` (one muscle per set logged this week), least trained first. */
+export function focusChoices(sets: string[]) {
+  const n = (id: string) => sets.filter(m => m === id).length
+  return FOCUSES.map(f => ({ ...f, sets: n(f.id) })).sort((a, b) => a.sets - b.sets).slice(0, 3) // stable sort keeps FOCUSES order on ties
+}
+
+/** One workout for today, written around what was done this week (`recent`: workoutText blocks, newest first). */
+export function workoutPrompt(focus: string, recent: string[], names: string[], me: Me = {}) {
+  return `Write me one gym workout for today, training ${focus.toLowerCase()}. I log it in an app called RepRun, which imports the workout you write.
+${aboutMe(me)}${recent.length ? `Here's what I've done in the last 7 days. Plan around it (don't hammer anything that's still recovering) and base the weights on what I lifted:\n\n${recent.join('\n\n')}\n\n` : `I haven't logged anything in the last 7 days.\n`}Don't ask me questions, just write it, as plain text with no tables or markdown and nothing else before or after.
+${planFormat(names)}`
 }

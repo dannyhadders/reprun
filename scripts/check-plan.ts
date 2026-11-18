@@ -1,5 +1,5 @@
 // Self-check for the plan parser and progression rule: npx tsx scripts/check-plan.ts
-import { estimateS, formatLine, parseLine, parsePlan, roughTime, suggest } from '../shared/plan.ts'
+import { estimateS, focusChoices, formatLine, parseLine, parsePlan, roughTime, suggest, workoutPrompt } from '../shared/plan.ts'
 import { resolveExercise } from '../shared/catalogue.ts'
 import { STARTER_ROUTINES } from '../shared/starter.ts'
 import { livePb, type ExerciseSession } from '../src/lib/stats.ts'
@@ -41,6 +41,13 @@ for (const r of STARTER_ROUTINES) {
   eq(items.length, r.body.split('\n').length, `${r.name}: every line parses`)
   for (const it of items) assert(resolveExercise(it.name, null).muscle !== 'other', `${r.name}: ${it.name} is in the catalogue`)
 }
+
+// Ask ChatGPT for one workout: the three least-trained groups this week, ties in FOCUSES order; core/other ignored.
+eq(focusChoices([]).map(c => c.id), ['legs', 'back', 'chest'], 'focus: nothing logged')
+eq(focusChoices(['legs', 'legs', 'back', 'chest', 'core', 'other']).map(c => [c.id, c.sets]), [['shoulders', 0], ['arms', 0], ['back', 1]], 'focus: fewest sets first')
+const wp = workoutPrompt('Legs', ['Push day · Mon 16 Nov 2026\nBench Press: 60 kg × 8'], ['Squat'])
+assert(wp.includes('training legs') && wp.includes('Bench Press: 60 kg × 8') && wp.includes('exact exercise names: Squat') && wp.includes('ending with a colon'), 'workout prompt: focus, week, names, format')
+assert(workoutPrompt('Arms', [], []).includes("haven't logged anything"), 'workout prompt: empty week')
 console.log('plan.ts self-check passed')
 
 // Live PB in the logger: same rule as buildModel's PBs.
