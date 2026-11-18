@@ -23,6 +23,7 @@ async function begin(t, sample, open = true) {
   if (open) await t.page.goto(BASE + '/')
   await t.page.getByRole('button', { name: sample ? 'Try it with sample data first' : 'Start fresh' }).click()
   await t.page.getByRole('button', { name: 'Skip' }).click()
+  await t.page.locator('dialog').getByRole('button', { name: 'Skip' }).click() // "Skip the intro?"
   await t.page.getByRole('dialog', { name: 'Welcome to RepRun' }).waitFor({ state: 'detached' })
 }
 const tab = async (t, route) => { await t.page.goto(BASE + route); await t.page.locator('main h1').first().waitFor() }
@@ -204,6 +205,19 @@ const CHECKS = {
     await t.expect(t.page.getByRole('heading', { name: /Legs · 3 exercises/ }), 'Preview reads 1 day, 3 exercises')
     await t.expect(t.page.getByRole('button', { name: 'Save 1 routine' }), 'Only one routine to save: the tips are not a second day')
     await t.shot('Chatty reply preview')
+  }],
+
+  'intro-read': ['Intro: Next fills before it lights up; Skip asks first and Keep going stays', async t => {
+    await t.page.goto(BASE + '/')
+    await t.page.getByRole('button', { name: 'Start fresh' }).click()
+    const intro = t.page.getByRole('dialog', { name: 'Welcome to RepRun' })
+    const next = intro.getByRole('button', { name: 'Next' })
+    await t.expect(next.and(t.page.locator('[disabled]')), 'Next starts dimmed on a new page')
+    await t.shot('Next filling')
+    await t.expect(next.and(t.page.locator(':not([disabled])')), 'Next lights up after a moment')
+    await intro.getByRole('button', { name: 'Skip' }).click()
+    await t.page.locator('dialog').getByRole('button', { name: 'Keep going' }).click()
+    await t.expect(intro, 'Keep going stays in the intro')
   }],
 
   'intro-paste': ["Intro's Paste a plan: save it and land back in the intro, then Let's go", async t => {

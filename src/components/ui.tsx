@@ -194,7 +194,7 @@ export function Sheet({ close, children, className = '', label }: { close: () =>
  * A styled stand-in for confirm(). Native <dialog>, so Escape, focus and the dimmed backdrop come
  * free; built with plain DOM so any handler can await it without a provider. Cancel is focused first.
  */
-export function ask(message: string, ok = 'OK', danger = false): Promise<boolean> {
+export function ask(message: string, ok = 'OK', danger = false, cancel = 'Cancel'): Promise<boolean> {
   const d = document.createElement('dialog')
   d.className = 'm-auto w-[min(24rem,calc(100vw-2rem))] animate-toast-in rounded-2xl border border-line bg-surface p-5 text-ink backdrop:bg-black/60'
   const p = document.createElement('p')
@@ -202,7 +202,7 @@ export function ask(message: string, ok = 'OK', danger = false): Promise<boolean
   p.textContent = message
   const row = document.createElement('div')
   row.className = 'mt-5 grid grid-cols-2 gap-2'
-  for (const [label, cls, value] of [['Cancel', 'btn-ghost', ''], [ok, danger ? 'btn-danger' : 'btn', 'ok']]) {
+  for (const [label, cls, value] of [[cancel, 'btn-ghost', ''], [ok, danger ? 'btn-danger' : 'btn', 'ok']]) {
     const b = document.createElement('button')
     b.className = `${cls} min-h-11`
     b.textContent = label

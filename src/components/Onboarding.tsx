@@ -4,7 +4,7 @@ import type { Profile } from '../../shared/types'
 import { Tap } from '../lib/haptic'
 import { browserName, useInstallPrompt } from '../lib/intro'
 import { pushSupported, RemindersChoice, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
-import { CopyButton, Icon } from './ui'
+import { ask, CopyButton, Icon } from './ui'
 
 export type Answers = { goals: GoalId[]; weight_kg: number | null; age: number | null; sex: Profile['sex'] | null }
 
@@ -38,6 +38,9 @@ const I = {
 }
 
 /** First-run intro: five swipeable pages (plus the home-screen how-to, or rest alerts once it's installed, and a backup page on the phone-only copy), every question optional, Skip on every page. */
+/** How long each intro page waits before Next lights up, the first time it's shown. */
+const READ_MS = 2500
+
 export function Onboarding({ mode, stravaConfigured, install, onData, prompt, onStarters, onStravaFile, onFinish }: Props) {
   // Rest alerts need the installed app on iPhone, so they're offered once it is (the intro runs again in there).
   // A phone still in its browser; on a computer the how-to shows, but nothing waits on it.
@@ -72,6 +75,18 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
     }
   }
   const go = (n: number) => track.current?.scrollTo({ left: n * track.current.clientWidth, behavior: 'smooth' })
+  // Each page asks for a moment's reading the first time: Next fills from left to right over READ_MS and only then
+  // lights up, and swiping ahead stops at the page being read. Back, and pages already seen, never wait.
+  const [read, setRead] = useState<ReadonlySet<number>>(() => new Set())
+  const reading = !read.has(page)
+  useEffect(() => {
+    if (read.has(page)) return
+    const t = setTimeout(() => setRead(r => new Set(r).add(page)), READ_MS)
+    return () => clearTimeout(t)
+  }, [page, read])
+  const skip = async () => {
+    if (await ask("Skip the intro? It takes about a minute, and the first steps (your goals and a plan to follow) make RepRun a lot more useful.\n\nYou can see it again any time: Settings → Profile.", 'Skip', false, 'Keep going')) onFinish(null)
+  }
   const next = () => (page < PAGES - 1 ? go(page + 1) : onFinish(a))
   // Page 1 on the phone-only copy has its own buttons (fresh or sample), so swiping waits for that choice. Not in the
   // phone's browser, though: a home-screen app on iPhone keeps its own storage, so data set up here would stay behind.
@@ -84,12 +99,18 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
   return (
     <div ref={root} tabIndex={-1} className="fixed inset-0 z-50 flex flex-col bg-bg px-[max(0px,calc(50%-15rem))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-[calc(env(safe-area-inset-top)+0.5rem)] outline-none" role="dialog" aria-modal="true" aria-label="Welcome to RepRun">
       <div className="flex h-12 items-center justify-end px-2">
-        {!locked && <button className="press min-h-11 rounded-xl px-4 text-sm font-medium text-muted" onClick={() => onFinish(null)}>Skip</button>}
+        {!locked && <button className="press min-h-11 rounded-xl px-4 text-sm font-medium text-muted" onClick={() => void skip()}>Skip</button>}
       </div>
 
       {/* Native horizontal scroll-snap: the swipe, momentum and paging are the browser's own. */}
       <div className={`flex flex-1 snap-x snap-mandatory overflow-y-hidden [scrollbar-width:none] ${locked ? 'overflow-x-hidden' : 'overflow-x-auto'}`}
-        onScroll={e => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+        onScroll={e => {
+          const el = e.currentTarget, w = el.clientWidth
+          // Swiped past a page still being read: hold it there. (`page` is the one being read until it's read.)
+          const max = (reading ? page : PAGES - 1) * w
+          if (el.scrollLeft > max + 2 && reading) el.scrollLeft = max
+          setPage(Math.round(el.scrollLeft / w))
+        }}
         ref={track}>
         <Page>
           <img src="/favicon.svg" alt="" className="size-12" />
@@ -212,7 +233,14 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
         <div className="flex gap-2" aria-hidden>
           {Array.from({ length: PAGES }, (_, i) => <span key={i} className={`h-2 rounded-full transition-all ${i === page ? 'w-6 bg-accent' : 'w-2 bg-line'}`} />)}
         </div>
-        <span className="flex justify-end">{!locked && <button className="btn relative min-h-12 px-6 text-base" onClick={next}><Tap />{page === PAGES - 1 ? "Let's go" : 'Next'}</button>}</span>
+        <span className="flex justify-end">{!locked && (
+          <button key={page} disabled={reading} onClick={next}
+            className={`relative min-h-12 overflow-hidden whitespace-nowrap px-6 text-base ${reading ? 'btn-ghost text-ink disabled:opacity-100' : 'btn'}`}>
+            {/* The fill: left to right while the page is read, then the button lights up. */}
+            {reading && <span aria-hidden className="absolute inset-0 origin-left bg-accent/45" style={{ animation: `intro-fill ${READ_MS}ms linear both` }} />}
+            {!reading && <Tap />}<span className="relative">{page === PAGES - 1 ? "Let's go" : 'Next'}</span>
+          </button>
+        )}</span>
       </div>
     </div>
   )

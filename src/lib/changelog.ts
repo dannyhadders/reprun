@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'The intro asks for a moment on each page: Next fills up from left to right and lights up when it\'s ready, and Skip checks you\'re sure, since the first steps (your goals and a plan) make RepRun a lot more useful.',
       'Paste a plan in the intro now brings you back to the intro once it\'s saved (or you tap Back), with your answers kept, so you can still add starter routines or your Strava history before Let\'s go.',
       'Pasting a whole ChatGPT reply works now: its chat and tips around the workout are left out, so a tip like "if 4x6 feels easy, go up next time" no longer turns into an exercise. The prompt also asks ChatGPT to put the workout in a box with its own Copy button, so you copy just the workout in one tap.',
       'The add-to-home-screen clip now shows on any phone or computer, not just Safari and Chrome on iPhone. On a computer, it tells you to open the page on your iPhone, and Chrome\'s Install button shows wherever Chrome offers one.',

@@ -50,6 +50,8 @@
 @keyframes pbm-card { from { opacity: 0; transform: translateY(60px) rotate(-4deg) scale(0.9); } }
 @keyframes pbm-shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @keyframes pbm-stamp { from { opacity: 0; transform: rotate(-6deg) scale(2.4); } to { opacity: 1; transform: rotate(-6deg) scale(1); } }
+/* The intro's Next button filling while a page is read (Onboarding.tsx, READ_MS). */
+@keyframes intro-fill { from { transform: scaleX(0); } }
 /* Burst particles: each flies out to its own --dx/--dy and fades. */
 @keyframes burst { to { transform: translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; } }
 
