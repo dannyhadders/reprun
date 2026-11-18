@@ -279,7 +279,7 @@ function Running() {
   }, [now])
   if (!a) return null
   return (
-    <Link to="/log" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 transition-colors active:bg-surface-2 px-4 py-3 shadow-lg backdrop-blur md:bottom-6 md:left-auto md:right-6 md:w-80">
+    <Link to="/log" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-30 flex animate-glow items-center gap-3 rounded-2xl border border-accent/70 bg-surface bg-linear-135 from-accent/20 to-accent-2/5 px-4 py-3 backdrop-blur transition-colors active:bg-surface-2 md:bottom-6 md:left-auto md:right-6 md:w-80">
       <span className="size-2.5 shrink-0 animate-pulse rounded-full bg-good" />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-semibold">{a.title || 'Workout'} in progress</span>

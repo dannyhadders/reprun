@@ -21,6 +21,7 @@
   --animate-toast-in: toast-in 0.2s ease-out;
   --animate-sheet-in: sheet-in 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
   --animate-flicker: flicker 2.4s ease-in-out infinite;
+  --animate-glow: glow 2.8s ease-in-out infinite;
 }
 
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
@@ -37,6 +38,11 @@
 @keyframes sheet-in { from { transform: translateY(100%); } }
 @keyframes flicker { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.08) rotate(-3deg); } 60% { transform: scale(0.97) rotate(2deg); } }
 @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } }
+/* The workout-in-progress bar breathes: an indigo halo swells and fades. Shadow only, so nothing moves. */
+@keyframes glow {
+  0%, 100% { box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.6), 0 0 0 0 rgb(129 140 248 / 0), 0 0 18px -6px rgb(129 140 248 / 0.35); }
+  50% { box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.6), 0 0 0 6px rgb(129 140 248 / 0.16), 0 0 36px 2px rgb(129 140 248 / 0.5); }
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 /* Burst particles: each flies out to its own --dx/--dy and fades. */
 @keyframes burst { to { transform: translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; } }
