@@ -87,10 +87,34 @@ Log a workout, or paste a plan from your PT: **+ → Import plan**.
 
 ## Rest alerts (nothing to set up)
 
-**Settings → Notifications → Rest alerts** buzzes the lock screen when rest is over, even with the app closed
-(iPhone: iOS 16.4 or later, opened from the home screen). Your copy uses RepRun's own alert server,
-`push.reprun.co.uk`. It only ever gets your phone's notification address and the time your rest ends, never your
-workouts, and deletes both once the alert is sent. It's off until you turn it on.
+**Settings → Notifications → Rest alerts** (also offered in the intro) buzzes your lock screen and Apple Watch when
+rest is over, even with the phone in your pocket. It's off until you turn it on.
+
+- **Needs:** iPhone with iOS 16.4 or later, RepRun opened from the home screen (not a Safari tab), and
+  notifications allowed. Android and desktop Chrome work too.
+- **Where it comes from:** your copy uses RepRun's own alert server, `push.reprun.co.uk`. The phone talks to it
+  directly, so your Cloudflare Access login doesn't get in the way. It only ever gets your phone's notification
+  address (a random code from Apple or Google) and the time your rest ends, never your workouts, and deletes both
+  once the alert is sent. The alert itself is empty: your phone writes "Rest over".
+- **No alert?** Check **iPhone Settings → Notifications → RepRun**: Allow Notifications and Sounds on. On silent,
+  or in a Focus, you get a vibration or nothing. If the app is still on screen when rest ends, it beeps instead.
+- **AirPods:** iOS doesn't play notification sounds in AirPods, but **Settings → Notifications → Announce
+  Notifications** has Siri say "Rest over" in your ears.
+
+### Your own alert server (optional)
+
+Rather not use `push.reprun.co.uk`? Run the same server on your account:
+
+1. `node push/keys.mjs` makes a key pair: the private half goes in `push/.dev.vars`, the public half is printed.
+   Keep both safe. A new pair means turning alerts off and on again on every phone.
+2. Change the address in `push/wrangler.jsonc` (`routes`) to one on your domain, e.g. `push.yourname.com`.
+3. **Workers & Pages → Create → Import a repository**, this repo, name `reprun-push`, build command empty,
+   deploy command `npx wrangler deploy -c push/wrangler.jsonc`.
+4. Add the private key as its secret (it reads it from `push/.dev.vars`):
+   `sed -n "s/^VAPID_PRIVATE='\(.*\)'$/\1/p" push/.dev.vars | npx wrangler secret put VAPID_PRIVATE -c push/wrangler.jsonc`
+5. On your app's Worker (**reprun → Settings → Build → Variables**), add build variables `VITE_PUSH_URL` =
+   `https://push.yourname.com` and `VITE_PUSH_KEY` = the public key, then **Retry build**.
+6. Check `https://push.yourname.com` says "RepRun rest alerts", then turn alerts off and on again on your phone.
 
 ---
 

@@ -11,7 +11,7 @@ on your phone only: no account, no server. Save a backup file now and then (Sett
 deletes the data. Restore that file into your own copy whenever you want it synced.
 
 - **Log workouts as you train**, on your phone. It installs to your home screen like an app, keeps
-  the screen on, runs a rest timer with a beep, and still works with no signal at the gym.
+  the screen on, runs a rest timer with a beep (and, if you turn it on, a buzz on your lock screen and Apple Watch when rest is over), and still works with no signal at the gym.
 - **Routines from your PT or ChatGPT.** Paste the plan as text, and each day becomes a routine with
   suggested weights and reps from last time (double progression).
 - **History and progress:** PBs per exercise, estimated 1RM, charts, strength levels and a year in

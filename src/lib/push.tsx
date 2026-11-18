@@ -4,7 +4,8 @@
 import { useEffect, useState } from 'react'
 
 // The public half of the push Worker's key (push/keys.mjs). Fine in a public repo; the private half is a Cloudflare secret.
-const VAPID = 'BEQmHZq39t9DCdIgd2u6-V5HjcQ82q-3OM_LH2kkkGP_qS7mbMo5hGMxwVDMeqfpd0WBgCNc2YLVYb3GGmBMero'
+// Self-hosters running their own push Worker set VITE_PUSH_KEY and VITE_PUSH_URL as build variables (docs/SETUP.md).
+const VAPID = import.meta.env.VITE_PUSH_KEY ?? 'BEQmHZq39t9DCdIgd2u6-V5HjcQ82q-3OM_LH2kkkGP_qS7mbMo5hGMxwVDMeqfpd0WBgCNc2YLVYb3GGmBMero'
 // Testing locally: VITE_PUSH_URL=http://localhost:8788 npm run build, then npm run preview (docs/SETUP.md).
 const PUSH_URL = import.meta.env.VITE_PUSH_URL ?? 'https://push.reprun.co.uk'
 
@@ -19,18 +20,6 @@ export function scheduleRest(at: number | null) {
   if (at === sent) return
   sent = at
   void subscription().then(sub => sub && fetch(PUSH_URL, { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint, at }), keepalive: true })).catch(() => {})
-}
-
-/** "Send a test": an alert in 10 seconds, time to lock the phone. Says what went wrong if it can't even ask for one. */
-async function testAlert(): Promise<string> {
-  try {
-    const sub = await subscription()
-    if (!sub) return 'Rest alerts are off on this phone. Turn them off and on again.'
-    const res = await fetch(PUSH_URL, { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint, at: Date.now() + 10_000 }) })
-    return res.ok ? 'Lock your phone now: it should buzz in 10 seconds.' : `The alert server said no (${res.status}).`
-  } catch {
-    return "Couldn't reach the alert server. Check your signal."
-  }
 }
 
 type State = 'off' | 'busy' | 'on' | 'denied' | 'failed'
@@ -62,25 +51,16 @@ export function useRestAlerts() {
 /** The button and its status line, for the intro and Settings. */
 export function RestAlertsButton({ state, on, off, className = '' }: ReturnType<typeof useRestAlerts> & { className?: string }) {
   if (state === 'denied') return <p className={`text-sm text-muted ${className}`}>Notifications are blocked. Turn them on in the phone's Settings → Notifications → RepRun.</p>
-  if (state === 'on') return <RestAlertsOn off={off} className={className} />
+  if (state === 'on') return (
+    <p className={`flex items-center justify-between gap-3 text-sm text-good ${className}`}>
+      On. You'll get a buzz when rest is over.
+      <button className="btn-ghost shrink-0" onClick={() => void off()}>Turn off</button>
+    </p>
+  )
   return (
     <div className={className}>
       <button className={`btn w-full py-3 text-base ${state === 'busy' ? 'busy' : ''}`} disabled={state === 'busy'} onClick={() => void on()}>Turn on rest alerts</button>
       {state === 'failed' && <p className="mt-2 text-sm text-bad">Couldn't turn them on. Check your signal and try again.</p>}
-    </div>
-  )
-}
-
-function RestAlertsOn({ off, className }: { off: () => Promise<void>; className: string }) {
-  const [msg, setMsg] = useState<string | null>(null)
-  return (
-    <div className={className}>
-      <p className="text-sm text-good">On. You'll get a buzz when rest is over.</p>
-      <div className="mt-3 flex gap-2">
-        <button className="btn-ghost flex-1" onClick={() => void testAlert().then(setMsg)}>Send a test</button>
-        <button className="btn-ghost flex-1" onClick={() => void off()}>Turn off</button>
-      </div>
-      {msg && <p className="mt-2 text-sm text-muted" role="status">{msg}</p>}
     </div>
   )
 }
