@@ -30,6 +30,27 @@ const tab = async (t, route) => { await t.page.goto(BASE + route); await t.page.
 const planner = t => t.page.getByRole(t.device === 'iphone' ? 'button' : 'link', { name: 'Start workout', exact: true }).click()
 const finish = async t => { await t.page.getByRole('button', { name: 'Finish' }).click(); await t.page.getByRole('heading', { level: 1, name: / done$/ }).waitFor() }
 const topWorkout = t => t.page.getByRole('article').first()
+// The PB celebration (PbMoment.tsx) comes in several styles: some play through and close, some wait for "Nice".
+// Taps through whichever showed; does nothing if none did.
+async function pbThrough(t) {
+  const moment = t.page.getByRole('dialog', { name: /new PB/ })
+  for (let i = 0; i < 6 && await moment.count(); i++) {
+    const nice = moment.getByRole('button', { name: 'Nice' })
+    await (await nice.isVisible() ? nice : moment).click({ timeout: 2000 }).catch(() => {})
+    await t.page.waitForTimeout(300)
+  }
+}
+// From Home: an empty workout with one exercise and one ticked set, finished. Leaves the done screen up.
+async function logOneSet(t, exercise, kg, reps) {
+  await planner(t)
+  await t.page.getByRole('button', { name: 'Empty workout' }).click()
+  await t.page.getByRole('textbox', { name: 'Exercise name' }).fill(exercise)
+  await t.page.getByRole('button', { name: 'Add', exact: true }).click()
+  await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).fill(String(kg))
+  await t.page.getByRole('spinbutton', { name: 'Set 1 reps' }).fill(String(reps))
+  await t.page.getByRole('button', { name: 'Set 1 done' }).click()
+  await finish(t)
+}
 
 // --- the checks -----------------------------------------------------------------------------------------------
 const CHECKS = {
@@ -67,22 +88,34 @@ const CHECKS = {
     await t.page.getByRole('button', { name: 'Set 2 done' }).first().click()
     await t.expect(t.page.getByText(/· 2 sets ·/), 'Header counts 2 sets')
     await finish(t)
-    // Set 2 went up 2.5 kg on last time's best, so finishing is a PB: the celebration sheet comes first.
-    // It comes in several styles (PbMoment.tsx): some play through and close, some wait for "Nice". Tap through either.
-    const moment = t.page.getByRole('dialog', { name: '1 new PB' })
-    await t.expect(moment, 'A PB celebration shows (set 2 beat last time)')
+    // Set 2 went up 2.5 kg on last time's best, so finishing is a PB: the celebration comes first.
+    await t.expect(t.page.getByRole('dialog', { name: '1 new PB' }), 'A PB celebration shows (set 2 beat last time)')
     await t.shot('PB celebration')
-    for (let i = 0; i < 6 && await moment.count(); i++) {
-      const nice = moment.getByRole('button', { name: 'Nice' })
-      await (await nice.isVisible() ? nice : moment).click({ timeout: 2000 }).catch(() => {})
-      await t.page.waitForTimeout(300)
-    }
+    await pbThrough(t)
     await t.shot('Summary')
     await t.page.getByRole('button', { name: 'Done' }).click()
     await t.page.waitForURL(/\/workouts/)
     await t.expect(topWorkout(t).getByRole('heading', { name: routine }), `Top of Workouts is today's ${routine}`)
     await t.expect(topWorkout(t).getByText('2 sets'), '...with 2 sets')
     await t.shot('Workouts')
+  }],
+
+  'milestones': ['The done screen lists milestones a workout unlocks, once each', async t => {
+    await begin(t, false)
+    await logOneSet(t, 'Bench Press', 60, 5)
+    await pbThrough(t)
+    const list = t.page.getByRole('list', { name: 'Milestones reached' })
+    await t.expect(list.getByText('Milestone: First workout'), 'First workout unlocks')
+    await t.expect(list.getByText('Milestone: First 60 kg lift'), 'First 60 kg lift unlocks (the highest step reached, not 20 to 50)')
+    await t.expect(list.getByText(/First (20|30|40|50) kg lift/), 'Lower weight steps are folded into the 60 kg one', 0)
+    await t.shot('Done screen with milestones')
+    await t.page.getByRole('button', { name: 'Done' }).click()
+    await t.page.waitForURL(/\/workouts/)
+    // The same again. It may unlock something else (total-lifted ones, like "Lifted a horse in total"), never these.
+    await logOneSet(t, 'Bench Press', 60, 5)
+    await pbThrough(t)
+    await t.expect(t.page.getByText(/Milestone: First (workout|60 kg lift)/), 'First workout and First 60 kg lift do not show again', 0)
+    await t.shot('Second workout')
   }],
 
   'log-empty': ['Fresh copy: empty workout, add an exercise, type a set, finish; it shows up everywhere', async t => {
