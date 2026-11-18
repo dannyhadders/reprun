@@ -217,7 +217,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
             )}
-            <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_6.5rem_4.75rem_2.75rem] items-center gap-1.5 text-sm">
+            <div className="grid grid-cols-[1.25rem_auto_minmax(6.5rem,1.4fr)_minmax(4.75rem,1fr)_2.75rem] items-center gap-1.5 text-sm">
               <span className="text-xs text-muted">Set</span><button type="button" className="-my-2 py-2 text-left text-xs text-muted underline decoration-dotted underline-offset-4" onClick={() => setPeek(ex.name)} aria-label="Last time: open history">Last</button><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">Reps</span><span />
               {ex.sets.map((s, j) => {
                 const p = prev[j] ?? prev.at(-1)
