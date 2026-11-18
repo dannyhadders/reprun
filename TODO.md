@@ -107,3 +107,15 @@ Picked 2026-11-17 from the ideas list (plus Marchon Training's hybrid ideas, sti
 - [x] **Share preview**: see the picture before sharing.
 - [ ] **Hybrid week plan** (from Marchon): lay routines and runs across the week, 5K–marathon plans over 12/16 weeks.
 - [ ] **Interval timer** (from Marchon): EMOM / AMRAP / Tabata in the logger.
+
+## Ideas from Hevy
+
+Not planned, just what Hevy has that we don't (compared 2026-11-18). Keep RepRun simple: anything optional goes behind Feature toggles.
+
+- [ ] **Supersets**: pair two exercises back to back, rest only after the pair.
+- [ ] **Warm-up sets**: mark a set as warm-up so it doesn't count towards PBs, volume or suggestions. (Hevy also has drop and failure sets; probably skip those.)
+- [ ] **Muscle heat-map**: a body outline showing what you trained this week. Each exercise already has a muscle, so it's cheap.
+- [ ] **Body measurements** (waist, arms, weight…) next to Photos, behind the same toggle.
+- [ ] **How-to link per exercise**: a link out to a video, instead of a library of our own.
+- [ ] **Apple Watch app / Apple Health sync / lock-screen Live Activity**: not possible from a PWA, would need a native app. Web Push (Rest-over notification above) is the closest we can get.
+- Skipped on purpose: social feed (likes, comments, following) and a ready-made programme library (paste-a-plan covers it). Plate calculator and Photos are already above.
