@@ -199,18 +199,19 @@ function Preview({ rows }: { rows: [string, string, string | null][] }) {
 function AskForWorkout() {
   const { data, model } = useData()
   const [copied, setCopied] = useState<string | null>(null)
-  const [from] = useState(() => new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10))
-  const week = model.sessions.filter(s => s.workout?.sets.length && s.date >= from).map(s => s.workout!)
-  const choices = focusChoices(week.flatMap(w => w.sets.map(x => model.exById.get(x.exercise_id)?.muscle ?? 'other')))
+  const [[today, from]] = useState(() => [new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }), new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)])
+  const workouts = model.sessions.filter(s => s.workout?.sets.length).map(s => s.workout!) // newest first
+  // The buttons weigh this week; the prompt gets the last 5 workouts however old, so a week off still shows your weights.
+  const choices = focusChoices(workouts.filter(w => w.date >= from).flatMap(w => w.sets.map(x => model.exById.get(x.exercise_id)?.muscle ?? 'other')))
   const copy = async (label: string) => {
-    const recent = week.map(w => workoutText({ ...w, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) }))
-    await navigator.clipboard.writeText(workoutPrompt(label, recent, data.exercises.map(e => e.name), { goals: data.profile.goals, age: data.profile.age, weight_kg: data.profile.weight_kg }))
+    const recent = workouts.slice(0, 5).map(w => workoutText({ ...w, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) }))
+    await navigator.clipboard.writeText(workoutPrompt(label, today, recent, data.exercises.map(e => e.name), { goals: data.profile.goals, age: data.profile.age, weight_kg: data.profile.weight_kg }))
     setCopied(label)
   }
   return (
     <section className="rounded-2xl border border-line bg-surface p-4">
       <h2 className="font-semibold">Or ask ChatGPT for one workout</h2>
-      <p className="mt-0.5 text-xs text-muted">Pick what to train. The prompt includes your last 7 days, so it plans around them.</p>
+      <p className="mt-0.5 text-xs text-muted">The three you've trained least this week. The prompt includes your last 5 workouts, so ChatGPT plans around them.</p>
       <div className="mt-3 grid grid-cols-3 gap-2">
         {choices.map(c => (
           <button key={c.id} className={`relative btn-ghost flex-col gap-0 py-2 ${copied === c.label ? 'border-good' : ''}`} onClick={() => void copy(c.label)}><Tap />

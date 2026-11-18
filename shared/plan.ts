@@ -145,9 +145,9 @@ export function focusChoices(sets: string[]) {
   return FOCUSES.map(f => ({ ...f, sets: n(f.id) })).sort((a, b) => a.sets - b.sets).slice(0, 3) // stable sort keeps FOCUSES order on ties
 }
 
-/** One workout for today, written around what was done this week (`recent`: workoutText blocks, newest first). */
-export function workoutPrompt(focus: string, recent: string[], names: string[], me: Me = {}) {
+/** One workout for today, written around recent training (`recent`: workoutText blocks, newest first, each with its date). */
+export function workoutPrompt(focus: string, today: string, recent: string[], names: string[], me: Me = {}) {
   return `Write me one gym workout for today, training ${focus.toLowerCase()}. I log it in an app called RepRun, which imports the workout you write.
-${aboutMe(me)}${recent.length ? `Here's what I've done in the last 7 days. Plan around it (don't hammer anything that's still recovering) and base the weights on what I lifted:\n\n${recent.join('\n\n')}\n\n` : `I haven't logged anything in the last 7 days.\n`}Don't ask me questions, just write it, as plain text with no tables or markdown and nothing else before or after.
+${aboutMe(me)}Today is ${today}. ${recent.length ? `Here are my most recent workouts, newest first. Plan around them (don't hammer anything that's still recovering) and base the weights on what I lifted:\n\n${recent.join('\n\n')}\n\n` : `I haven't logged any workouts yet.\n`}Don't ask me questions, just write it, as plain text with no tables or markdown and nothing else before or after.
 ${planFormat(names)}`
 }

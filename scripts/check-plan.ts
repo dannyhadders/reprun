@@ -45,9 +45,9 @@ for (const r of STARTER_ROUTINES) {
 // Ask ChatGPT for one workout: the three least-trained groups this week, ties in FOCUSES order; core/other ignored.
 eq(focusChoices([]).map(c => c.id), ['legs', 'back', 'chest'], 'focus: nothing logged')
 eq(focusChoices(['legs', 'legs', 'back', 'chest', 'core', 'other']).map(c => [c.id, c.sets]), [['shoulders', 0], ['arms', 0], ['back', 1]], 'focus: fewest sets first')
-const wp = workoutPrompt('Legs', ['Push day · Mon 16 Nov 2026\nBench Press: 60 kg × 8'], ['Squat'])
-assert(wp.includes('training legs') && wp.includes('Bench Press: 60 kg × 8') && wp.includes('exact exercise names: Squat') && wp.includes('ending with a colon'), 'workout prompt: focus, week, names, format')
-assert(workoutPrompt('Arms', [], []).includes("haven't logged anything"), 'workout prompt: empty week')
+const wp = workoutPrompt('Legs', 'Wed, 18 Nov 2026', ['Push day · Mon 16 Nov 2026\nBench Press: 60 kg × 8'], ['Squat'])
+assert(wp.includes('training legs') && wp.includes('Today is Wed, 18 Nov 2026. Here are my most recent workouts') && wp.includes('Bench Press: 60 kg × 8') && wp.includes('exact exercise names: Squat') && wp.includes('ending with a colon'), 'workout prompt: focus, week, names, format')
+assert(workoutPrompt('Arms', 'Wed, 18 Nov 2026', [], []).includes("haven't logged any workouts"), 'workout prompt: nothing logged')
 console.log('plan.ts self-check passed')
 
 // Live PB in the logger: same rule as buildModel's PBs.
