@@ -125,3 +125,26 @@ eq(rgot('distance:42')?.date, null, 'run: marathon still to come')
 assert(rm.some(x => x.title === '5K in under 25 min' && x.date === '2026-11-01') && rm.some(x => x.title === '5K in under 22.5 min' && !x.date), 'run: 5K time ladder')
 assert(!milestones(buildModel({ ...data, activities: [] }), 1).some(x => x.key.startsWith('km:')), 'no running goals for someone who never runs')
 console.log('running milestones self-check passed')
+
+// Swap an exercise mid-workout (session.ts). session.ts pulls in app code that reads build-time globals, so set those first.
+Object.assign(globalThis, { __LOCAL__: false, __BUILD__: { sha: 'check', date: '' }, addEventListener: () => {} })
+// ponytail: a non-literal path so tsc doesn't pull session.ts (browser code) into the Node type-check; typed as any here.
+const sessionPath: string = '../src/lib/session.ts'
+const { swapExercise } = await import(sessionPath)
+{
+  const ex = {
+    name: 'Bench Press', muscle: 'chest' as const, restS: 120, rpe: 8, collapsed: true,
+    target: { sets: 3, repsMin: 8, repsMax: 10, note: 'pause at the bottom' },
+    suggest: { weight: '60', reps: '9' },
+    sets: [{ weight: '60', reps: '9', done: true, note: 'felt easy' }, { weight: '60', reps: '9', done: false, note: 'wide grip' }, { weight: '', reps: '', done: false }],
+  }
+  const last = [{ weight_kg: 40, reps: 10 }, { weight_kg: 40, reps: 10 }] as never[]
+  const s = swapExercise(ex, 'Machine Chest Press', 'chest', last)
+  eq([s.name, s.muscle, s.restS], ['Machine Chest Press', 'chest', 120], 'swap: new name, rest kept')
+  eq(s.sets[0], ex.sets[0], 'swap: ticked set keeps its numbers and note')
+  eq(s.sets[1], { weight: '', reps: '', done: false, note: 'wide grip' }, 'swap: unticked set clears kg/reps, keeps note')
+  eq(s.target, { sets: 3, repsMin: 8, repsMax: 10, note: null }, 'swap: plan sets/reps carry, old note goes')
+  eq([s.suggest?.weight, s.rpe, s.collapsed], ['42.5', undefined, undefined], 'swap: suggestion from the new one, effort and fold reset')
+  eq(swapExercise({ ...ex, target: undefined }, 'Dips', 'chest', []).suggest, undefined, 'swap: no plan, no suggestion')
+  console.log('swap self-check passed')
+}

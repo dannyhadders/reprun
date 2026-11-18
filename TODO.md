@@ -42,6 +42,11 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 
 ## Ideas
 
+- [x] **Swap an exercise mid-workout** (shuffle button): same-muscle list, search, or a new name; today only. Feedback 2026-11-18.
+- [x] **Set notes easier to find**: "+ Add note" under the set you're on (option D of five mockups); last time's notes under each set, in the history sheet and on the exercise page.
+- [x] **Rest picker as a button**: timer icon + time, opens big time buttons.
+- [ ] **Swap: keep it in the routine** ("Use it in Pull day from now on"), if people keep swapping the same thing.
+- [ ] **Edit set notes on a logged workout** (Workouts → Edit keeps them but can't change them).
 - [ ] **Edit an exercise**: on its page, rename it (typos), change its muscle, or merge it into another (all sets move over, the duplicate goes, PBs and suggestions recalculate). Renaming onto an existing name offers to merge. New Worker routes plus local.ts twins; back up prod before shipping, since merge rewrites history.
 
 - [ ] **Feature toggles**: Settings → Features, a switch per optional feature. Off hides its tab, cards and buttons; the data stays. Do this first, then build each idea below behind its own switch.

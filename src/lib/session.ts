@@ -84,7 +84,22 @@ export function fromWorkout(w: Workout, exById: Map<number, Exercise>): Active {
   }))
 }
 
-export const rememberRest = (name: string, s: number) => write(KEY.rest, { ...read<Record<string, number>>(KEY.rest, {}), [name]: s })
+/**
+ * Swap an exercise for another, for this workout only (the routine is untouched). Ticked sets keep their numbers under
+ * the new name; unticked ones lose the kg/reps typed for the old exercise but keep their notes. A routine's sets and rep
+ * range carry over, the old plan note doesn't, and today's suggestion is worked out again from the new one's history.
+ */
+export function swapExercise(ex: LogExercise, name: string, muscle: Muscle, last: WorkoutSet[]): LogExercise {
+  const target = ex.target && { ...ex.target, note: null }
+  const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last)
+  return {
+    name, muscle, restS: ex.restS, target,
+    sets: ex.sets.map(x => (x.done ? x : { ...x, weight: '', reps: '' })),
+    suggest: s && { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last.length, held: s.held },
+  }
+}
+
+export const rememberRest =(name: string, s: number) => write(KEY.rest, { ...read<Record<string, number>>(KEY.rest, {}), [name]: s })
 
 const validSet = (s: LogSet) => s.done && +s.reps > 0 && (s.weight === '' || +s.weight >= 0)
 

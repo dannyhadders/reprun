@@ -123,7 +123,7 @@ export default function Exercise() {
                 {h.sets.map(s => {
                   const est = e1rm(s)
                   return (
-                    <span key={s.id} title={s.notes ?? undefined} className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1 text-sm tabular-nums">
+                    <span key={s.id} className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1 text-sm tabular-nums">
                       {s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'}
                       {s.reps !== null ? ` × ${num(s.reps)}` : s.seconds !== null ? ` × ${num(s.seconds)}s` : ''}
                       {est && <span className="text-xs text-muted">({num(est, 0)})</span>}
@@ -132,6 +132,10 @@ export default function Exercise() {
                   )
                 })}
               </div>
+              {/* Set notes as text: a phone can't hover for a tooltip. */}
+              {h.sets.some(s => s.notes) && (
+                <p className="mt-2 text-xs text-muted">{h.sets.map((s, n) => s.notes && `Set ${n + 1}: ${s.notes}`).filter(Boolean).join(' · ')}</p>
+              )}
             </li>
           ))}
         </ul>

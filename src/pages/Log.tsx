@@ -13,7 +13,7 @@ import { ask, Burst, CopyButton, Empty, Icon, PbBadge, ShareButton, Sheet, useCo
 import { Chart, sparkConfig } from '../components/Chart'
 import { workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { loadActive, matchExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { loadActive, matchExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -68,6 +68,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [fx, setFx] = useState<{ i: number; j: number; all: boolean; t: number } | null>(null)
   useEffect(() => () => clearTimeout(foldTimer), []) // logger closed first: don't fold or scroll anything
   const [peek, setPeek] = useState<string | null>(null) // exercise whose history sheet is open
+  const [restFor, setRestFor] = useState<number | null>(null) // exercise whose rest picker is open
+  const [swapFor, setSwapFor] = useState<number | null>(null) // exercise being swapped
   const closePeek = useCallback(() => setPeek(null), [])
   const [voice, setVoiceState] = useState(voiceOn)
 
@@ -88,6 +90,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     return () => clearTimeout(t)
   })
 
+  // The exercise you're on: the first one started but not finished, else the first not finished. "+ Add note" shows only there.
+  const unfinished = (e: Active['exercises'][number]) => e.sets.some(s => !s.done)
+  const started = a.exercises.findIndex(e => unfinished(e) && e.sets.some(s => s.done))
+  const onEx = started >= 0 ? started : a.exercises.findIndex(unfinished)
   const known = name.trim() ? matchExercise(name, data.exercises, data.aliases) : null // follows renames, merges and the catalogue
   const isNew = name.trim() && !known && newExercise(name).muscle === 'other'
   const t = totals(a)
@@ -130,6 +136,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         }
         const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : +s.weight, reps: s.reps === '' ? null : +s.reps, done: s.done })))
         const done = ex.sets.filter(s => s.done).length
+        const cur = i === onEx ? ex.sets.findIndex(s => !s.done) : -1 // the set you're on: only in the exercise you're on
         const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
         return (
           // Folded, the whole card opens it; open, the whole header row folds it. The rest picker and ✕ keep their own taps.
@@ -143,17 +150,24 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               <button className="relative flex min-w-0 flex-1 select-none items-center gap-2 text-left [-webkit-touch-callout:none]" aria-expanded={!ex.collapsed} {...hold(() => setPeek(ex.name))}>
                 <Tap />
                 <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
-                <h2 className="min-w-0 truncate font-semibold">{ex.name}</h2>
+                <h2 className="min-w-0 break-words font-semibold leading-tight [overflow-wrap:anywhere] line-clamp-2">{ex.name}</h2>
                 <span key={done} className={`relative inline-block shrink-0 animate-bump text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>
                   {done}/{ex.sets.length}
                   {fx?.all && fx.i === i && <Burst key={fx.t} />}
                 </span>
               </button>
               {/* Finished: no rest picker and no ✕, just a green tick on the right so it reads as done at a glance. */}
-              {done < ex.sets.length && <select onClick={e => e.stopPropagation()} className="min-h-11 rounded-lg bg-surface-2 px-2 text-xs text-muted" aria-label="Rest between sets" value={ex.restS}
-                onChange={e => (rememberRest(ex.name, +e.target.value), update(x => (x.exercises[i].restS = +e.target.value)))}>
-                {[...new Set([...RESTS, ex.restS])].sort((x, y) => x - y).map(s => <option key={s} value={s}>Rest {clock(s)}</option>)}
-              </select>}
+              {done < ex.sets.length && <>
+                {/* Rest between sets: a button with the time, opening big time buttons (RestPicker). */}
+                <button className="press relative flex h-9 shrink-0 items-center gap-1 rounded-full bg-surface-2 px-2.5 text-[13px] font-semibold tabular-nums"
+                  aria-label={`Rest between sets: ${clock(ex.restS)}. Change`} onClick={e => (e.stopPropagation(), setRestFor(i))}>
+                  <Tap /><Icon d={TIMER} className="size-4 text-accent-2" />{clock(ex.restS)}
+                </button>
+                {/* Swap for another exercise, today only (the machine's taken). */}
+                <button className="icon-btn relative" aria-label={`Swap ${ex.name} for another exercise`} onClick={e => (e.stopPropagation(), setSwapFor(i))}>
+                  <Tap /><Icon d={SHUFFLE} className="size-5" />
+                </button>
+              </>}
               {done < ex.sets.length ? <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={async e => {
                 e.stopPropagation()
                 if (!await ask(`Remove ${ex.name} from this workout?${done ? ` Its ${plural(done, 'ticked set')} go too.` : ''}`, 'Remove', true)) return
@@ -238,9 +252,18 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                       })
                     }}><Tap />✓{j === pbAt && <span className="absolute right-0.5 top-0 animate-pop text-xs" role="img" aria-label="PB">🏆</span>}</button>
                   </SwipeRow>,
-                  s.note !== undefined && (
-                    <input key={`t${j}`} className="input col-span-5 py-2" placeholder={`Note for set ${j + 1}, e.g. felt easy, left shoulder`} aria-label={`Set ${j + 1} note`}
-                      autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))} />
+                  // Last time's note for this set, so "wide bar, upstairs machine" is there when you need it.
+                  prev[j]?.notes && <p key={`l${j}`} className="col-span-5 -mt-1 truncate px-1 text-xs text-muted">Last time: {prev[j].notes}</p>,
+                  s.note !== undefined ? (
+                    <input key={`t${j}`} className="input col-span-5 py-2" placeholder={`Note for set ${j + 1}, e.g. wide bar, felt easy`} aria-label={`Set ${j + 1} note`}
+                      autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))}
+                      onBlur={e => !e.target.value.trim() && update(x => void (x.exercises[i].sets[j] && (x.exercises[i].sets[j].note = undefined)))} />
+                  ) : j === cur && (
+                    // Only under the set you're on; earlier sets still take a note by tapping their number.
+                    <button key={`a${j}`} type="button" className="press col-span-5 flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-line px-3 text-left text-[13px] text-muted active:bg-surface-2"
+                      onClick={() => update(x => void (x.exercises[i].sets[j].note = ''))}>
+                      <Icon d={PLUS} className="size-3.5" />Add note for set {j + 1}
+                    </button>
                   ),
                 ]
               })}
@@ -299,6 +322,15 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       <button className="w-full py-3 text-sm text-bad" onClick={() => void ask('Discard this workout? Nothing will be saved.', 'Discard', true).then(ok => ok && set(null))}>Discard workout</button>
 
       {peek && <History name={peek} close={closePeek} />}
+      {restFor !== null && a.exercises[restFor] && <RestPicker ex={a.exercises[restFor]} close={() => setRestFor(null)}
+        pick={sec => (rememberRest(a.exercises[restFor].name, sec), update(x => void (x.exercises[restFor] && (x.exercises[restFor].restS = sec))), setRestFor(null))} />}
+      {swapFor !== null && a.exercises[swapFor] && <SwapPicker current={a.exercises[swapFor]} close={() => setSwapFor(null)}
+        pick={(n, m) => {
+          const i = swapFor, old = a.exercises[i]
+          update(x => void (x.exercises[i] = swapExercise(x.exercises[i], n, m, lastSets(model, n))))
+          setSwapFor(null)
+          setUndo({ msg: `Swapped ${old.name} for ${n}`, put: x => void (x.exercises[i] = old) })
+        }} />}
 
       {/* One dock at the bottom: Undo stacks on top of the rest timer, so neither can cover the other. */}
       <div className="fixed inset-x-0 bottom-0 z-20">
@@ -332,6 +364,82 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 const BIN_W = 72 // px the row slides to show the bin; also the bin's width
 const SPEAKER_ON = 'M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14' // Lucide volume-2
 const SPEAKER_OFF = 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6' // Lucide volume-x
+const SHUFFLE = 'M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22M18 2l4 4-4 4M2 6h1.9c1.5 0 2.9.9 3.6 2.2M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8M18 14l4 4-4 4' // Lucide shuffle
+const TIMER = 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z' // Lucide timer
+const PLUS = 'M12 5v14M5 12h14'
+const SEARCH = 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5'
+
+/** Rest between sets as big buttons; the current one filled. Remembered per exercise (rememberRest). */
+function RestPicker({ ex, pick, close }: { ex: { name: string; restS: number }; pick: (s: number) => void; close: () => void }) {
+  return (
+    <Sheet close={close} label="Rest between sets">
+      <h2 className="text-lg font-bold">Rest between sets</h2>
+      <p className="mb-4 truncate text-sm text-muted">{ex.name} · remembered for next time</p>
+      <div className="grid grid-cols-3 gap-2">
+        {[...new Set([...RESTS, ex.restS])].sort((x, y) => x - y).map(sec => {
+          const on = sec === ex.restS
+          return (
+            <button key={sec} aria-pressed={on} onClick={() => pick(sec)}
+              className={`press relative h-13 rounded-2xl border text-lg font-bold tabular-nums ${on ? 'border-accent bg-accent text-bg' : 'border-line bg-surface-2'}`}>
+              <Tap />{clock(sec)}
+            </button>
+          )
+        })}
+      </div>
+    </Sheet>
+  )
+}
+
+/** Swap an exercise for another, today only: same-muscle ones you've done first, or search any, or type a new one. */
+function SwapPicker({ current, pick, close }: { current: { name: string; muscle: Muscle }; pick: (name: string, muscle: Muscle) => void; close: () => void }) {
+  const { data, model } = useData()
+  const [q, setQ] = useState('')
+  const term = q.trim().toLowerCase()
+  const recent = (id: number) => model.exHistory.get(id)?.at(-1)?.date ?? ''
+  const list = data.exercises
+    .filter(e => e.name !== current.name && (term ? e.name.toLowerCase().includes(term) : e.muscle === current.muscle))
+    .sort((x, y) => recent(y.id).localeCompare(recent(x.id)))
+    .slice(0, 8)
+  const typed = q.trim() && !data.exercises.some(e => e.name.toLowerCase() === term) ? q.trim() : null
+  return (
+    <Sheet close={close} label={`Swap ${current.name}`}>
+      <h2 className="truncate text-lg font-bold">Swap {current.name} for…</h2>
+      <p className="mb-3 text-sm text-muted">Just for today. Ticked sets stay, under the new name.</p>
+      <label className="input mb-2 flex h-11 items-center gap-2 focus-within:border-accent">
+        <Icon d={SEARCH} className="size-4 shrink-0 text-muted" />
+        <input className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted" placeholder="Search exercises" value={q} onChange={e => setQ(e.target.value)} autoComplete="off" aria-label="Search exercises" />
+      </label>
+      {!term && list.length > 0 && <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted">Also {current.muscle}</p>}
+      <ul className="divide-y divide-line">
+        {list.map(e => {
+          const hist = model.exHistory.get(e.id) ?? []
+          const last = hist.at(-1)
+          const top = last && heaviest(last.sets)
+          return (
+            <li key={e.id}>
+              <button className="row-press relative flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left" onClick={() => pick(e.name, e.muscle)}>
+                <Tap />
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent/15 text-xs font-bold text-accent">{initials(e.name)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{e.name}</span>
+                  <span className="block text-xs text-muted">{top ? `Last ${setText(top)}` : 'Not done yet'}</span>
+                </span>
+                {last && <span className="shrink-0 text-xs text-muted">{ago(last.date)}</span>}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      {typed && (
+        <button className="btn-ghost mt-2 w-full" onClick={() => pick(typed, newExercise(typed).muscle === 'other' ? current.muscle : newExercise(typed).muscle)}>Use "{typed}"</button>
+      )}
+      {!list.length && !typed && <p className="py-6 text-center text-sm text-muted">Nothing else logged for {current.muscle} yet. Search or type a name.</p>}
+    </Sheet>
+  )
+}
+
+const initials = (name: string) => name.split(/[\s-]+/).filter(w => /[a-z]/i.test(w[0] ?? '')).slice(0, 2).map(w => w[0].toUpperCase()).join('')
+
 const BIN = 'M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6' // Lucide trash-2
 
 /**
@@ -500,7 +608,7 @@ function History({ name, close }: { name: string; close: () => void }) {
                   {f && <span className="text-xs text-muted">{f.emoji} {f.label}</span>}
                   <span className="ml-auto">{h.sets.map(s => <PbBadge key={s.id} kinds={model.pbs.get(s.id)} />)}</span>
                 </div>
-                <p className="mt-0.5 text-sm text-muted">{h.sets.map(setText).join(' · ')}</p>
+                <p className="mt-0.5 text-sm text-muted">{h.sets.map(x => setText(x) + (x.notes ? ` (${x.notes})` : '')).join(' · ')}</p>
               </li>
             )
           })}

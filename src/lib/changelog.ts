@@ -4,6 +4,9 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'Swap an exercise mid-workout with the shuffle button (machine taken?). Pick from the same muscle group or search; sets you\'ve ticked stay. Just for today: your routine doesn\'t change.',
+      'Rest between sets is now a button showing the time. Tap it and pick from big time buttons.',
+      'An "Add note" line sits under the set you\'re on, so notes are easy to find. Last time\'s notes (wide bar, upstairs machine…) show under each set, in the exercise history, and on the exercise page.',
       'The top line of each page sits a little lower on iPhone, clear of the blur under the clock and battery.',
       'After an update, a short "Updated ✓" message says you\'re on the latest version, with a What\'s new button that opens this list.',
       'Updates no longer pile up old copies of the app on your phone: each new version clears out the last one, and it still opens with no signal.',
