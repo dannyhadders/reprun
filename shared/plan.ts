@@ -17,6 +17,10 @@ const SETS = /(\d+)\s*(?:x|×|\*|sets?\s*(?:of|x)?)\s*(\d+)(?:\s*(?:-|–|to)\s*
 const WEIGHT = /@?\s*(\d+(?:\.\d+)?)\s*kgs?\b/i
 const REST = /rest\s*:?\s*(\d+(?:\.\d+)?)\s*(m|min|mins|minutes|s|sec|secs|seconds)?\b|(\d+(?:\.\d+)?)\s*(m|min|mins|minutes|s|sec|secs|seconds)\s*rest/i
 
+const words = (t: string) => t.split(/\s+/).filter(Boolean).length
+/** A long line ending like a sentence: chat-reply advice, never an exercise or a day's name. */
+const sentence = (t: string) => /[.?!]$/.test(t) && words(t) > 6
+
 // Bullets, numbering and markdown that chat apps add.
 const clean = (l: string) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, '').replace(/[#*_`]/g, '').trim()
 
@@ -30,6 +34,9 @@ export function parseLine(raw: string): PlanItem | null {
   }
   const s = line.match(SETS)
   if (!s) return null
+  // Chat replies wrap the plan in tips with sets in them ("If 4x6 feels easy, go up next time."): a sentence, or a
+  // long run of words before the sets, is advice, not an exercise.
+  if (sentence(line) || words(line.slice(0, s.index)) > 6) return null
   const rest = line.match(REST)
   const restVal = rest ? Number(rest[1] ?? rest[3]) : null
   const restUnit = rest ? (rest[2] ?? rest[4] ?? '') : ''
@@ -52,7 +59,9 @@ export function parseLine(raw: string): PlanItem | null {
 }
 
 export function parsePlan(text: string): ParsedRoutine[] {
-  const lines = text.split(/\r?\n/)
+  // Asked for a code block (planFormat), a chat reply's intro and tips sit outside it: read only what's inside.
+  const fenced = [...text.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(m => m[1])
+  const lines = (fenced.length ? fenced.join('\n\n') : text).split(/\r?\n/)
   const out: ParsedRoutine[] = []
   const current = () => out.at(-1) ?? (out.push({ name: 'Workout', items: [], unparsed: [] }), out[0])
   const nextLine = (i: number) => lines.slice(i + 1).find(l => clean(l))
@@ -69,7 +78,7 @@ export function parsePlan(text: string): ParsedRoutine[] {
     const next = nextLine(i)
     const marked = /:\s*$/.test(lines[i]) || /^\s*(#|\*\*)/.test(lines[i])
     const titleish = !out.length || !clean(lines[i - 1] ?? '')
-    if (marked || (next && parseLine(next) && titleish)) out.push({ name: line.replace(/:\s*$/, ''), items: [], unparsed: [] })
+    if (!sentence(line) && (marked || (next && parseLine(next) && titleish))) out.push({ name: line.replace(/:\s*$/, ''), items: [], unparsed: [] })
     else current().unparsed.push(line)
   }
   return out.filter(r => r.items.length)
@@ -126,12 +135,13 @@ const aboutMe = (me: Me) => {
 const planFormat = (names: string[]) => `Start each workout day with its name on its own line, ending with a colon.
 Then one line per exercise, exactly like this:
 Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
-Use kg. Leave out "@ ...kg" for bodyweight exercises.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
+Use kg. Leave out "@ ...kg" for bodyweight exercises.
+Put it all inside one code block, with nothing but the workout lines in it, so I can copy it in one tap.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
 
 export function planPrompt(names: string[], me: Me = {}) {
   return `Help me plan my gym training. I log it in an app called RepRun, which imports the plan you write.
 ${aboutMe(me)}Before you write anything, ask me a few short questions, one at a time: how many days a week I can train, how long a session can be, what equipment I have, any injuries, and how experienced I am.
-Then write my gym plan as plain text, no tables or markdown.
+Then write my gym plan as plain text, no tables.
 ${planFormat(names)}`
 }
 
@@ -148,6 +158,6 @@ export function focusChoices(sets: string[]) {
 /** One workout for today, written around recent training (`recent`: workoutText blocks, newest first, each with its date). */
 export function workoutPrompt(focus: string, today: string, recent: string[], names: string[], me: Me = {}, runs: string[] = []) {
   return `Write me one gym workout for today, training ${focus.toLowerCase()}. I log it in an app called RepRun, which imports the workout you write.
-${aboutMe(me)}Today is ${today}. ${recent.length ? `Here are my most recent workouts, newest first. Plan around them (don't hammer anything that's still recovering) and base the weights on what I lifted:\n\n${recent.join('\n\n')}\n\n` : `I haven't logged any workouts yet.\n`}${runs.length ? `My runs and other training in the last 7 days, newest first. Count them too (no heavy legs the day after a long or hard run):\n${runs.join('\n')}\n\n` : ''}Don't ask me questions, just write it, as plain text with no tables or markdown and nothing else before or after.
+${aboutMe(me)}Today is ${today}. ${recent.length ? `Here are my most recent workouts, newest first. Plan around them (don't hammer anything that's still recovering) and base the weights on what I lifted:\n\n${recent.join('\n\n')}\n\n` : `I haven't logged any workouts yet.\n`}${runs.length ? `My runs and other training in the last 7 days, newest first. Count them too (no heavy legs the day after a long or hard run):\n${runs.join('\n')}\n\n` : ''}Don't ask me questions, just write it. Reply with only the code block: no intro, warm-up, tips or follow-up questions.
 ${planFormat(names)}`
 }

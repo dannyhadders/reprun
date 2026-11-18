@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'Pasting a whole ChatGPT reply works now: its chat and tips around the workout are left out, so a tip like "if 4x6 feels easy, go up next time" no longer turns into an exercise. The prompt also asks ChatGPT to put the workout in a box with its own Copy button, so you copy just the workout in one tap.',
       'The add-to-home-screen clip now shows on any phone or computer, not just Safari and Chrome on iPhone. On a computer, it tells you to open the page on your iPhone, and Chrome\'s Install button shows wherever Chrome offers one.',
       'On a computer, the kg and reps boxes in a workout no longer show little up and down arrows next to the − and + buttons.',
       'A PB now gets a proper celebration when you finish: confetti, a trophy and what each PB beat ("Best was 60 kg, +2.5 kg"). It changes each time: a trophy, a gold card for each PB, your old best rolling up to the new one, or a sheet from the bottom.',

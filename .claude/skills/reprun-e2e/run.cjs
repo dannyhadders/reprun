@@ -191,6 +191,21 @@ const CHECKS = {
     await t.shot('Planner with the routine')
   }],
 
+  'plan-chatty': ['Paste a whole chatty ChatGPT reply: only the workout comes in', async t => {
+    await begin(t, false)
+    await planner(t)
+    await t.page.getByRole('button', { name: /^\+ Import/ }).click()
+    await t.page.getByRole('textbox', { name: 'Plan text' }).fill([
+      "Great choice! Since you ran 10 km yesterday, here's a legs session that won't overcook you.", '',
+      '**Legs:**', '', 'Warm-up: 5 minutes on the bike, then 2 sets of 10 bodyweight squats.', '',
+      '1. Back Squat – 4x6 @ 100kg, rest 120s', '2. Romanian Deadlift – 3x8-10 @ 80kg', '3. Walking Lunge – 3x12', '',
+      '**Why this works:**', '- If 4x6 feels easy at 100kg, go to 102.5kg next time.', '', 'Want me to make an upper body day too?',
+    ].join('\n'))
+    await t.expect(t.page.getByRole('heading', { name: /Legs · 3 exercises/ }), 'Preview reads 1 day, 3 exercises')
+    await t.expect(t.page.getByRole('button', { name: 'Save 1 routine' }), 'Only one routine to save: the tips are not a second day')
+    await t.shot('Chatty reply preview')
+  }],
+
   'body-weight': ['Log body weight on Home', async t => {
     await begin(t, true)
     await t.page.getByRole('spinbutton', { name: 'Body weight in kg' }).fill('77.4')

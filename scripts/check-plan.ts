@@ -46,11 +46,34 @@ for (const r of STARTER_ROUTINES) {
 eq(focusChoices([]).map(c => c.id), ['legs', 'back', 'chest'], 'focus: nothing logged')
 eq(focusChoices(['legs', 'legs', 'back', 'chest', 'core', 'other']).map(c => [c.id, c.sets]), [['shoulders', 0], ['arms', 0], ['back', 1]], 'focus: fewest sets first')
 const wp = workoutPrompt('Legs', 'Wed, 18 Nov 2026', ['Push day · Mon 16 Nov 2026\nBench Press: 60 kg × 8'], ['Squat'])
-assert(wp.includes('training legs') && wp.includes('Today is Wed, 18 Nov 2026. Here are my most recent workouts') && wp.includes('Bench Press: 60 kg × 8') && wp.includes('exact exercise names: Squat') && wp.includes('ending with a colon'), 'workout prompt: focus, week, names, format')
+assert(wp.includes('training legs') && wp.includes('Today is Wed, 18 Nov 2026. Here are my most recent workouts') && wp.includes('Bench Press: 60 kg × 8') && wp.includes('exact exercise names: Squat') && wp.includes('ending with a colon') && wp.includes('one code block') && wp.includes('Reply with only the code block'), 'workout prompt: focus, week, names, format')
 assert(workoutPrompt('Arms', 'Wed, 18 Nov 2026', [], []).includes("haven't logged any workouts"), 'workout prompt: nothing logged')
 assert(!wp.includes('My runs'), 'workout prompt: no runs, no runs line')
 const wr = workoutPrompt('Legs', 'Wed, 18 Nov 2026', [], ['Squat'], {}, ['Run · Tue 17 Nov 2026 · 10.2 km · 52 min'])
 assert(wr.includes("haven't logged any workouts yet.\nMy runs and other training in the last 7 days") && wr.includes('Run · Tue 17 Nov 2026 · 10.2 km · 52 min\n\nDon\'t ask me'), 'workout prompt: runs listed')
+// A chatty ChatGPT reply: the tips around the workout mustn't become exercises or a second routine.
+const CHATTY = `Great choice! Since you ran 10 km yesterday, here's a legs session that won't overcook you.
+
+**Legs – Wednesday:**
+
+Warm-up: 5 minutes on the bike, then 2 sets of 10 bodyweight squats.
+
+1. Back Squat – 4x6 @ 100kg, rest 120s; last time 97.5 felt solid
+2. Romanian Deadlift – 3x8-10 @ 80kg, rest 90s
+3. Walking Lunge – 3x12, rest 60s
+
+**Why this works:**
+- Squats first while you're fresh.
+- If 4x6 feels easy at 100kg, go to 102.5kg next time.
+- Keep RDLs at 3 sets of 8 if your hamstrings are still tight from the run.
+
+Want me to make a matching upper body day for Friday?`
+const chatty = parsePlan(CHATTY)
+eq(chatty.map(r => [r.name, r.items.map(i => i.name)]), [['Legs – Wednesday', ['Back Squat', 'Romanian Deadlift', 'Walking Lunge']]], 'chatty reply: just the workout')
+// Asked for a code block: only what's inside it counts, however chatty the rest.
+const fenced = parsePlan("Here you go!\n\n```\nPush:\nBench Press – 4x8 @ 60kg\nDips – 3x12\n```\n\nIf 4x8 is easy, add 2.5 kg.\nPull:\nRow – 3x10")
+eq(fenced.map(r => [r.name, r.items.length]), [['Push', 2]], 'code block: only the block')
+eq(parseLine('Squat 3x5 @ 100 kg.')?.name, 'Squat', 'a short line ending in a full stop is still an exercise')
 console.log('plan.ts self-check passed')
 
 // Live PB in the logger: same rule as buildModel's PBs.
