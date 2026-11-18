@@ -3,6 +3,7 @@ import { GOALS, type GoalId } from '../../shared/rules'
 import type { Profile } from '../../shared/types'
 import { Tap } from '../lib/haptic'
 import { browserName, useInstallPrompt } from '../lib/intro'
+import { pushSupported, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
 import { CopyButton, Icon } from './ui'
 
 export type Answers = { goals: GoalId[]; weight_kg: number | null; age: number | null; sex: Profile['sex'] | null }
@@ -34,11 +35,14 @@ const I = {
   add: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 8v8M8 12h8',
   home: 'M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   dots: 'M12 5h.01M12 12h.01M12 19h.01',
+  bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
 }
 
-/** First-run intro: five swipeable pages (six with the home-screen how-to), every question optional, Skip on every page. */
+/** First-run intro: five swipeable pages (plus the home-screen how-to, or rest alerts once it's installed), every question optional, Skip on every page. */
 export function Onboarding({ mode, stravaConfigured, install, onData, prompt, onStarters, onStravaFile, onFinish }: Props) {
-  const PAGES = install ? 6 : 5
+  // Rest alerts need the installed app on iPhone, so they're offered once it is (the intro runs again in there).
+  const [alerts] = useState(() => !install && pushSupported())
+  const PAGES = 5 + (install ? 1 : 0) + (alerts ? 1 : 0)
   const track = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
   const onInstall = useInstallPrompt() // Android: Chrome's own install prompt, once it offers one
@@ -132,6 +136,8 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
           <Demo />
         </Page>
 
+        {alerts && <RestAlertsPage />}
+
         <Page>
           <h2 className="text-3xl font-bold tracking-tight">What are you here for?</h2>
           <p className="mt-2 text-muted">Pick up to two. It shapes the routines RepRun suggests. Optional.</p>
@@ -197,6 +203,19 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
         {!locked && <button className="btn relative min-h-12 px-6 text-base" onClick={next}><Tap />{page === PAGES - 1 ? "Let's go" : 'Next'}</button>}
       </div>
     </div>
+  )
+}
+
+function RestAlertsPage() {
+  const alerts = useRestAlerts()
+  return (
+    <Page>
+      <span className="grid size-16 place-items-center rounded-2xl bg-accent/15 text-accent"><Icon d={I.bell} className="h-8 w-8" /></span>
+      <h2 className="mt-5 text-3xl font-bold tracking-tight">Rest alerts</h2>
+      <p className="mt-2 text-muted">Get a buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket.</p>
+      <RestAlertsButton {...alerts} className="mt-7 w-full" />
+      <div className="mt-4 w-full"><WhatsSent /></div>
+    </Page>
   )
 }
 

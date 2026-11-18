@@ -5,6 +5,7 @@ import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
 import { BackupNudge } from '../components/PhoneOnly'
 import { LOCAL } from '../lib/local'
+import { scheduleRest } from '../lib/push'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
@@ -23,7 +24,8 @@ export default function Log() {
   const { sync } = useData()
   const [active, setActiveRaw] = useState(loadActive)
   const [finished, setFinished] = useState<ImportWorkout | null>(null)
-  const setActive = (a: Active | null) => (saveActive(a), setActiveRaw(a))
+  // Finished or discarded: no rest alert still to come.
+  const setActive = (a: Active | null) => (a || scheduleRest(null), saveActive(a), setActiveRaw(a))
 
   const finish = (a: Active) => {
     if (!totals(a).sets) return void ask('No sets ticked off. Discard this workout?', 'Discard', true).then(ok => ok && setActive(null))
@@ -84,10 +86,15 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   }, [])
 
   // Rest over: beep and clear. A negative delay (app reopened after the rest ended) fires straight away.
+  // Rest alerts (lib/push): the server buzzes the lock screen when rest ends, unless the app is still on screen 2 s
+  // before, when it cancels and beeps itself. A locked phone pauses this timer, so the alert goes. Left for another
+  // page mid-rest, nothing here cancels it either, which is what you want: the logger isn't there to beep.
+  useEffect(() => scheduleRest(a.restEndsAt), [a.restEndsAt])
   useEffect(() => {
     if (!a.restEndsAt) return
     const t = setTimeout(() => (restOver(loadActive() ?? a), update(x => (x.restEndsAt = null))), a.restEndsAt - Date.now())
-    return () => clearTimeout(t)
+    const early = setTimeout(() => document.visibilityState === 'visible' && scheduleRest(null), a.restEndsAt - Date.now() - 2000)
+    return () => (clearTimeout(t), clearTimeout(early))
   })
 
   const known = name.trim() ? matchExercise(name, data.exercises, data.aliases) : null // follows renames, merges and the catalogue

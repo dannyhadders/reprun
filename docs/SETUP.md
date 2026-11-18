@@ -85,6 +85,13 @@ Log a workout, or paste a plan from your PT: **+ → Import plan**.
    `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET`, from the Strava app page.
 3. In RepRun: **Settings → Strava → Connect**, then **Sync now**.
 
+## Rest alerts (nothing to set up)
+
+**Settings → Notifications → Rest alerts** buzzes the lock screen when rest is over, even with the app closed
+(iPhone: iOS 16.4 or later, opened from the home screen). Your copy uses RepRun's own alert server,
+`push.reprun.co.uk`. It only ever gets your phone's notification address and the time your rest ends, never your
+workouts, and deletes both once the alert is sent. It's off until you turn it on.
+
 ---
 
 ## Own domain

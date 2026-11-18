@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'Rest alerts: a buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket. Turn them on in the intro or Settings → Notifications. Only "rest over" is sent, never your workouts.',
       'Adding RepRun to your home screen is easier to follow: the how-to page plays a short clip of a real iPhone doing it in Safari or Chrome, and lights up each step as the clip reaches it.',
       'Choose what\'s next: tap Change on the Next up card and pick any routine. It shows on Home too, and goes back to automatic (the one done longest ago) once you\'ve done it.',
       'The "workout in progress" bar stands out: a soft indigo glow that slowly breathes, so you can\'t miss a workout that\'s still running.',

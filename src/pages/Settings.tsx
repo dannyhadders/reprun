@@ -10,6 +10,7 @@ import { api, importStravaFile, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
 import { lastBackup, saveBackup } from '../lib/backupFile'
 import { ThisPhoneCard } from '../components/PhoneOnly'
+import { pushSupported, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
 import { CHANGELOG } from '../lib/changelog'
 import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/format'
 
@@ -26,7 +27,7 @@ export default function Settings() {
         <BackupCard />
         {!data.demo && <ImportCard />}
         {!data.demo && !LOCAL && <StravaCard />}
-        {!LOCAL && 'setAppBadge' in navigator && 'Notification' in window && <BadgeCard />}
+        {(pushSupported() || badgeSupported) && <NotificationsCard />}
         <BodyWeightLog />
         <SourcesCard />
         <AboutCard />
@@ -236,14 +237,30 @@ function StravaCard() {
   )
 }
 
-function BadgeCard() {
-  const [perm, setPerm] = useState(Notification.permission)
+const badgeSupported = !LOCAL && 'setAppBadge' in navigator && 'Notification' in window // phone-only has no uploads to count
+
+function NotificationsCard() {
+  const alerts = useRestAlerts()
+  const [perm, setPerm] = useState(() => 'Notification' in window ? Notification.permission : 'denied')
   return (
-    <Card title="Badge on the app icon">
-      <p className="text-sm text-muted">Shows a number on RepRun's icon when a workout is saved on this phone but not uploaded yet. iPhone needs notifications allowed for that (RepRun doesn't send any yet).</p>
-      {perm === 'granted' ? <p className="mt-3 text-sm text-good">On.</p>
-        : perm === 'denied' ? <p className="mt-3 text-sm text-muted">Notifications are blocked. Turn them on in the phone's Settings → Notifications → RepRun.</p>
-        : <button className="btn mt-4" onClick={() => void Notification.requestPermission().then(setPerm)}>Turn on</button>}
+    <Card title="Notifications">
+      {pushSupported() && (
+        <div>
+          <p className="font-medium">Rest alerts</p>
+          <p className="mt-0.5 text-sm text-muted">A buzz on your lock screen and Apple Watch when rest is over, even with your phone in your pocket.</p>
+          <RestAlertsButton {...alerts} className="mt-3" />
+          <div className="mt-3"><WhatsSent /></div>
+        </div>
+      )}
+      {badgeSupported && (
+        <div className={pushSupported() ? 'mt-5 border-t border-line pt-4' : ''}>
+          <p className="font-medium">Badge on the app icon</p>
+          <p className="mt-0.5 text-sm text-muted">A number on RepRun's icon when a workout is saved on this phone but not uploaded yet. iPhone needs notifications allowed for it.</p>
+          {perm === 'granted' || alerts.state === 'on' ? <p className="mt-3 text-sm text-good">On.</p>
+            : perm === 'denied' || alerts.state === 'denied' ? <p className="mt-3 text-sm text-muted">Notifications are blocked. Turn them on in the phone's Settings → Notifications → RepRun.</p>
+            : <button className="btn mt-3" onClick={() => void Notification.requestPermission().then(setPerm)}>Turn on</button>}
+        </div>
+      )}
     </Card>
   )
 }

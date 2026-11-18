@@ -41,3 +41,14 @@ self.addEventListener('fetch', e => {
     ? caches.match(key).then(hit => hit ?? fetch(e.request).then(save))
     : fetch(e.request).then(save).catch(() => caches.match(key).then(hit => hit ?? Response.error())))
 })
+
+// Rest alerts (src/lib/push.tsx): the push arrives empty, so the words are written here. Tapping it opens the workout.
+self.addEventListener('push', e => e.waitUntil(self.registration.showNotification('Rest over', {
+  body: 'Time for your next set.', tag: 'rest', icon: '/icon-512.png',
+})))
+self.addEventListener('notificationclick', e => {
+  e.notification.close()
+  e.waitUntil(self.clients.matchAll({ type: 'window' }).then(open => open[0]
+    ? open[0].focus().then(c => c.navigate?.('/log'))
+    : self.clients.openWindow('/log')))
+})
