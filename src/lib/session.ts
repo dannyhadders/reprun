@@ -43,8 +43,9 @@ const write = (k: string, v: unknown) => {
 export const loadActive = () => read<Active | null>(KEY.active, null)
 export const saveActive = (a: Active | null) => write(KEY.active, a)
 
+// Every exercise starts folded: the workout opens as a tidy list, and you open the one you're doing.
 export const start = (title = '', exercises: LogExercise[] = []): Active =>
-  ({ clientId: crypto.randomUUID(), startedAt: Date.now(), title, exercises, restEndsAt: null })
+  ({ clientId: crypto.randomUUID(), startedAt: Date.now(), title, exercises: exercises.map(e => ({ ...e, collapsed: true })), restEndsAt: null })
 
 export const newExercise = (raw: string, muscle?: Muscle, sets = 1, reps = '', weight = ''): LogExercise => {
   const e = resolveExercise(raw, null)

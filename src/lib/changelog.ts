@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-18',
     changes: [
+      'A workout starts with every exercise folded: open the one you\'re doing. Each open exercise has a row of buttons for rest time, history, swap and remove, and "Add note" sits under the next set in every exercise.',
       'Swap an exercise mid-workout with the shuffle button (machine taken?). Pick from the same muscle group or search; sets you\'ve ticked stay. Just for today: your routine doesn\'t change.',
       'Rest between sets is now a button showing the time. Tap it and pick from big time buttons.',
       'An "Add note" line sits under the set you\'re on, so notes are easy to find. Last time\'s notes (wide bar, upstairs machine…) show under each set, in the exercise history, and on the exercise page.',

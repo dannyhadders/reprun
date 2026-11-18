@@ -90,10 +90,6 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     return () => clearTimeout(t)
   })
 
-  // The exercise you're on: the first one started but not finished, else the first not finished. "+ Add note" shows only there.
-  const unfinished = (e: Active['exercises'][number]) => e.sets.some(s => !s.done)
-  const started = a.exercises.findIndex(e => unfinished(e) && e.sets.some(s => s.done))
-  const onEx = started >= 0 ? started : a.exercises.findIndex(unfinished)
   const known = name.trim() ? matchExercise(name, data.exercises, data.aliases) : null // follows renames, merges and the catalogue
   const isNew = name.trim() && !known && newExercise(name).muscle === 'other'
   const t = totals(a)
@@ -136,7 +132,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         }
         const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : +s.weight, reps: s.reps === '' ? null : +s.reps, done: s.done })))
         const done = ex.sets.filter(s => s.done).length
-        const cur = i === onEx ? ex.sets.findIndex(s => !s.done) : -1 // the set you're on: only in the exercise you're on
+        const cur = ex.sets.findIndex(s => !s.done) // the next set to do: "+ Add note" goes there, in every exercise (people don't go in order)
         const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
         return (
           // Folded, the whole card opens it; open, the whole header row folds it. The rest picker and ✕ keep their own taps.
@@ -146,7 +142,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               e.stopPropagation() // the card's own handler would undo it
               toggle()
             }}>
-              {/* Only the name holds: holding ✕ or the rest picker mustn't open history too. */}
+              {/* Press and hold the name for history too (the toolbar's history button is the obvious way). */}
               <button className="relative flex min-w-0 flex-1 select-none items-center gap-2 text-left [-webkit-touch-callout:none]" aria-expanded={!ex.collapsed} {...hold(() => setPeek(ex.name))}>
                 <Tap />
                 <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
@@ -156,25 +152,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                   {fx?.all && fx.i === i && <Burst key={fx.t} />}
                 </span>
               </button>
-              {/* Finished: no rest picker and no ✕, just a green tick on the right so it reads as done at a glance. */}
-              {done < ex.sets.length && <>
-                {/* Rest between sets: a button with the time, opening big time buttons (RestPicker). */}
-                <button className="press relative flex h-9 shrink-0 items-center gap-1 rounded-full bg-surface-2 px-2.5 text-[13px] font-semibold tabular-nums"
-                  aria-label={`Rest between sets: ${clock(ex.restS)}. Change`} onClick={e => (e.stopPropagation(), setRestFor(i))}>
-                  <Tap /><Icon d={TIMER} className="size-4 text-accent-2" />{clock(ex.restS)}
-                </button>
-                {/* Swap for another exercise, today only (the machine's taken). */}
-                <button className="icon-btn relative" aria-label={`Swap ${ex.name} for another exercise`} onClick={e => (e.stopPropagation(), setSwapFor(i))}>
-                  <Tap /><Icon d={SHUFFLE} className="size-5" />
-                </button>
-              </>}
-              {done < ex.sets.length ? <button className="icon-btn" aria-label={`Remove ${ex.name}`} onClick={async e => {
-                e.stopPropagation()
-                if (!await ask(`Remove ${ex.name} from this workout?${done ? ` Its ${plural(done, 'ticked set')} go too.` : ''}`, 'Remove', true)) return
-                update(x => void x.exercises.splice(i, 1))
-                setFx(null) // indices shift: don't let the pop land on another exercise
-                setUndo({ msg: `Removed ${ex.name}`, put: x => void x.exercises.splice(Math.min(i, x.exercises.length), 0, ex) })
-              }}>✕</button> : (
+              {/* Finished: a green tick on the right so it reads as done at a glance. The tools are in the toolbar below. */}
+              {done === ex.sets.length && (
                 <span className="grid size-11 shrink-0 animate-pop place-items-center rounded-full text-good" role="img" aria-label={`${ex.name} done`}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="size-6" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>
                 </span>
@@ -201,8 +180,27 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             {/* No vertical padding on the clipping box: padding can't shrink to 0fr, and a strip of the first row showed. */}
             <div className="-mx-2 min-h-0 overflow-hidden px-2">
             <div className="pt-3">
+            {done < ex.sets.length && (
+              // The exercise's tools, as bordered buttons so they read as buttons: rest on the left, history, swap and delete on the right.
+              <div className="mb-3 flex items-center gap-2">
+                <button className="press relative flex h-11 shrink-0 items-center gap-1.5 rounded-xl border border-line px-3 text-sm font-semibold tabular-nums active:bg-surface-2"
+                  aria-label={`Rest between sets: ${clock(ex.restS)}. Change`} onClick={() => setRestFor(i)}>
+                  <Tap /><Icon d={TIMER} className="size-4 text-accent-2" />{clock(ex.restS)}
+                </button>
+                <span className="flex-1" />
+                <button className={TOOL} aria-label={`${ex.name} history`} onClick={() => setPeek(ex.name)}><Tap /><Icon d={HISTORY} /></button>
+                {/* Swap for another exercise, today only (the machine's taken). */}
+                <button className={TOOL} aria-label={`Swap ${ex.name} for another exercise`} onClick={() => setSwapFor(i)}><Tap /><Icon d={SHUFFLE} /></button>
+                <button className={TOOL} aria-label={`Remove ${ex.name}`} onClick={async () => {
+                  if (!await ask(`Remove ${ex.name} from this workout?${done ? ` Its ${plural(done, 'ticked set')} go too.` : ''}`, 'Remove', true)) return
+                  update(x => void x.exercises.splice(i, 1))
+                  setFx(null) // indices shift: don't let the pop land on another exercise
+                  setUndo({ msg: `Removed ${ex.name}`, put: x => void x.exercises.splice(Math.min(i, x.exercises.length), 0, ex) })
+                }}><Icon d={BIN} /></button>
+              </div>
+            )}
             {ex.target && (
-              <p className="-mt-2 mb-3 text-xs text-muted">
+              <p className="mb-3 text-xs text-muted">
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
             )}
@@ -364,6 +362,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 const BIN_W = 72 // px the row slides to show the bin; also the bin's width
 const SPEAKER_ON = 'M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14' // Lucide volume-2
 const SPEAKER_OFF = 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6' // Lucide volume-x
+const TOOL = 'press relative grid size-11 shrink-0 place-items-center rounded-xl border border-line text-muted active:bg-surface-2 hover:text-ink'
+const HISTORY = 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2' // Lucide history
 const SHUFFLE = 'M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22M18 2l4 4-4 4M2 6h1.9c1.5 0 2.9.9 3.6 2.2M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8M18 14l4 4-4 4' // Lucide shuffle
 const TIMER = 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z' // Lucide timer
 const PLUS = 'M12 5v14M5 12h14'
