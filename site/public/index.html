@@ -371,8 +371,12 @@
     @keyframes d-cup { 0% { transform: scale(0.2) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.15) rotate(4deg); opacity: 1; } 100% { transform: none; } }
     .d-pbpop .h { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; color: var(--pb); }
     .d-pbpop ul { list-style: none; display: grid; gap: 8px; }
-    .d-pbpop li { border-radius: 14px; background: var(--surface); border: 1px solid rgba(251, 191, 36, 0.35); padding: 10px 16px; font-weight: 600; animation: d-in 0.5s var(--ease) backwards; }
-    .d-pbpop li small { color: var(--good); margin-left: 6px; }
+    .d-pbpop ul { width: 100%; }
+    .d-pbpop li { display: flex; align-items: center; gap: 12px; border-radius: 16px; background: var(--surface); border: 1px solid rgba(251, 191, 36, 0.35); padding: 10px 16px; text-align: left; animation: d-in 0.5s var(--ease) backwards; }
+    .d-pbpop li span { flex: 1; min-width: 0; }
+    .d-pbpop li b { display: block; }
+    .d-pbpop li small { display: block; color: var(--muted); font-size: 12px; }
+    .d-pbpop li em { font-style: normal; font-weight: 700; font-size: 14px; color: var(--good); white-space: nowrap; }
     .d-pbpop p { color: var(--muted); font-size: 13px; }
     .d-conf { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 16; }
 
@@ -983,7 +987,8 @@
           if (a === 'finish') {
             const sets = done(), pbs = st.ex.filter((x) => pbAt(x) >= 0).map((x) => {
               const s = x.sets[pbAt(x)], w = +s.w || 0, more = w > x.best[0];
-              return [`${x.name} ${w ? `${s.w} kg` : 'BW'} × ${s.r}`, more ? `+${kg(w - x.best[0])} kg` : `+${+s.r - x.best[1]} rep${+s.r - x.best[1] === 1 ? '' : 's'}`];
+              const was = more ? `Best was ${kg(x.best[0])} kg` : `Best was ${x.best[0] ? `${kg(x.best[0])} kg` : 'BW'} × ${x.best[1]}`;
+              return [`${x.name} ${w ? `${s.w} kg` : 'BW'} × ${s.r}`, more ? `+${kg(w - x.best[0])} kg` : `+${+s.r - x.best[1]} rep${+s.r - x.best[1] === 1 ? '' : 's'}`, was];
             });
             return onFinish?.({ secs: Math.round((Date.now() - st.started) / 1000), sets: sets.length, vol: sets.reduce((v, s) => v + (+s.w || 0) * (+s.r || 0), 0), pbs });
           }
@@ -1159,7 +1164,7 @@
         })();
       }
       let run3 = 0;
-      const SAMPLE = { secs: 2860, sets: 8, vol: 2715, pbs: [['Bench Press 62.5 kg × 8', '+2.5 kg'], ['Overhead Press 40 kg × 11', '+1 rep']], mile: true };
+      const SAMPLE = { secs: 2860, sets: 8, vol: 2715, pbs: [['Bench Press 62.5 kg × 8', '+2.5 kg', 'Best was 60 kg'], ['Overhead Press 42.5 kg × 8', '+2.5 kg', 'Best was 40 kg']], mile: true };
       async function playFinish(sum = SAMPLE) {
         const me = ++run3, ok = async (ms) => { await sleep(ms); while (me === run3 && !onScreen(d3)) await sleep(400); return me === run3; };
         const n = sum.pbs.length, pop = n > 0 && !calm;
@@ -1168,7 +1173,7 @@
           <div class="d-stats"><div><b data-n="${sum.secs}" data-t>0:00</b><small>Time</small></div><div><b data-n="${sum.sets}">0</b><small>Sets</small></div><div><b data-n="${sum.vol}" data-kg>0 kg</b><small>Volume</small></div></div>
           ${n ? `<p class="d-pbline">🏆 ${n} PB${n === 1 ? '' : 's'}</p>` : ''}${sum.mile ? '<div class="d-mile"><span style="font-size:18px">🎹</span>Milestone: a grand piano lifted</div>' : ''}
           <span class="d-btn d-gho" style="display:grid;place-items:center">Share as a picture</span><span class="d-btn d-gho" style="display:grid;place-items:center">Copy workout as text</span><span class="d-btn d-pri" style="display:grid;place-items:center">Done</span></div>
-          ${pop ? `<div class="d-pbpop" role="button" tabindex="0" aria-label="${n} new PBs. Carry on"><div class="cup">🏆</div><div class="h">${n} new PB${n === 1 ? '' : 's'}</div><ul>${sum.pbs.map(([t, plus], i) => `<li style="animation-delay:${0.5 + i * 0.15}s">${t}<small>${plus}</small></li>`).join('')}</ul><p>Tap to carry on</p></div>` : ''}</div>`;
+          ${pop ? `<div class="d-pbpop" role="button" tabindex="0" aria-label="${n} new PBs. Carry on"><div class="cup">🏆</div><div class="h">${n} new PB${n === 1 ? '' : 's'}</div><ul>${sum.pbs.map(([t, plus, was], i) => `<li style="animation-delay:${0.5 + i * 0.12}s"><span><b>${t}</b><small>${was}</small></span><em>${plus}</em></li>`).join('')}</ul><p>Tap to carry on</p></div>` : ''}</div>`;
         const count = () => {
           const t0 = performance.now();
           (function frame(now) {
