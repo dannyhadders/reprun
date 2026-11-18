@@ -6,7 +6,7 @@ import { localISO, num, plural } from './format.ts'
 
 export type Note = { kind: 'nudge' | 'recap'; at: number; title: string; body: string }
 
-const NUDGE_HOUR = 18 // early evening: still time to get a session in
+const NUDGE_HOUR = 11 // late morning: a day left for the session (say a Sunday morning one), and time for one today
 const RECAP_HOUR = 19 // Sunday evening
 
 // One per week, in turn. Facts kept to things that are well established; the rest is plain encouragement.
@@ -47,8 +47,9 @@ export function reminders(m: Model, next: string | null, now = new Date()): Note
   const nextUp = next ? ` Next up: ${next}.` : ''
   const out: Note[] = []
 
-  // Nudge: on the day that still leaves one spare day for the sessions you need (one a day), or today if you're
-  // already past it. None once the week's hit, or once it can't be.
+  // Nudge: 11am on the day that still leaves one spare day for the sessions you need (one a day), so one to go means
+  // Saturday 11am, with Sunday morning in hand. Already past that day: the next 11am that still leaves enough days.
+  // None once the week's hit, or once it can't be.
   const need = target - done
   if (need > 0) {
     let day = Math.max(dayNo, 6 - need)

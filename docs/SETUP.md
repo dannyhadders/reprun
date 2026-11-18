@@ -88,7 +88,7 @@ Log a workout, or paste a plan from your PT: **+ → Import plan**.
 ## Rest alerts (nothing to set up)
 
 **Settings → Notifications → Rest alerts** (also offered in the intro) buzzes your lock screen and Apple Watch when
-rest is over, even with the phone in your pocket. It also sends a nudge at 6pm when your weekly streak needs a session,
+rest is over, even with the phone in your pocket. It also sends a nudge at 11am when your weekly streak needs a session (Saturday if it's one to go),
 and your week in numbers at 7pm on Sunday (switch those two off under it). It's all off until you turn it on.
 
 - **Needs:** iPhone with iOS 16.4 or later, RepRun opened from the home screen (not a Safari tab), and
