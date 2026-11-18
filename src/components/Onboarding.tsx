@@ -38,11 +38,14 @@ const I = {
   bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
 }
 
-/** First-run intro: five swipeable pages (plus the home-screen how-to, or rest alerts once it's installed), every question optional, Skip on every page. */
+/** First-run intro: five swipeable pages (plus the home-screen how-to, or rest alerts once it's installed, and a backup page on the phone-only copy), every question optional, Skip on every page. */
 export function Onboarding({ mode, stravaConfigured, install, onData, prompt, onStarters, onStravaFile, onFinish }: Props) {
   // Rest alerts need the installed app on iPhone, so they're offered once it is (the intro runs again in there).
   const [alerts] = useState(() => !install && pushSupported())
-  const PAGES = 5 + (install ? 1 : 0) + (alerts ? 1 : 0)
+  // The pages in order; `at` gives a page's index, so a clip plays only while its page is showing.
+  const ORDER = ['welcome', install && 'install', 'gym', alerts && 'alerts', mode === 'local' && 'backup', 'goals', 'about', 'training'].filter(Boolean) as string[]
+  const PAGES = ORDER.length
+  const at = (name: string) => ORDER.indexOf(name)
   const track = useRef<HTMLDivElement>(null)
   const [page, setPage] = useState(0)
   const onInstall = useInstallPrompt() // Android: Chrome's own install prompt, once it offers one
@@ -90,14 +93,17 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
         onScroll={e => setPage(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
         ref={track}>
         <Page>
-          <img src="/favicon.svg" alt="" className="size-16" />
-          <h1 className="mt-5 text-4xl font-extrabold tracking-tight">Rep<span className="grad-text">Run</span></h1>
-          <p className="mt-2 text-lg text-muted">Lift. Run. Repeat.</p>
-          <ul className="mt-8 space-y-4 text-left">
-            <Feature icon={I.lift}>Log every set at the gym, with the weights to beat last time</Feature>
-            <Feature icon={I.run}>Your runs and rides come in from Strava</Feature>
-            <Feature icon={I.trophy}>Watch the PBs stack up, and share them</Feature>
-          </ul>
+          <img src="/favicon.svg" alt="" className="size-12" />
+          <h1 className="mt-3 text-4xl font-extrabold tracking-tight">Rep<span className="grad-text">Run</span></h1>
+          <p className="mt-1 text-lg text-muted">Lift. Run. Repeat.</p>
+          <div className="mt-6 flex w-full items-center gap-4 text-left">
+            <Clip name="hero" active={page === 0} label="RepRun in use: starting a workout, ticking sets, an exercise's progress and runs" className="w-[42%]" />
+            <ul className="flex-1 space-y-4">
+              <Feature icon={I.lift} small>Log every set, with the weights to beat last time</Feature>
+              <Feature icon={I.run} small>Runs and rides come in from Strava</Feature>
+              <Feature icon={I.trophy} small>Watch the PBs stack up, and share them</Feature>
+            </ul>
+          </div>
           {mode === 'demo' && <p className="mt-6 rounded-xl border border-accent/40 bg-accent/10 px-4 py-2.5 text-sm">This is the demo, filled with made-up training. Have a look around, nothing here is saved for long.</p>}
           {mode === 'local' && install && <p className="mt-8 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">Add RepRun to your home screen first (next page), then open it from there. Your training lives in the home-screen app.</p>}
           {mode === 'local' && !install && chosen && <p className="mt-8 flex items-center justify-center gap-2 text-sm text-good"><Icon d="M20 6 9 17l-5-5" className="h-4 w-4" />All set on this phone. Swipe on, or Skip.</p>}
@@ -115,7 +121,7 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
           <Page>
             <h2 className="text-3xl font-bold tracking-tight">Put it on your home screen</h2>
             <p className="mt-2 text-muted">Then RepRun opens like an app: full screen, one tap away, and it still works when the gym has no signal.</p>
-            {clip ? <InstallGuide clip={clip} active={page === 1} /> : (
+            {clip ? <InstallGuide clip={clip} active={page === at('install')} /> : (
               <ol className="mt-7 w-full space-y-3 text-left">
                 {installSteps.map(([icon, text], i) => (
                   <li key={i} className="flex items-center gap-4 rounded-2xl border border-line bg-surface p-4">
@@ -137,6 +143,15 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
         </Page>
 
         {alerts && <RestAlertsPage demo={mode === 'demo'} />}
+
+        {mode === 'local' && (
+          <Page>
+            <h2 className="text-3xl font-bold tracking-tight">It stays on this phone</h2>
+            <p className="mt-2 text-muted">No account, no server. Delete the app and your training goes with it, so save a backup now and then.</p>
+            <Clip name="backup" active={page === at('backup')} label="Settings, Backup: tapping Save a backup saves reprun-backup.json to Files" className="mt-6 w-[52%]" />
+            <p className="mt-4 text-sm text-muted">Settings → Backup → <b className="text-ink">Save a backup</b>. One file, kept in Files or iCloud Drive.</p>
+          </Page>
+        )}
 
         <Page>
           <h2 className="text-3xl font-bold tracking-tight">What are you here for?</h2>
@@ -182,7 +197,11 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
           <h2 className="text-3xl font-bold tracking-tight">Get your training in</h2>
           <p className="mt-2 text-muted">Any of these, or none. You can do them all later.</p>
           <div className="mt-6 w-full space-y-3 text-left">
-            <Option icon={I.spark} title="Plan it with ChatGPT" sub="Copy this, paste it into ChatGPT, answer its questions, then paste the plan it writes back here.">
+            <Option icon={I.spark} title="Create one with AI" sub="Copy this into ChatGPT (or any AI chat), answer its questions, then paste the plan it writes back here.">
+              <div className="mt-3 flex items-center gap-3">
+                <Clip name="plan" active={page === at('training')} label="Pasting an AI-written plan into RepRun and saving it as a routine" className="w-[34%]" />
+                <p className="flex-1 text-sm leading-snug text-muted">Paste the reply into <b className="text-ink">+ Import / create plan</b> and each day becomes a routine, ready to start. Later, ask it for just today's workout there too.</p>
+              </div>
               <div className="mt-3 flex gap-2">
                 <CopyButton className="btn-ghost flex-1" label="Copy prompt" text={() => prompt(a)} />
                 <button className="btn flex-1" onClick={() => onFinish(a, 'paste-plan')}>Paste a plan</button>
@@ -196,11 +215,13 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
         </Page>
       </div>
 
-      <div className="flex items-center justify-between gap-4 px-6 pt-3">
+      {/* Back · dots · Next. Back keeps its space on page 1 so the dots don't jump. */}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-6 pt-3">
+        <span>{page > 0 && <button className="btn-ghost relative min-h-12 px-5 text-base" onClick={() => go(page - 1)}><Tap />Back</button>}</span>
         <div className="flex gap-2" aria-hidden>
           {Array.from({ length: PAGES }, (_, i) => <span key={i} className={`h-2 rounded-full transition-all ${i === page ? 'w-6 bg-accent' : 'w-2 bg-line'}`} />)}
         </div>
-        {!locked && <button className="btn relative min-h-12 px-6 text-base" onClick={next}><Tap />{page === PAGES - 1 ? "Let's go" : 'Next'}</button>}
+        <span className="flex justify-end">{!locked && <button className="btn relative min-h-12 px-6 text-base" onClick={next}><Tap />{page === PAGES - 1 ? "Let's go" : 'Next'}</button>}</span>
       </div>
     </div>
   )
@@ -294,12 +315,35 @@ const Page = ({ children }: { children: ReactNode }) => (
   <section className="flex w-full shrink-0 snap-center snap-always flex-col items-center overflow-y-auto px-6 pb-4 pt-6 text-center">{children}</section>
 )
 
-const Feature = ({ icon, children }: { icon: string; children: ReactNode }) => (
-  <li className="flex items-center gap-4">
-    <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><Icon d={icon} className="h-5 w-5" /></span>
-    <span className="text-[15px] leading-snug">{children}</span>
+const Feature = ({ icon, small, children }: { icon: string; small?: boolean; children: ReactNode }) => (
+  <li className={`flex items-center ${small ? 'gap-3' : 'gap-4'}`}>
+    <span className={`grid shrink-0 place-items-center rounded-xl bg-accent/15 text-accent ${small ? 'size-9' : 'size-11'}`}><Icon d={icon} className={small ? 'h-4 w-4' : 'h-5 w-5'} /></span>
+    <span className={`leading-snug ${small ? 'text-[13px]' : 'text-[15px]'}`}>{children}</span>
   </li>
 )
+
+/**
+ * A looping, silent clip of the real app (made in the HyperFrames project reprun-onboarding, build.py hero / plan /
+ * backup; sample data, no captions), framed like a phone screen. Loads only when its page first shows, plays only
+ * while it's showing; with Reduce Motion on (or autoplay refused, e.g. Low Power Mode) it waits for a tap.
+ */
+function Clip({ name, active, label, className = '' }: { name: string; active: boolean; label: string; className?: string }) {
+  const video = useRef<HTMLVideoElement>(null)
+  const [still] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [started, setStarted] = useState(!still)
+  useEffect(() => {
+    const v = video.current
+    if (!v) return
+    if (active && started) void v.play().catch(() => setStarted(false))
+    else v.pause()
+  }, [active, started])
+  return (
+    <div className={`relative aspect-[540/1168] shrink-0 overflow-hidden rounded-[1.4rem] border border-line bg-bg shadow-[0_0_50px_-12px_rgba(129,140,248,0.5)] ${className}`}>
+      <video ref={video} src={`/guide/intro-${name}.mp4`} poster={`/guide/intro-${name}.jpg`} muted loop playsInline preload="none" className="size-full object-cover" aria-label={label} />
+      {!started && <button className="press absolute inset-0 grid place-items-center bg-black/30" onClick={() => setStarted(true)} aria-label={`Play: ${label}`}><span className="grid size-11 place-items-center rounded-full bg-accent text-white"><Icon d={PLAY} className="h-5 w-5" /></span></button>}
+    </div>
+  )
+}
 
 const Option = ({ icon, title, sub, children }: { icon: string; title: string; sub: string; children?: ReactNode }) => (
   <div className="rounded-2xl border border-line bg-surface p-4">
