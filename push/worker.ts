@@ -30,6 +30,7 @@ export class Rest extends DurableObject<Env> {
     const endpoint = await this.ctx.storage.get<string>('endpoint')
     await this.clear()
     if (!endpoint) return
+    if (!this.env.VAPID_PRIVATE) return console.error('push failed: the VAPID_PRIVATE secret is not set (push/wrangler.jsonc)')
     // TTL 60: if the phone can't be reached within a minute, drop it rather than buzz long after rest is over.
     const res = await fetch(endpoint, {
       method: 'POST',
