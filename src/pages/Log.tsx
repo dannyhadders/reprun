@@ -4,18 +4,18 @@ import { targetText } from '../../shared/plan'
 import { fromCatalogue } from '../../shared/exercises'
 import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
-import { BackupNudge } from '../components/PhoneOnly'
+import { backupAge, lastBackup, saveBackup } from '../lib/backupFile'
 import { LOCAL } from '../lib/local'
 import { pauseReminders, scheduleRest } from '../lib/push'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { ago, clock, duration, EFFORT, effort, kg, num, plural, setText, workoutText } from '../lib/format'
-import { ask, Burst, CopyButton, Empty, Icon, PbBadge, ShareButton, Sheet, useCountUp } from '../components/ui'
+import { ago, clock, EFFORT, effort, kg, num, plural, setText, workoutText } from '../lib/format'
+import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sheet, useShareCards } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
 import { pbShow } from '../lib/pbMoment'
-import { workoutLine } from '../lib/motivation'
+import { DONE_WORDS, workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
 import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
@@ -708,9 +708,8 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
   }
   const nav = useNavigate()
   const session = model.sessions.find(s => s.workout?.client_id === w.client_id) // once it's uploaded
-  const pbs = session?.pbs ?? 0
   // Exercises with a PB, for the picture: from the saved PBs once uploaded, until then the same check the logger's 🏆 uses.
-  // Memoised so the picture isn't redrawn on every frame of the count-up.
+  // Memoised so the pictures aren't redrawn on every render.
   const saved = session?.workout
   const pbNames = useMemo(() => saved
     ? [...new Set(saved.sets.filter(x => model.pbs.has(x.id)).map(x => model.exById.get(x.exercise_id)?.name ?? '?'))]
@@ -719,7 +718,6 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
   // The same one-liner the Workouts list will show; until it's uploaded, one from the weight lifted.
   const line = (session && lines.get(session.key)) || workoutLine(volume, w.sets.length)
-  const [secs, sets, kg] = [useCountUp(w.duration_s ?? 0), useCountUp(w.sets.length), useCountUp(volume)]
   // Milestones this workout reached: what's earned once it's in, minus what was earned when this screen opened.
   // ponytail: snapshot at mount works because the upload is always async, so the first render has the old data. If
   // this screen is ever shown after the reload, compare against a model built without this workout instead.
@@ -733,39 +731,125 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
     return p ? [p] : []
   }))
   const endMoment = useCallback(() => setMoment([]), [])
+  // The picture is the page (like Strava): every look made ahead, swiped in place, and Share sends the one on screen.
+  const cards = useShareCards(w, pbNames, line)
+  const [at, setAt] = useState(0)
+  const card = cards?.[at] ?? null
+  // Phone-only copy: the backup is a tile here, and the line under the tiles says how old the last one is.
+  // Any backup from before now can't have this workout in it, so the tile asks again until one's saved from here,
+  // and says under it when the last one was.
+  const [age] = useState(backupAge)
+  const [backedUp, setBackedUp] = useState(false)
+  const [backingUp, setBackingUp] = useState(false)
+  const backup = () => {
+    setBackingUp(true)
+    saveBackup(data).then(ok => ok && setBackedUp(true), e => alert(e instanceof Error ? e.message : String(e))).finally(() => setBackingUp(false))
+  }
+  const last = lastBackup()
+  const lastText = backedUp ? 'This workout included' : !last ? 'No backup yet'
+    : age === 0 ? `Last: today ${new Date(last).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : age === 1 ? 'Last: yesterday' : `Last: ${age} days ago`
+  const best = (n: string) => w.sets.filter(x => x.exercise === n).reduce((b, x) => ((x.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((x.weight_kg ?? 0) === (b.weight_kg ?? 0) && (x.reps ?? 0) > (b.reps ?? 0)) ? x : b))
+  const leave = () => (done(), nav('/workouts'))
+  // No PB to celebrate: a big tick and a few words first, which fade into the page. Skipped with reduced motion.
+  const [cheer, setCheer] = useState(() => !moment.length && !matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const endCheer = useCallback(() => setCheer(false), [])
+  const tiles = 1 + Number(!!asRoutine) + Number(LOCAL)
   return (
-    <div className="space-y-5 pt-10 text-center">
+    <div className="space-y-4 pb-6 pt-[max(1rem,env(safe-area-inset-top))]">
       {moment.length > 0 && <PbMoment pbs={moment} close={endMoment} />}
-      <p className="animate-pop text-5xl">💪</p>
-      <h1 className="text-3xl font-bold tracking-tight">{w.title || 'Workout'} done</h1>
-      <div className="grid grid-cols-3 gap-3 rounded-2xl border border-line bg-surface p-4">
-        <div><div className="text-xl font-bold tabular-nums">{duration(Math.round(secs))}</div><div className="text-xs text-muted">Time</div></div>
-        <div><div className="text-xl font-bold tabular-nums">{Math.round(sets)}</div><div className="text-xs text-muted">Sets</div></div>
-        <div><div className="text-xl font-bold tabular-nums">{num(Math.round(kg))} kg</div><div className="text-xs text-muted">Volume</div></div>
-      </div>
-      {pbs > 0 && <p className="relative mx-auto w-fit animate-pop font-semibold text-pb">🏆 {plural(pbs, 'PB')}<Burst n={24} r={90} /></p>}
-      {reached.length > 0 && (
-        <ul className="space-y-2" aria-label="Milestones reached">
+      {cheer && <DoneMoment close={endCheer} />}
+      {/* The name is on the picture, so the heading is for screen readers. */}
+      <h1 className="sr-only">{w.title || 'Workout'} done</h1>
+      {cards
+        ? <LookStrip made={cards} title={w.title} at={at} setAt={setAt} height="h-[46dvh]" />
+        : <div className="mx-auto h-[46dvh] w-3/4 animate-pulse rounded-xl bg-surface" aria-label="Making the picture" />}
+      {(pbNames.length > 0 || reached.length > 0) && (
+        <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface text-left" aria-label="Highlights">
+          {pbNames.map((n, i) => (
+            <li key={n} className="flex animate-pop items-center gap-3 px-4 py-3" style={{ animationDelay: `${0.2 + i * 0.12}s`, animationFillMode: 'backwards' }}>
+              <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-lg bg-pb/15">🏆</span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-semibold">PB: {n}</span><span className="block text-xs text-muted">{setText(best(n))}</span></span>
+              {i === 0 && <span className="relative"><Burst n={18} r={70} /></span>}
+            </li>
+          ))}
           {reached.map((m, i) => (
-            <li key={m.key} className="relative mx-auto flex w-fit animate-pop items-center gap-2 rounded-full border border-pb/40 bg-pb/10 py-1.5 pl-2 pr-4 text-sm font-semibold" style={{ animationDelay: `${0.3 + i * 0.15}s`, animationFillMode: 'backwards' }}>
-              <span aria-hidden className="text-lg">{m.emoji}</span>Milestone: {m.title}
-              {i === 0 && <Burst n={18} r={70} />}
+            <li key={m.key} className="flex animate-pop items-center gap-3 px-4 py-3" style={{ animationDelay: `${0.3 + (pbNames.length + i) * 0.12}s`, animationFillMode: 'backwards' }}>
+              <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-lg bg-pb/15">{m.emoji}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-semibold">Milestone: {m.title}</span></span>
             </li>
           ))}
         </ul>
       )}
-      {pending ? <Outbox /> : LOCAL ? <BackupNudge /> : <p className="text-sm text-muted">Uploaded.</p>}
-      <ShareButton className="btn-ghost w-full" label="Share as a picture" w={w} pbs={pbNames} line={line} />
-      <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />
-      {asRoutine && (
-        <button className={`btn-ghost w-full ${savedAs === 'busy' ? 'busy' : ''}`} disabled={savedAs !== 'no'} aria-busy={savedAs === 'busy'} onClick={() => void saveRoutine()}>
-          {savedAs === 'yes' ? `Saved as a routine ✓` : `Save "${asRoutine.name}" as a routine`}
-        </button>
+      <button className={`btn relative min-h-[3.25rem] w-full text-base ${card ? '' : 'busy'}`} disabled={!card} aria-busy={!card} onClick={() => card && shareCard(card, w.title)}>
+        <Tap /><Icon d={SHARE} className="h-4 w-4" />Share as a picture
+      </button>
+      <div className={`grid gap-2 ${tiles === 3 ? 'grid-cols-3' : tiles === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <CopyTile text={() => workoutText(w)} />
+        {asRoutine && (
+          <Tile icon={savedAs === 'yes' ? TICK : PLUS} label={savedAs === 'yes' ? 'Saved ✓' : 'Save as routine'} busy={savedAs === 'busy'} disabled={savedAs !== 'no'}
+            aria={savedAs === 'yes' ? 'Saved as a routine ✓' : `Save "${asRoutine.name}" as a routine`} onClick={() => void saveRoutine()} />
+        )}
+        {LOCAL && <Tile icon={backedUp ? TICK : DOWNLOAD} label={backedUp ? 'Backed up ✓' : 'Save a backup'} sub={lastText} tone={!backedUp && (age === null || age >= 7) ? 'pb' : undefined} busy={backingUp} onClick={backup} />}
+      </div>
+      {pending ? <Outbox /> : (
+        <p className="text-center text-xs text-muted">
+          {LOCAL ? `Saved on this phone${last ? ' · save the backup over the last one in Files' : ''}` : 'Uploaded ✓'}
+        </p>
       )}
-      <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>
+      {/* At the very bottom, so the way out goes past Share and the backup. */}
+      <button className="btn-ghost relative min-h-12 w-full" onClick={leave}><Tap />Done</button>
     </div>
   )
 }
+
+/**
+ * No PB, still worth a moment: a big green tick that pulses, a few words (DONE_WORDS) on a card, then it fades into the
+ * finish screen after 2.5 s. A tap anywhere skips it.
+ */
+function DoneMoment({ close }: { close: () => void }) {
+  const [words] = useState(() => DONE_WORDS[Math.floor(Math.random() * DONE_WORDS.length)])
+  const [leaving, setLeaving] = useState(false)
+  useEffect(() => {
+    const out = setTimeout(() => setLeaving(true), 2100)
+    const gone = setTimeout(close, 2500) // 2.5 s in all, the last 0.4 s fading
+    return () => (clearTimeout(out), clearTimeout(gone))
+  }, [close])
+  return (
+    <div role="status" aria-label="Workout done" onClick={close}
+      className={`fixed inset-0 z-50 grid place-items-center bg-bg/80 p-6 backdrop-blur-sm transition-opacity duration-400 ${leaving ? 'opacity-0' : 'animate-fade-in'}`}>
+      <div className="flex w-full max-w-xs animate-pop flex-col items-center gap-5 rounded-3xl border border-line bg-surface px-6 py-10 shadow-2xl shadow-black/50">
+        <span className="relative grid size-24 place-items-center rounded-full bg-good/15 text-good">
+          <span className="absolute inset-0 animate-ping rounded-full bg-good/20" aria-hidden />
+          <Icon d={TICK} className="size-12 [stroke-width:2.6]" />
+        </span>
+        <p className="text-center text-3xl font-extrabold tracking-tight">{words}</p>
+      </div>
+    </div>
+  )
+}
+
+/** One of the finish screen's small square actions: an icon in a tinted square, a short label under it. */
+function Tile({ icon, label, sub, aria, onClick, busy = false, disabled = false, tone }: { icon: string; label: string; sub?: string; aria?: string; onClick: () => void; busy?: boolean; disabled?: boolean; tone?: 'pb' }) {
+  return (
+    <button type="button" className={`press relative flex min-h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-2xl border border-line bg-surface px-1 py-2.5 text-xs font-semibold disabled:opacity-60 ${busy ? 'busy' : ''}`}
+      aria-label={aria} aria-busy={busy} disabled={disabled || busy} onClick={onClick}>
+      <Tap />
+      <span className={`grid size-9 place-items-center rounded-xl ${tone === 'pb' ? 'bg-pb/15 text-pb' : 'bg-accent/15 text-accent'}`}><Icon d={icon} className="size-[18px]" /></span>
+      {label}
+      {sub && <span className="-mt-1 text-[11px] font-medium leading-tight text-muted">{sub}</span>}
+    </button>
+  )
+}
+
+/** Copy the workout as plain text (for ChatGPT or a PT), with a moment of "Copied". */
+function CopyTile({ text }: { text: () => string }) {
+  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+  const copy = () => navigator.clipboard.writeText(text()).then(() => 'done' as const, () => 'failed' as const).then(r => (setState(r), setTimeout(() => setState('idle'), 2000)))
+  return <Tile icon={state === 'done' ? TICK : COPY} label={state === 'done' ? 'Copied ✓' : state === 'failed' ? "Couldn't copy" : 'Copy results as text'} onClick={() => void copy()} />
+}
+
+const TICK = 'M20 6 9 17l-5-5'
+const DOWNLOAD = 'M12 3v12M7 10l5 5 5-5M5 21h14'
 
 const heaviest = (sets: WorkoutSet[]) => sets.reduce<WorkoutSet | null>((b, s) => (!b || (s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b), null)
 

@@ -109,18 +109,17 @@ export function CopyButton({ text, label = 'Copy', className = 'btn-ghost' }: { 
   )
 }
 
-const SHARE = 'M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'
-/**
- * Shares a workout as a picture. The picture is drawn when the button appears (and again if its inputs change), because
- * iOS only lets navigator.share run straight off a tap, not after the awaits that drawing takes. Spinner until it's ready.
- */
+export const SHARE = 'M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7'
 const LOOK_KEY = 'reprun.shareLook' // the look you shared last opens first next time (this phone only)
-const lastLook = (): Look => { try { return (LOOKS.find(l => l.id === localStorage.getItem(LOOK_KEY))?.id) ?? 'full' } catch { return 'full' } }
+const lastLook = () => { try { return Math.max(0, LOOKS.findIndex(l => l.id === localStorage.getItem(LOOK_KEY))) } catch { return 0 } }
+export type Made = { look: Look; card: File; url: string }
 
-export function ShareButton({ w, pbs, line, label = 'Share', className = 'btn-ghost' }: { w: CardWorkout; pbs: string[]; line?: string; label?: string; className?: string }) {
-  // Every look made ahead as a file with a URL for the preview, revoked when newer pictures replace them or the button goes.
-  // Made before the tap, since iOS only lets Share run straight off a tap.
-  const [made, setMade] = useState<{ look: Look; card: File; url: string }[] | null>(null)
+/**
+ * Every look of a workout's picture, made ahead as files (with URLs for the preview, revoked when newer ones replace
+ * them). Ahead, because iOS only lets navigator.share run straight off a tap, not after the awaits that drawing takes.
+ */
+export function useShareCards(w: CardWorkout, pbs: string[], line?: string) {
+  const [made, setMade] = useState<Made[] | null>(null)
   useEffect(() => {
     let live = true // a slower, older render (before the PBs arrived) mustn't win
     let urls: string[] = []
@@ -128,55 +127,71 @@ export function ShareButton({ w, pbs, line, label = 'Share', className = 'btn-gh
       .then(all => (urls = all.map(m => m.url), live ? setMade(all) : urls.forEach(URL.revokeObjectURL)), () => live && setMade(null))
     return () => void ((live = false), urls.forEach(u => URL.revokeObjectURL(u)))
   }, [w, pbs, line])
+  return made
+}
+
+/** Share the picture on screen (and remember its look); a download where the phone can't share files. */
+export function shareCard(m: Made, title: string | null) {
+  try { localStorage.setItem(LOOK_KEY, m.look) } catch { /* fine: it opens on Full next time */ }
+  shareFile(m.card, `${title || 'Workout'} · RepRun`).catch(e => alert(e instanceof Error ? e.message : String(e)))
+}
+export const canShareCard = (m: Made | null) => !!m && !!navigator.canShare?.({ files: [m.card] })
+
+/**
+ * Like Strava: the looks side by side in a scroll-snap strip, swiped (or picked by the dots) to the one to share.
+ * Opens on the look shared last. `at` and `setAt` belong to the caller, whose Share button sends `made[at]`.
+ */
+export function LookStrip({ made, title, at, setAt, height = 'h-[55dvh]' }: { made: Made[]; title: string | null; at: number; setAt: (i: number) => void; height?: string }) {
+  const strip = useRef<HTMLDivElement>(null)
+  const go = (i: number, smooth = true) => strip.current?.scrollTo({ left: i * strip.current.clientWidth, behavior: smooth ? 'smooth' : 'instant' })
+  useEffect(() => {
+    const i = lastLook()
+    setAt(i)
+    requestAnimationFrame(() => go(i, false)) // straight there, no slide
+  }, [setAt])
+  return (
+    <div>
+      <div ref={strip} className="-mx-4 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]" aria-label="Picture styles"
+        onScroll={e => setAt(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
+        {made.map((m, i) => (
+          <figure key={m.look} className={`flex ${height} w-full shrink-0 snap-center items-center justify-center px-4`} aria-hidden={i !== at}>
+            {/* The sticker is see-through: a checkerboard behind it shows that. */}
+            <img src={m.url} alt={`${title || 'Workout'} as a picture, ${LOOKS[i].name} style`}
+              className={`max-h-full max-w-full rounded-xl border border-line ${m.look === 'sticker' ? 'bg-[repeating-conic-gradient(var(--color-surface-2)_0_25%,var(--color-surface)_0_50%)] bg-[length:24px_24px]' : ''}`} />
+          </figure>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-center gap-2" role="tablist" aria-label="Picture style">
+        {LOOKS.map((l, i) => (
+          <button key={l.id} type="button" role="tab" aria-selected={i === at} aria-label={l.name} onClick={() => go(i)}
+            className={`h-2 rounded-full transition-all ${i === at ? 'w-6 bg-accent' : 'w-2 bg-line'}`} />
+        ))}
+      </div>
+      <p className="mt-2 text-center text-xs text-muted"><b className="font-semibold text-ink">{LOOKS[at].name}</b> · {LOOKS[at].id === 'sticker' ? 'see-through, to lay over your own photo' : 'swipe for other styles'}</p>
+    </div>
+  )
+}
+
+/** Shares a workout as a picture from a list (Workouts): a button that opens the looks in a sheet. */
+export function ShareButton({ w, pbs, line, label = 'Share', className = 'btn-ghost' }: { w: CardWorkout; pbs: string[]; line?: string; label?: string; className?: string }) {
+  const made = useShareCards(w, pbs, line)
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
-  // Swipe between looks: a scroll-snap strip; which one is in view is worked out from where it's scrolled to.
   const [at, setAt] = useState(0)
-  const strip = useRef<HTMLDivElement>(null)
-  const go = (i: number) => strip.current?.scrollTo({ left: i * strip.current.clientWidth, behavior: 'smooth' })
-  const openAt = () => {
-    const i = Math.max(0, LOOKS.findIndex(l => l.id === lastLook()))
-    setAt(i)
-    setOpen(true)
-    requestAnimationFrame(() => strip.current?.scrollTo({ left: i * strip.current.clientWidth })) // straight there, no slide
-  }
   const cur = made?.[at] ?? null
-  const share = () => {
-    if (!cur) return
-    try { localStorage.setItem(LOOK_KEY, cur.look) } catch { /* fine: it opens on Full next time */ }
-    shareFile(cur.card, `${w.title || 'Workout'} · RepRun`).catch(e => alert(e instanceof Error ? e.message : String(e)))
-  }
-  const canShare = !!cur && !!navigator.canShare?.({ files: [cur.card] })
   return (
     <>
-      <button type="button" className={`${className} ${made ? '' : 'busy'}`} disabled={!made} aria-busy={!made} onClick={openAt}>
+      <button type="button" className={`${className} ${made ? '' : 'busy'}`} disabled={!made} aria-busy={!made} onClick={() => setOpen(true)}>
         <Icon d={SHARE} className="h-4 w-4" />{label}
       </button>
-      {/* Like Strava: swipe through the looks, then share the one on screen. */}
       {open && made && (
         <Sheet close={close} label="Share picture">
-          <div ref={strip} className="-mx-4 flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]" aria-label="Picture styles"
-            onScroll={e => setAt(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}>
-            {made.map((m, i) => (
-              <figure key={m.look} className="flex h-[55dvh] w-full shrink-0 snap-center items-center justify-center px-4" aria-hidden={i !== at}>
-                {/* The sticker is see-through: a checkerboard behind it shows that. */}
-                <img src={m.url} alt={`${w.title || 'Workout'} as a picture, ${LOOKS[i].name} style`}
-                  className={`max-h-full max-w-full rounded-xl border border-line ${m.look === 'sticker' ? 'bg-[repeating-conic-gradient(var(--color-surface-2)_0_25%,var(--color-surface)_0_50%)] bg-[length:24px_24px]' : ''}`} />
-              </figure>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center justify-center gap-2" role="tablist" aria-label="Picture style">
-            {LOOKS.map((l, i) => (
-              <button key={l.id} type="button" role="tab" aria-selected={i === at} aria-label={l.name} onClick={() => go(i)}
-                className={`h-2 rounded-full transition-all ${i === at ? 'w-6 bg-accent' : 'w-2 bg-line'}`} />
-            ))}
-          </div>
-          <p className="mt-2 text-center text-sm font-semibold">{LOOKS[at].name}</p>
-          <p className="mt-1 text-center text-xs text-muted">{LOOKS[at].id === 'sticker' ? 'See-through: lay it over your own photo in a story.' : canShare ? 'Swipe for other styles. Press and hold to save to Photos.' : 'Swipe for other styles. Saves as a PNG file.'}</p>
+          <LookStrip made={made} title={w.title} at={at} setAt={setAt} />
+          {canShareCard(cur) && <p className="mt-1 text-center text-xs text-muted">Press and hold the picture to save it to Photos.</p>}
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button type="button" className="btn-ghost min-h-11" onClick={close}>Close</button>
-            <button type="button" className="btn relative min-h-11" onClick={share}>
-              <Tap /><Icon d={SHARE} className="h-4 w-4" />{canShare ? 'Share' : 'Download'}
+            <button type="button" className="btn relative min-h-11" onClick={() => cur && shareCard(cur, w.title)}>
+              <Tap /><Icon d={SHARE} className="h-4 w-4" />{canShareCard(cur) ? 'Share' : 'Download'}
             </button>
           </div>
         </Sheet>

@@ -32,8 +32,10 @@ const planner = t => t.page.getByRole(t.device === 'iphone' ? 'button' : 'link',
 const finish = async t => { await t.page.getByRole('button', { name: 'Finish' }).click(); await t.page.getByRole('heading', { level: 1, name: / done$/ }).waitFor() }
 const topWorkout = t => t.page.getByRole('article').first()
 // The PB celebration (PbMoment.tsx) comes in several styles: some play through and close, some wait for "Nice".
-// Taps through whichever showed; does nothing if none did.
+// Taps through whichever showed (or the no-PB "done" card); does nothing if none did.
 async function pbThrough(t) {
+  // No PB: a "Smashed it" card shows for ~2 s instead. Tap it away.
+  await t.page.getByRole('status', { name: 'Workout done' }).click({ timeout: 1500 }).catch(() => {})
   const moment = t.page.getByRole('dialog', { name: /new PB/ })
   for (let i = 0; i < 6 && await moment.count(); i++) {
     const nice = moment.getByRole('button', { name: 'Nice' })
@@ -105,7 +107,7 @@ const CHECKS = {
     await begin(t, false)
     await logOneSet(t, 'Bench Press', 60, 5)
     await pbThrough(t)
-    const list = t.page.getByRole('list', { name: 'Milestones reached' })
+    const list = t.page.getByRole('list', { name: 'Highlights' })
     await t.expect(list.getByText('Milestone: First workout'), 'First workout unlocks')
     await t.expect(list.getByText('Milestone: First 60 kg lift'), 'First 60 kg lift unlocks (the highest step reached, not 20 to 50)')
     await t.expect(list.getByText(/First (20|30|40|50) kg lift/), 'Lower weight steps are folded into the 60 kg one', 0)
@@ -302,10 +304,14 @@ const CHECKS = {
   'save-routine': ['Finish screen: a new workout can be saved as a routine; that routine\'s own workout can\'t', async t => {
     await begin(t, true)
     await logOneSet(t, 'Hip Thrust', 80, 10)
+    // A first Hip Thrust is the baseline, not a PB: the "done" card shows instead of the PB moment.
+    await t.expect(t.page.getByRole('status', { name: 'Workout done' }), 'No PB: a big tick and a few words first')
+    await t.shot('Done card (no PB)')
     await pbThrough(t)
+    await t.expect(t.page.getByRole('status', { name: 'Workout done' }), 'A tap clears it', 0)
     const save = t.page.getByRole('button', { name: /^Save ".+" as a routine$/ })
     await t.expect(save, 'A new workout offers Save as a routine')
-    const name = (await save.innerText()).match(/"(.+)"/)[1] // untitled: "Thursday workout"
+    const name = (await save.getAttribute('aria-label')).match(/"(.+)"/)[1] // untitled: "Thursday workout"
     await save.click()
     await t.expect(t.page.getByRole('button', { name: 'Saved as a routine ✓' }), 'It says Saved')
     await t.shot('Saved as a routine')
@@ -323,23 +329,24 @@ const CHECKS = {
     await t.expect(t.page.getByRole('button', { name: /as a routine/ }), 'The saved routine\'s own workout has no Save as a routine', 0)
   }],
 
-  'share-looks': ['Finish a workout, Share as a picture: four looks to swipe through, each saves', async t => {
+  'share-looks': ['Finish screen: the picture is the page, four looks to swipe through, Share saves the one on screen', async t => {
     await begin(t, true)
     await logOneSet(t, 'Bench Press', 100, 5)
     await pbThrough(t)
     await t.page.evaluate(() => { navigator.canShare = () => false }) // iPhone opens the share sheet; take the download path
-    await t.page.getByRole('button', { name: 'Share as a picture' }).click()
-    const sheet = t.page.getByRole('dialog', { name: 'Share picture' })
-    await t.expect(sheet.locator('figure img'), 'Four looks in the strip', 4)
+    await t.expect(t.page.locator('figure img'), 'Four looks on the finish screen', 4)
+    await t.expect(t.page.getByRole('list', { name: 'Highlights' }).getByText('PB: Bench Press'), 'Highlights list the PB under the picture')
+    await t.shot('Finish screen', true)
+    const styles = t.page.getByRole('tablist', { name: 'Picture style' })
     for (const look of ['Full', 'Bold', 'Story', 'Sticker']) {
-      await sheet.getByRole('tab', { name: look }).click()
-      await t.expect(sheet.getByRole('tab', { name: look, selected: true }), `${look} is the one on screen`)
-      await t.shot(`Share: ${look}`)
-      const [dl] = await Promise.all([t.page.waitForEvent('download'), sheet.getByRole('button', { name: 'Download' }).click()])
+      await styles.getByRole('tab', { name: look }).click()
+      await t.expect(styles.getByRole('tab', { name: look, selected: true }), `${look} is the one on screen`)
+      const [dl] = await Promise.all([t.page.waitForEvent('download'), t.page.getByRole('button', { name: 'Share as a picture' }).click()])
       const file = OUT + `${t.id}-${look.toLowerCase()}.png`
       await dl.saveAs(file)
       await t.expect(null, `${look} saves a picture (${Math.round(fs.statSync(file).size / 1024)} KB)`, fs.statSync(file).size > 10_000)
     }
+    await t.shot('Finish screen on Sticker')
   }],
 
   'reorder': ['Mid-workout: drag an exercise by its ☰ (or arrow keys), the order sticks; a finished one has no ☰', async t => {

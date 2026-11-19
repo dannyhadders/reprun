@@ -110,6 +110,13 @@ function candidates(m: Model, s: Session, prevSame: Session | undefined, usedThi
 }
 
 /** For a workout the model hasn't got yet (the finish screen before it uploads): the "about N hippos" line, or a plain one. */
+/** What the finish screen's tick says when there's no PB to celebrate: one at random. Short, plain, never "you crushed it bro". */
+export const DONE_WORDS = [
+  'Smashed it', 'Job done', 'One in the bank', 'Strong session', 'Well earned', 'Done and dusted', 'Proper session',
+  'Good work today', 'Another one done', 'That\'s how it\'s done', 'Solid work', 'You turned up', 'Big effort',
+  'Banked', 'Graft done', 'Stronger for it', 'Nailed it', 'On to the next', 'Consistency wins', 'That counts',
+]
+
 export function workoutLine(volume: number, sets: number) {
   const thing = pickThing(volume)
   return thing ? `You moved ${kg(Math.round(volume))} today. That's about ${times(volume, thing)}.` : `${sets} sets in the bank. Turning up is most of the job.`

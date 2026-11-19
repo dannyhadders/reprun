@@ -314,6 +314,8 @@
             <button class="a-icon" aria-label="Mute spoken cues"><svg class="i" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14" /></svg></button>
             <button class="a-icon" aria-label="Share"><svg class="i" viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></svg></button>
             <button class="a-icon" style="border-radius: 999px; cursor: grab;" aria-label="Move (drag handle)"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
+            <button class="a-ghost" style="flex-direction:column;gap:6px;width:96px;height:84px;border-radius:16px;font-size:12px;font-weight:600;padding:8px 4px;" aria-label="Tile"><span style="display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></span>Save as routine</button>
+            <span class="mono muted">tile: the finish screen's small actions under the one big Share button (icon in an accent-15% square, pb tint when it needs doing, e.g. a backup). Done is a full-width ghost button at the very bottom, after Share and the tiles.</span>
             <span class="mono muted">☰ drag handle: folded, unfinished exercises; a finished one shows its tick there instead. Dragging: a lifted copy (accent border, 1.03×, big shadow) follows the finger; the card's place shows as a dashed accent outline.</span>
             <button class="a-btn" id="busyDemo">Save a backup</button>
             <span class="mono muted">← tap for busy</span>
@@ -384,6 +386,7 @@
         <p class="rule">Website labels: an arrow arcs out of the number to its part of the phone (0.8s), a ring pulses there, then the words light up. One at a time, 3s each, on a loop. On a phone, only the current label shows, under the screen.</p>
         <p class="rule">A timed set (a plank) gets a hold bar where the rest bar sits: its line fills cyan to green as the hold goes on (rest drains), and the clock turns green for the last 5 seconds. Its end beeps, ticks the set and starts rest.</p>
         <p class="rule">The intro asks for a moment on each page the first time: Next fills left to right in the accent over 2.5s (linear), then lights up. Swiping ahead waits too; Back never does. Skip asks first ("Keep going" or "Skip").</p>
+        <p class="rule">No PB still gets a moment: a card over the finish screen with a big green tick (pop, then a soft ping ring) and a few words picked at random from a list of twenty (DONE_WORDS in motivation.ts: "Smashed it", "One in the bank", "Job done"…). It stays 2.5s in all, fading over the last 0.4s, or goes on a tap. Never both: a PB plays the PB moment instead.</p>
         <p class="rule">A PB gets the big moment, full screen over the finish screen, with confetti and what each PB beat. The app takes turns at random between four looks (never the same twice running): a trophy spotlight, a gold card per PB with that lift's line over time, the old best rolling up to the new one with a stamp, and a sheet from the bottom. The website shows the trophy. Tap to carry on; Reduce Motion skips it.</p>
       </div>
       <div class="grid" id="motionGrid"></div>
