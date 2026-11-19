@@ -7,6 +7,18 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **Workout stuck "saved on this phone, not uploaded"**: Try again failed, Sign in again went to the home page and the workout disappeared from view. Show pending uploads everywhere, retry on open, return to the same page after sign-in, and say clearly when the sign-in has expired. Real cause: the API started requiring the ALLOWED_EMAIL secret (5c7f7cc) and the worker had none, so every request got a 403 since midday.
 - [x] **Banner under the status bar**: page had no safe-area top padding.
 
+## Feedback 2026-11-19
+
+- [ ] **Spoken cue pauses music**: "Rest over…" stops Spotify/Apple Music instead of talking over it. iOS gives web speech its own audio session and there's no web setting to duck instead of pause; check whether music resumes after, and if not, offer beep-only as the default on iPhone.
+- [ ] **Rest alert arrives with the app open**: the push should be cancelled 2 s before the end while the logger is on screen; it got through a few times. Find out why the cancel misses (slow network, page in the background for a moment, timer drift).
+- [ ] **Reorder exercises mid-workout**: a drag handle (☰) on each collapsed exercise, today only. Once an exercise is done it stays put: tick, no handle.
+- [ ] **Name a plan on import**: today the name comes from the first line of the pasted text ("Workout" if ChatGPT left it out), and changing it means editing the text. Make the name in the preview editable.
+- [ ] **"Empty workout" wording**: say what it does, e.g. "Start an empty workout" / "Start without a routine".
+- [ ] **Popular exercises in search**: the exercise picker only knows exercises you've logged. Seed it from `shared/catalogue.ts` (grow it to ~100 common lifts) so a new user's search has options; picking one creates it with the right muscle.
+- [ ] **Share picture themes**: a few looks (dark, light, bold colour, minimal) to swipe through in the share preview before sending. Brand book tokens only; add the themes to the brand book.
+- [ ] **"Change" on Next up looks like a button**, not a text link.
+- [ ] **AI review of a workout / week** (big): "Analyse my week" reads your history and suggests new targets and routine changes, which you accept or not. Needs an OpenAI API key (platform.openai.com, pay-as-you-go: separate from a ChatGPT subscription) held as a Cloudflare secret and called from the Worker, never the phone. Doesn't fit phone-only or the demo as-is; behind Feature toggles. The copy-a-prompt-to-ChatGPT route stays the free option.
+
 ## Logging a workout
 
 - [x] **Export a finished workout**: copy it to the clipboard as plain text to paste into ChatGPT or send to a PT. On the finish screen, every logged workout, and the not-uploaded banner.
