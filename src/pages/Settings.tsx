@@ -120,7 +120,7 @@ function BackupCard() {
 
   return (
     <Card title="Backup" action={<span className="text-xs text-muted">{last ? `Last saved: ${ago(localISO(new Date(last)))}` : 'Not saved on this device yet'}</span>}>
-      <p className="text-sm text-muted">Everything in one file: workouts, runs, routines, body weight and profile. Keep it in Files or iCloud Drive, or use it to move to another copy of RepRun.</p>
+      <p className="text-sm text-muted">Everything in one file: workouts, runs, routines, body weight and profile. Keep it in Files or iCloud Drive, or use it to move to another copy of RepRun. It's always called reprun-backup.json: save it into the same folder and choose Replace, so there's only ever one.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button className="btn" onClick={save}>Save a backup</button>
         {!data.demo && (

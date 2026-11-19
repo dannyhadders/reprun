@@ -8,9 +8,13 @@ export const lastBackup = () => { try { return localStorage.getItem(LAST) } catc
 /** Whole days since the last backup on this device, or null if never. */
 export const backupAge = () => { const t = lastBackup(); return t ? daysBetween(localISO(new Date(t)), today()) : null }
 
-/** iPhone: the share sheet (Save to Files). Elsewhere: a download. False if the share sheet was closed. */
+/**
+ * iPhone: the share sheet (Save to Files). Elsewhere: a download. False if the share sheet was closed.
+ * Always the same name, so saving into the same folder offers Replace and there's only ever one file (the newest is the
+ * only one worth keeping: each is a complete copy). A web app can't overwrite a file by itself on iPhone.
+ */
 export async function saveBackup(data: Data): Promise<boolean> {
-  const file = new File([JSON.stringify(toBackup(data))], `reprun-backup-${localISO(new Date())}.json`, { type: 'application/json' })
+  const file = new File([JSON.stringify(toBackup(data))], 'reprun-backup.json', { type: 'application/json' })
   try {
     if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] })
     else {

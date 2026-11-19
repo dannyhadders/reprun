@@ -5,6 +5,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
     date: '2026-11-19',
     changes: [
       'Finishing without a PB gets its own moment: a big green tick and a few words ("Smashed it", "One in the bank"…) before the finish screen. Done is now at the bottom of that screen, under Share and the backup.',
+      'Backups on the phone-only version are always called reprun-backup.json, so saving one into the same folder in Files offers Replace and you keep just the one, newest file. The finish screen\'s Save a backup says when the last one was, and asks again after every workout, since an older backup won\'t have it.',
       'Share pictures now carry the RR logo next to the RepRun name, on all four looks.',
       'A calmer finish screen: your share picture right there to swipe through, your PBs and milestones under it, one Share button, and small tiles for Copy results as text, Save as routine and (on the phone-only version) Save a backup.',
       'Save a new workout as a routine: when you finish one that isn\'t from a routine (and no routine has the same exercises), the finish screen offers Save as a routine. It keeps the exercises in the order you did them, with the sets, reps and weight of your top sets (warm-ups left out) and your rest, so you can do it again from Start a workout. Untitled workouts are saved as, for example, "Thursday workout".',
