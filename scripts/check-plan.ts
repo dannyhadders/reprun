@@ -181,7 +181,7 @@ console.log('running milestones self-check passed')
 Object.assign(globalThis, { __LOCAL__: false, __BUILD__: { sha: 'check', date: '' }, addEventListener: () => {} })
 // ponytail: a non-literal path so tsc doesn't pull session.ts (browser code) into the Node type-check; typed as any here.
 const sessionPath: string = '../src/lib/session.ts'
-const { swapExercise, moveExercise } = await import(sessionPath)
+const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionPath)
 {
   const ex = {
     name: 'Bench Press', muscle: 'chest' as const, restS: 120, rpe: 8, collapsed: true,
@@ -208,6 +208,29 @@ const { swapExercise, moveExercise } = await import(sessionPath)
   const past = w(3); moveExercise(past, 0, 2); eq([names(past), past.hold.i], ['BCAD', 3], 'move: a hold outside the range stays')
   const bad = w(0); moveExercise(bad, 0, 9); eq(names(bad), 'ABCD', 'move: out of range does nothing')
   console.log('reorder self-check passed')
+}
+{
+  // Save as routine: a new workout becomes a plan; a routine's own name, or the same exercises, means it isn't new.
+  const s = (exercise: string, weight_kg: number | null, reps: number | null, seconds: number | null = null) => ({ exercise, weight_kg, reps, seconds })
+  const w = { date: '2026-11-19', title: 'Garage session', notes: null, source: 'app', sets: [
+    s('Squat', 100, 5), s('Squat', 100, 5), s('Squat', 95, 7), s('Plank', null, null, 45), s('Plank', null, null, 60)] }
+  const r = routineFromWorkout(w, [], [])
+  eq(r, { name: 'Garage session', body: 'Squat – 2x5 @ 100kg\nPlank – 2x45-60s' }, 'save as routine: sets at the top weight, holds in seconds')
+  eq(parsePlan(r.body).flatMap(x => x.items).map(p => [p.name, p.sets, p.repsMin, p.repsMax, p.weight, !!p.timed]), [['Squat', 2, 5, 5, 100, false], ['Plank', 2, 45, 60, null, true]], 'save as routine: the body reads back as what was done')
+  eq(routineFromWorkout({ ...w, title: null }, [], [])?.name, 'Thursday workout', 'save as routine: no title, named after the day')
+  assert(routineFromWorkout({ ...w, title: null }, [{ id: 1, name: 'Workout', body: 'Bench – 3x5', created: '' }], []) !== null, 'save as routine: a routine called Workout doesn\'t block untitled workouts')
+  eq(routineFromWorkout({ ...w, sets: [s('Squat', 40, 12), s('Squat', 60, 8), s('Squat', 100, 5), s('Squat', 100, 5), s('Squat', 100, 4)] }, [], [])?.body, 'Squat – 3x4-5 @ 100kg', 'save as routine: warm-ups don\'t count')
+  eq(routineFromWorkout({ ...w, sets: [s('Cable Fly (low to high)', 15, 12)] }, [], []), null, 'save as routine: a name that wouldn\'t read back the same, no button')
+  eq(routineFromWorkout({ ...w, sets: [s('Bench; paused', 60, 5)] }, [], []), null, 'save as routine: a ";" in a name, no button')
+  eq(routineFromWorkout({ ...w, title: null, sets: [s('Hip Thrust', 80, 10)] }, [{ id: 1, name: 'Glutes', body: 'hip thrusts – 3x10', created: '' }], []), null, 'save as routine: never logged, still matched by its other name')
+  eq(routineFromWorkout({ ...w, title: 'x'.repeat(150) }, [], [])?.name.length, 100, 'save as routine: a very long title is cut to 100')
+  const routine = (name: string, body: string) => ({ id: 1, name, body, created: '' })
+  eq(routineFromWorkout(w, [routine('garage session', 'Bench – 3x5')], []), null, 'save as routine: a routine already has this name')
+  eq(routineFromWorkout(w, [routine('Legs', 'Plank – 3x30s\nSquat – 5x5')], []), null, 'save as routine: same exercises, any order')
+  eq(routineFromWorkout(w, [routine('Back squat day', 'Back Squat – 5x5\nPlank – 3x30s')], [{ id: 1, name: 'Squat', muscle: 'legs' }]), null, 'save as routine: "Back Squat" is your Squat')
+  assert(routineFromWorkout(w, [routine('Legs', 'Squat – 5x5')], []) !== null, 'save as routine: a routine with fewer exercises is different')
+  eq(routineFromWorkout({ ...w, sets: [] }, [], []), null, 'save as routine: nothing logged, nothing to save')
+  console.log('save as routine self-check passed')
 }
 
 // Streak nudge and Sunday recap (src/lib/reminders.ts). Same data: weeks of 3, then 1 so far in the week of Mon 2026-11-16.

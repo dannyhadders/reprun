@@ -1,8 +1,8 @@
 // The live workout on the phone: pure helpers plus localStorage persistence. No JSX.
-import { matchExercise, type Aliases } from '../../shared/exercises.ts'
+import { applyAlias, matchExercise, type Aliases } from '../../shared/exercises.ts'
 export { matchExercise }
 import { resolveExercise } from '../../shared/catalogue.ts'
-import { parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
+import { formatLine, parseLine, parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
 import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
 import { useEffect, useState } from 'react'
 import { api } from './data'
@@ -127,6 +127,37 @@ export const totals = (a: Active) => {
   const sets = a.exercises.flatMap(e => e.sets.filter(validSet))
   const lifted = a.exercises.flatMap(e => (e.timed ? [] : e.sets.filter(validSet))) // seconds held aren't kilos lifted
   return { sets: sets.length, volume: lifted.reduce((v, s) => v + (+s.weight || 0) * +s.reps, 0) }
+}
+
+/**
+ * "Save as routine" on the finish screen: what you just did as a plan (name and body, as Import plan saves it), or null
+ * when it isn't new: you named it after a routine (that's how a routine's workout is titled) or a routine has the same
+ * exercises in any order. An untitled workout gets "Thursday workout", since "Workout" is every untitled one.
+ * Each exercise in the order done, from its sets at the top weight (warm-ups don't count): how many, the rep (or seconds)
+ * range, the weight and the rest you used. null too when a name wouldn't read back the same from the plan text (a ";",
+ * brackets, a number that looks like sets): a routine naming a different exercise is worse than no button.
+ */
+export function routineFromWorkout(w: ImportWorkout, routines: Routine[], known: Exercise[], aliases: Aliases = {}) {
+  const title = w.title?.trim().slice(0, 100)
+  const name = title || `${new Date(`${w.date}T12:00`).toLocaleDateString('en-GB', { weekday: 'long' })} workout`
+  const names = [...new Set(w.sets.map(s => s.exercise))]
+  if (!names.length) return null
+  // Renames, merges and the catalogue's other names count as the same exercise, logged before or not.
+  const key = (n: string) => (matchExercise(n, known, aliases)?.name ?? resolveExercise(applyAlias(aliases, n), null).name).trim().toLowerCase()
+  const same = (list: string[]) => [...new Set(list.map(key))].sort().join('|')
+  const mine = same(names)
+  if (routines.some(r => (title && r.name.trim().toLowerCase() === title.toLowerCase()) || same(parsePlan(r.body).flatMap(x => x.items).map(p => p.name)) === mine)) return null
+  const rests = read<Record<string, number>>(KEY.rest, {})
+  const lines = names.map(n => {
+    const all = w.sets.filter(s => s.exercise === n)
+    const timed = all.some(s => s.seconds !== null)
+    const top = Math.max(0, ...all.map(s => s.weight_kg ?? 0))
+    const work = top ? all.filter(s => (s.weight_kg ?? 0) === top) : all
+    const counts = work.map(s => (timed ? s.seconds : s.reps) ?? 0)
+    return formatLine({ name: n, sets: work.length, repsMin: Math.min(...counts), repsMax: Math.max(...counts), weight: top || null, restS: rests[n] ?? null, note: null, ...(timed && { timed: true }) })
+  })
+  if (lines.some((l, k) => parseLine(l)?.name !== names[k])) return null
+  return { name, body: lines.join('\n') }
 }
 
 /** Only ticked sets with reps go up; untouched planned sets are dropped. */

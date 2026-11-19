@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Save a new workout as a routine: when you finish one that isn\'t from a routine (and no routine has the same exercises), the finish screen offers Save as a routine. It keeps the exercises in the order you did them, with the sets, reps and weight of your top sets (warm-ups left out) and your rest, so you can do it again from Start a workout. Untitled workouts are saved as, for example, "Thursday workout".',
       'Share as a picture now has four looks to swipe through, like Strava: Full (every exercise), Bold (the RepRun gradient), Story (tall, big numbers, for Instagram stories) and Sticker (see-through, to put over your own photo). It opens on the one you shared last.',
       'Dragging an exercise to a new place: a copy of the card follows your finger, and a dashed outline shows where it will land.',
       'Opening RepRun for the very first time: tapping Start fresh or the sample data straight away no longer sends you back to the start of the welcome screens.',

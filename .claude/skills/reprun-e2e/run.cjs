@@ -299,6 +299,30 @@ const CHECKS = {
     await t.shot('Restored')
   }],
 
+  'save-routine': ['Finish screen: a new workout can be saved as a routine; that routine\'s own workout can\'t', async t => {
+    await begin(t, true)
+    await logOneSet(t, 'Hip Thrust', 80, 10)
+    await pbThrough(t)
+    const save = t.page.getByRole('button', { name: /^Save ".+" as a routine$/ })
+    await t.expect(save, 'A new workout offers Save as a routine')
+    const name = (await save.innerText()).match(/"(.+)"/)[1] // untitled: "Thursday workout"
+    await save.click()
+    await t.expect(t.page.getByRole('button', { name: 'Saved as a routine ✓' }), 'It says Saved')
+    await t.shot('Saved as a routine')
+    await t.page.getByRole('button', { name: 'Done' }).click()
+    await planner(t)
+    const row = t.page.locator('li').filter({ hasText: name })
+    await t.expect(row.getByText(/· 1 exercise ·/), `"${name}" is on Start a workout, with its one exercise`)
+    // Do that routine: same exercises as a routine now, so no button.
+    await row.getByRole('button', { name: 'Start', exact: true }).click()
+    await t.expect(t.page.locator('section[data-ex] h2'), 'It starts with Hip Thrust', 'Hip Thrust')
+    await t.page.locator('section[data-ex] button[aria-expanded]').first().click()
+    await t.page.getByRole('button', { name: 'Set 1 done' }).first().click()
+    await finish(t)
+    await pbThrough(t)
+    await t.expect(t.page.getByRole('button', { name: /as a routine/ }), 'The saved routine\'s own workout has no Save as a routine', 0)
+  }],
+
   'share-looks': ['Finish a workout, Share as a picture: four looks to swipe through, each saves', async t => {
     await begin(t, true)
     await logOneSet(t, 'Bench Press', 100, 5)

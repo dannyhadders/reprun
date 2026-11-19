@@ -8,7 +8,7 @@ import { BackupNudge } from '../components/PhoneOnly'
 import { LOCAL } from '../lib/local'
 import { pauseReminders, scheduleRest } from '../lib/push'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
-import { useData } from '../lib/data'
+import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { ago, clock, duration, EFFORT, effort, kg, num, plural, setText, workoutText } from '../lib/format'
 import { ask, Burst, CopyButton, Empty, Icon, PbBadge, ShareButton, Sheet, useCountUp } from '../components/ui'
@@ -17,7 +17,7 @@ import { PbMoment } from '../components/PbMoment'
 import { pbShow } from '../lib/pbMoment'
 import { workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -689,7 +689,23 @@ function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: Rea
 }
 
 function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
-  const { data, model, lines, pending } = useData()
+  const { data, model, lines, pending, reload } = useData()
+  // A new workout (not a routine's, not the same exercises as one) can become a routine. Worked out once, so the button
+  // stays to say "Saved" after the routine it made is in the list.
+  const [asRoutine] = useState(() => routineFromWorkout(w, data.routines, data.exercises, data.aliases))
+  const [savedAs, setSavedAs] = useState<'no' | 'busy' | 'yes'>('no')
+  const saveRoutine = async () => {
+    if (!asRoutine) return
+    setSavedAs('busy')
+    try {
+      await api('POST', 'routines', { routines: [asRoutine] })
+      setSavedAs('yes')
+      void reload()
+    } catch (e) {
+      setSavedAs('no')
+      alert(`Couldn't save the routine: ${e instanceof Error ? e.message : e}`)
+    }
+  }
   const nav = useNavigate()
   const session = model.sessions.find(s => s.workout?.client_id === w.client_id) // once it's uploaded
   const pbs = session?.pbs ?? 0
@@ -741,6 +757,11 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
       {pending ? <Outbox /> : LOCAL ? <BackupNudge /> : <p className="text-sm text-muted">Uploaded.</p>}
       <ShareButton className="btn-ghost w-full" label="Share as a picture" w={w} pbs={pbNames} line={line} />
       <CopyButton className="btn-ghost w-full" label="Copy workout as text" text={() => workoutText(w)} />
+      {asRoutine && (
+        <button className={`btn-ghost w-full ${savedAs === 'busy' ? 'busy' : ''}`} disabled={savedAs !== 'no'} aria-busy={savedAs === 'busy'} onClick={() => void saveRoutine()}>
+          {savedAs === 'yes' ? `Saved as a routine ✓` : `Save "${asRoutine.name}" as a routine`}
+        </button>
+      )}
       <button className="btn w-full" onClick={() => (done(), nav('/workouts'))}>Done</button>
     </div>
   )

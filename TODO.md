@@ -18,7 +18,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **Share picture themes**: a few looks (dark, light, bold colour, minimal) to swipe through in the share preview before sending. Brand book tokens only; add the themes to the brand book.
 - [x] **"Change" on Next up looks like a button**, not a text link.
 - [ ] **Build a routine in the app**, no AI or typing the plan format: name it, add exercises from the same search as the logger (your lifts + popular ones), set sets × reps, weight and rest with − / + steppers, drag to reorder, save. Today the only way in is pasting text (+ Import / create plan), which assumes ChatGPT or knowing the format.
-- [ ] **"Save as routine" on the finish screen**, only when the workout is new: not started from a routine and not the same exercises as a routine you already have. Takes the exercises, sets, reps and weights you just did, with the workout's name; editable after like any routine.
+- [x] **"Save as routine" on the finish screen**, only when the workout is new: not started from a routine and not the same exercises as a routine you already have. Takes the exercises, sets, reps and weights you just did, with the workout's name; editable after like any routine.
 - [ ] **AI review of a workout / week** (big): "Analyse my week" reads your history and suggests new targets and routine changes, which you accept or not. Needs an OpenAI API key (platform.openai.com, pay-as-you-go: separate from a ChatGPT subscription) held as a Cloudflare secret and called from the Worker, never the phone. Doesn't fit phone-only or the demo as-is; behind Feature toggles. The copy-a-prompt-to-ChatGPT route stays the free option.
 
 ## Logging a workout
