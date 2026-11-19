@@ -76,6 +76,16 @@ const CHECKS = {
     }
   }],
 
+  'small-phone': ['A 360px phone: Home\'s stat cards show their numbers in full', async t => {
+    await t.page.setViewportSize({ width: 360, height: 780 })
+    await begin(t, true)
+    await t.page.locator('main h1').first().waitFor()
+    await t.page.waitForTimeout(1500) // the numbers count up first
+    const cut = await t.page.evaluate(() => [...document.querySelectorAll('main .grid .truncate')].filter(e => e.scrollWidth > e.clientWidth + 1).map(e => e.textContent))
+    await t.expect(null, `No stat cut off${cut.length ? ` (cut: ${cut.join(', ')})` : ''}`, cut.length === 0)
+    await t.shot('Home at 360px')
+  }],
+
   'log-routine': ['Start the routine due next, tick sets (rest timer), finish, see it in Workouts', async t => {
     await begin(t, true)
     const routine = await t.page.locator('main h2').first().innerText() // "Next up" card's name

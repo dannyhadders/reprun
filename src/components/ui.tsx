@@ -28,8 +28,10 @@ export function Card({ title, action, children, className = '' }: { title?: Reac
 
 export function Stat({ value, label, sub, accent }: { value: ReactNode; label: ReactNode; sub?: ReactNode; accent?: boolean }) {
   return (
-    <div className="min-w-0">
-      <div className={`truncate text-2xl font-bold tracking-tight tabular-nums ${accent ? 'grad-text' : ''}`}>{value}</div>
+    // The number scales with its card (container query): full size where there's room, smaller on a 360px phone, where
+    // "2 sessions" or "13 wks" were cut off. flex-1 so it takes the room left beside the streak's 🔥.
+    <div className="@container min-w-0 flex-1">
+      <div className={`truncate text-[clamp(1.125rem,15.5cqw,1.5rem)] font-bold tracking-tight tabular-nums ${accent ? 'grad-text' : ''}`}>{value}</div>
       <div className="text-sm text-muted">{label}</div>
       {sub && <div className="mt-0.5 text-xs text-muted/80">{sub}</div>}
     </div>

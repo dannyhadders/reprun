@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Home\'s numbers (sessions, km, kg, streak) fit on smaller phones instead of being cut off ("2 sessio…"): they shrink a little when the card is narrow.',
       'Build a routine right in the app, no ChatGPT needed: Start a workout → + Import / create plan → DIY. Search, or pick what you\'re working on (legs, chest…) and tap the chips of your recent and popular lifts. The routine shows as a table (sets, reps, kg) with its total sets and rough time; tap a row to change it, drag the ☰ to reorder, then Done to name it. Editing a routine opens the same table.',
       'Getting a plan from ChatGPT or your PT (the AI or paste tab): tap Paste from clipboard instead of fiddling with a text box, see what was found ("1 day · 4 exercises · all matched"), and Tweak before saving opens a single day in DIY to adjust first.',
       'Finishing without a PB gets its own moment: a big green tick and a few words ("Smashed it", "One in the bank"…) before the finish screen. Done is now at the bottom of that screen, under Share and the backup.',
