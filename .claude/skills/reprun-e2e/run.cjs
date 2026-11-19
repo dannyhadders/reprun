@@ -319,8 +319,10 @@ const CHECKS = {
     await t.page.getByRole('button', { name: `Swap ${name} for another exercise` }).click()
     await t.page.getByRole('textbox', { name: 'Search exercises' }).fill('Floor Press')
     await t.shot('Swap sheet')
+    if (await t.page.evaluate(() => getComputedStyle(document.documentElement).overflow) !== 'hidden') throw new Error('The page behind the swap sheet can still scroll')
     await t.page.getByRole('button', { name: 'Use "Floor Press"' }).click()
     await t.expect(t.page.getByRole('heading', { level: 2, name: 'Floor Press' }), `${name} swapped for Floor Press`)
+    if (await t.page.evaluate(() => getComputedStyle(document.documentElement).overflow) === 'hidden') throw new Error('The page stays locked after the swap sheet closes')
     await t.expect(t.page.getByRole('heading', { level: 2, name, exact: true }), `${name} is gone from the workout`, 0)
     await t.shot('After the swap')
   }],

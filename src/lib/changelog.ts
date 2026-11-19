@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Scrolling a pop-up list (swapping an exercise, history, the rest picker) no longer scrolls the page behind it.',
       'Searching for an exercise in a workout now suggests about 100 popular lifts you haven\'t done yet (Hip Thrust, Arnold Press, Cable Fly…), marked "new", so there\'s something to pick on day one. Swap shows them too.',
       'Start a workout shows the Next up routine\'s exercises straight away, not folded up.',
       'Rest alerts no longer buzz while you\'re looking at the timer: taking it down with −15 or skipping it cancels the alert properly, and the app cancels it a little earlier so it gets through on slow gym signal.',

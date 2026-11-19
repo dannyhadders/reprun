@@ -162,6 +162,14 @@ export function Sheet({ close, children, className = '', label }: { close: () =>
     addEventListener('keydown', esc)
     return () => removeEventListener('keydown', esc)
   }, [close])
+  // The page behind stays put: a short list (nothing to scroll) or a drag on the backdrop scrolled it. Restores what was
+  // there, so a sheet opened over another sheet doesn't unlock the page when it closes.
+  useEffect(() => {
+    const root = document.documentElement
+    const was = root.style.overflow
+    root.style.overflow = 'hidden'
+    return () => void (root.style.overflow = was)
+  }, [])
   return (
     <div className="fixed inset-0 z-50 animate-fade-in bg-black/55" onClick={() => Date.now() - opened > 400 && close()}>
       <div role="dialog" aria-modal aria-label={label}
