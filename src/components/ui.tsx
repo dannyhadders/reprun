@@ -57,15 +57,15 @@ export function PbBadge({ kinds }: { kinds?: string[] }) {
   return <span className="rounded-full bg-pb/15 px-1.5 py-0.5 text-[10px] font-bold text-pb">🏆 {label}</span>
 }
 
-export function Tabs<T extends string>({ value, options, onChange, size = 'md' }: { value: T; options: readonly T[] | { value: T; label: ReactNode }[]; onChange: (v: T) => void; size?: 'sm' | 'md' }) {
+export function Tabs<T extends string>({ value, options, onChange, size = 'md', full = false }: { value: T; options: readonly T[] | { value: T; label: ReactNode }[]; onChange: (v: T) => void; size?: 'sm' | 'md'; full?: boolean }) {
   const opts = options.map(o => (typeof o === 'string' ? { value: o, label: o } : o))
   return (
-    <div className="inline-flex max-w-full overflow-x-auto rounded-xl bg-surface-2 p-1">
+    <div className={`${full ? 'flex w-full' : 'inline-flex max-w-full overflow-x-auto'} rounded-xl bg-surface-2 p-1`}>
       {opts.map(o => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`press whitespace-nowrap rounded-lg font-medium ${size === 'sm' ? 'min-h-9 px-3 text-xs' : 'min-h-11 px-3.5 text-sm'} ${o.value === value ? 'bg-accent text-white shadow' : 'text-muted hover:text-ink'}`}
+          className={`press whitespace-nowrap rounded-lg font-medium ${full ? 'flex-1' : ''} ${size === 'sm' ? 'min-h-9 px-3 text-xs' : 'min-h-11 px-3.5 text-sm'} ${o.value === value ? 'bg-accent text-white shadow' : 'text-muted hover:text-ink'}`}
         >
           {o.label}
         </button>

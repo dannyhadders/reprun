@@ -233,7 +233,7 @@ function AskChatGPT() {
   return (
     <section className="rounded-2xl border border-line bg-surface p-4">
       <h2 className="flex items-center justify-center gap-2 font-semibold"><Icon d={SPARKLES} className="h-5 w-5 text-accent" />Create one with AI</h2>
-      <p className="mb-3 mt-0.5 text-center text-xs text-muted">Copy a prompt into ChatGPT (or any AI chat), then paste its reply in the box below.</p>
+      <p className="mb-3 mt-0.5 text-center text-xs text-muted">Copy a prompt into ChatGPT (or any AI chat), then copy its reply and tap Paste from clipboard.</p>
       <div className="flex justify-center"><Tabs value={tab} options={[{ value: 'today', label: tabLabel(ZAP, 'Just today') }, { value: 'plan', label: tabLabel(CALENDAR, 'Full weekly plan') }]} onChange={t => (setTab(t), setCopied(null))} /></div>
       {tab === 'today' ? (
         <>
@@ -254,7 +254,7 @@ function AskChatGPT() {
           <button className={`relative btn-ghost w-full ${copied === 'plan' ? 'border-good' : ''}`} onClick={() => void copyPlan()}><Tap /><Icon d={copied === 'plan' ? CHECK : COPY} className="h-4 w-4" />{copied === 'plan' ? 'Copied' : 'Copy the prompt'}</button>
         </>
       )}
-      {copied && <p className="mt-2 text-xs text-good">Paste it into ChatGPT{copied === 'plan' ? ' and answer its questions' : ''}, then paste its reply in the box below.</p>}
+      {copied && <p className="mt-2 text-xs text-good">Paste it into ChatGPT{copied === 'plan' ? ' and answer its questions' : ''}, then copy its reply and tap Paste from clipboard below.</p>}
     </section>
   )
 }
@@ -268,6 +268,25 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
     return location.hash === '#import' || days.length > 1 || days.some(d => d.unparsed.length) ? 'paste' : 'build'
   })
   const [text, setText] = useState(routine ? `${routine.name}:\n${routine.body}` : '')
+  // The text box shows when there's text to edit (a routine, or the intro's Paste a plan); otherwise Paste from clipboard
+  // does it in one tap, with "Type it yourself" for the box.
+  const [showText, setShowText] = useState(() => !!routine || location.hash === '#import')
+  // "Tweak before saving": a pasted single day opens in DIY as rows. A new key remounts the builder with it.
+  const [seed, setSeed] = useState<{ name: string; body: string; key: number } | null>(null)
+  const [built, setBuilt] = useState(0) // rows in DIY, so Tweak asks before replacing them
+  // Paste from clipboard: only a plan replaces what's here. Anything else (nothing, a link, chat): keep the text, open the
+  // box and say so. No clipboard access (refused, or not a secure page): open the box to paste by hand.
+  const pasteClip = async () => {
+    try {
+      const t = await navigator.clipboard.readText()
+      if (!parsePlan(t).length) return (setShowText(true), setError('Nothing that looks like a plan in the clipboard. Copy ChatGPT\'s reply (or your plan) and try again, or paste it in the box.'))
+      setText(t)
+      setTitles({})
+      setError(null)
+    } catch {
+      setShowText(true)
+    }
+  }
   const [rename, setRename] = useState<Record<string, string>>({}) // plan name (lower case) -> existing exercise
   // `${index}:${parsed name}` -> name typed in the preview. Editing the day's line in the text drops it: the text wins.
   const [titles, setTitles] = useState<Record<string, string>>({})
@@ -301,23 +320,39 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
     close()
   }
 
-  const tabs = <Tabs value={mode} onChange={setMode} options={[{ value: 'build', label: routine ? 'Edit here' : 'Build it' }, { value: 'paste', label: routine ? 'Edit as text' : 'Paste a plan' }]} />
+  const tabs = <Tabs full value={mode} onChange={setMode} options={[{ value: 'build', label: routine ? 'Edit here' : 'DIY' }, { value: 'paste', label: routine ? 'Edit as text' : 'AI or paste' }]} />
+  const unmatched = parsed.flatMap(d => d.items).filter(p => !nameFor(p.name)).length
   // Both stay mounted (one hidden), so flicking between the tabs never throws away cards or text already typed.
   return (
     <div className="space-y-4 pt-6">
       <button className="text-sm text-muted" onClick={close}>← Back</button>
-      <h1 className="text-3xl font-bold tracking-tight">{routine ? `Edit ${routine.name}` : mode === 'build' ? 'Create a routine' : 'Import or create a plan'}</h1>
+      <h1 className="text-3xl font-bold tracking-tight">{routine ? `Edit ${routine.name}` : mode === 'build' ? "What's in it?" : 'Get a plan'}</h1>
       {tabs}
-      <div hidden={mode !== 'build'}><RoutineBuilder routine={routine} close={close} /></div>
+      <div hidden={mode !== 'build'}><RoutineBuilder key={seed?.key} routine={routine} seed={seed} close={close} onCount={setBuilt} /></div>
       <div hidden={mode !== 'paste'} className="space-y-4">
-      <p className="text-sm text-muted">Paste a plan from your PT or ChatGPT. Each day's name on its own line, then one exercise per line, like <code className="text-ink">Bicep Curl – 3x8-10 @ 12kg, rest 60s</code>.</p>
       {routine ? (
         <button className="btn-ghost w-full" onClick={async () => { await navigator.clipboard.writeText(planPrompt(data.exercises.map(e => e.name), { goals: data.profile.goals, age: data.profile.age, weight_kg: data.profile.weight_kg }) /* not sex: it defaults to male, so it may never have been said */); setCopied(true) }}>
           {copied ? 'Copied: paste it into ChatGPT and answer its questions' : 'Copy a prompt for ChatGPT'}
         </button>
       ) : <AskChatGPT />}
-      <textarea className="input min-h-48 font-mono text-[13px]" placeholder={'Arm day:\nEZ-bar Curl – 3x10-12 @ 19kg, rest 75s\n…'} value={text} onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setTitles({}) /* a fresh paste doesn't inherit names typed for the last one */ }} aria-label="Plan text" />
+      {!routine && (
+        <button type="button" className="relative btn-ghost min-h-[3.25rem] w-full border-dashed text-accent" onClick={() => void pasteClip()}>
+          <Tap /><Icon d={COPY} className="h-4 w-4" />Paste from clipboard
+        </button>
+      )}
+      {!showText ? (
+        <button type="button" className="mx-auto block text-sm font-medium text-accent" onClick={() => setShowText(true)}>{text ? 'Edit the text' : 'Type it yourself'}</button>
+      ) : (
+        <p className="text-xs text-muted">Each day's name on its own line, then one exercise per line, like <code className="text-ink">Bicep Curl – 3x8-10 @ 12kg, rest 60s</code>.</p>
+      )}
+      <textarea hidden={!showText} className="input min-h-48 font-mono text-[13px]" placeholder={'Arm day:\nEZ-bar Curl – 3x10-12 @ 19kg, rest 75s\n…'} value={text} onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setTitles({}) /* a fresh paste doesn't inherit names typed for the last one */ }} aria-label="Plan text" />
 
+      {parsed.length > 0 && (
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+          Found {plural(parsed.length, 'day')} · {plural(parsed.reduce((n, d) => n + d.items.length, 0), 'exercise')}{' '}
+          <span className={`normal-case tracking-normal ${unmatched ? 'text-pb' : 'text-good'}`}>· {unmatched ? `${unmatched} new` : 'all matched'}</span>
+        </p>
+      )}
       {parsed.map((r, i) => (
         <section key={i} className="rounded-2xl border border-line bg-surface p-4">
           <h2 className="flex items-center gap-2 font-bold">
@@ -351,6 +386,14 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
       ))}
 
       {error && <p className="text-sm text-bad">{error}</p>}
+      {!routine && parsed.length === 1 && (
+        <button type="button" className="relative btn-ghost w-full" onClick={async () => {
+          if (built && !await ask(`Replace the ${plural(built, 'exercise')} you've started in DIY with this plan?`, 'Replace')) return
+          const d = parsed[0]
+          setSeed({ name: title(d, 0), body: d.items.map(p => formatLine({ ...p, name: nameFor(p.name) ?? p.name })).join('\n'), key: Date.now() })
+          setMode('build')
+        }}><Tap />Tweak before saving</button>
+      )}
       <button className={`btn w-full py-3 ${busy ? 'busy' : ''}`} disabled={busy || !parsed.length} aria-busy={busy} onClick={save}>
         {routine ? 'Save routine' : parsed.length ? `Save ${plural(parsed.length, 'routine')}` : 'Paste a plan to preview it'}
       </button>
