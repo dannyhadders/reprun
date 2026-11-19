@@ -69,7 +69,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
   }
   // /log#import (the intro's "Paste a plan") opens straight on the paste box.
   const [editing, setEditing] = useState<Routine | 'new' | null>(() => (location.hash === '#import' ? 'new' : null))
-  const [open, setOpen] = useState<string | null>(null) // which row is showing its preview
+  const [open, setOpen] = useState<string | null>('next') // which row is showing its preview: Next up's, to start with
   const toggle = (k: string) => setOpen(open === k ? null : k)
   const last = (name: string) => lastSets(model, name)
   const go = (a: Active) => begin(a)
