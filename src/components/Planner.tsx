@@ -7,6 +7,7 @@ import { api, useData } from '../lib/data'
 import { activityText, ago, date as fmtDate, plural, workoutText } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets, type Model } from '../lib/stats'
+import { MUSCLE_ICON } from '../lib/muscleIcons'
 import { RoutineBuilder } from './RoutineBuilder'
 import { ask, CHECK, COPY, Icon, Sheet, Tabs } from './ui'
 import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../lib/session'
@@ -200,16 +201,9 @@ function Preview({ rows }: { rows: [string, string, string | null][] }) {
 
 /** "Ask ChatGPT for one workout": three muscle groups trained least in the last 7 days; tapping one copies a prompt with that week in it. */
 const SPARKLES = 'M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0zM20 3v4M22 5h-4M4 17v2M5 18H3' // Lucide sparkles
+const PENCIL = 'M13 21h8M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z' // Lucide pen-line: DIY
 const ZAP = 'M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z' // Lucide zap
 const CALENDAR = 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01' // Lucide calendar-days
-// One per muscle group on the Just today buttons. Lucide has no chest/back/shoulders, so: a breastplate, a standing figure, a dumbbell.
-const FOCUS_ICON: Record<string, string> = {
-  legs: 'M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0ZM20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0ZM16 17h4M4 13h4', // Lucide footprints
-  arms: 'M12.409 13.017A5 5 0 0 1 22 15c0 3.866-4 7-9 7-4.077 0-8.153-.82-10.371-2.462-.426-.316-.631-.832-.62-1.362C2.118 12.723 2.627 2 10 2a3 3 0 0 1 3 3 2 2 0 0 1-2 2c-1.105 0-1.64-.444-2-1M15 14a5 5 0 0 0-7.584 2M9.964 6.825C8.019 7.977 9.5 13 8 15', // Lucide biceps-flexed
-  back: 'M11 5a1 1 0 1 0 2 0 1 1 0 1 0-2 0M9 20l3-6 3 6M6 8l6 2 6-2M12 10v4', // Lucide person-standing
-  chest: 'M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z', // Lucide shield
-  shoulders: 'M14.4 14.4 9.6 9.6M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829zM21.5 21.5l-1.4-1.4M3.9 3.9 2.5 2.5M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z', // Lucide dumbbell
-}
 const tabLabel = (d: string, text: string) => <span className="inline-flex items-center gap-1.5"><Icon d={d} className="h-4 w-4" />{text}</span>
 
 /** "Get one from ChatGPT": Just today (three buttons, above) or a Full weekly plan (the questions-first prompt). */
@@ -241,7 +235,7 @@ function AskChatGPT() {
           <div className="grid grid-cols-3 gap-2">
             {choices.map(c => (
               <button key={c.id} className={`relative btn-ghost flex-col gap-0 py-2 ${copied === c.label ? 'border-good' : ''}`} onClick={() => void copy(c.label)}><Tap />
-                <Icon d={copied === c.label ? CHECK : FOCUS_ICON[c.id]} className={`mb-1 h-6 w-6 ${copied === c.label ? 'text-good' : 'text-accent'}`} />
+                <Icon d={copied === c.label ? CHECK : MUSCLE_ICON[c.id]} className={`mb-1 h-6 w-6 ${copied === c.label ? 'text-good' : 'text-accent'}`} />
                 <span className="font-semibold">{copied === c.label ? 'Copied' : c.label}</span>
                 <span className="text-[11px] text-muted">{c.sets ? plural(c.sets, 'set') : 'none yet'}</span>
               </button>
@@ -320,7 +314,7 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
     close()
   }
 
-  const tabs = <Tabs full value={mode} onChange={setMode} options={[{ value: 'build', label: routine ? 'Edit here' : 'DIY' }, { value: 'paste', label: routine ? 'Edit as text' : 'AI or paste' }]} />
+  const tabs = <Tabs full value={mode} onChange={setMode} options={[{ value: 'build', label: tabLabel(PENCIL, routine ? 'Edit here' : 'DIY') }, { value: 'paste', label: tabLabel(SPARKLES, routine ? 'Edit as text' : 'AI or paste') }]} />
   const unmatched = parsed.flatMap(d => d.items).filter(p => !nameFor(p.name)).length
   // Both stay mounted (one hidden), so flicking between the tabs never throws away cards or text already typed.
   return (

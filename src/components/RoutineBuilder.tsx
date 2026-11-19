@@ -10,6 +10,7 @@ import { api, useData } from '../lib/data'
 import { ago, plural, setText } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { matchExercise } from '../lib/session'
+import { MUSCLE_ICON } from '../lib/muscleIcons'
 import { lastSets, MUSCLES } from '../lib/stats'
 import { Icon, Sheet, Stepper } from './ui'
 
@@ -71,9 +72,9 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
   const popular = term ? fromCatalogue(term, data.exercises, data.aliases).slice(0, 8 - mine.length) : []
   // Not typing: tap-to-add chips, narrowed to the muscle picked ("What are you working on?").
   const recentChips = data.exercises.filter(e => recentDate(e.id) && (!muscle || e.muscle === muscle) && !inRoutine.has(e.name.toLowerCase()))
-    .sort((x, y) => recentDate(y.id).localeCompare(recentDate(x.id))).slice(0, 8).map(e => e.name)
+    .sort((x, y) => recentDate(y.id).localeCompare(recentDate(x.id))).slice(0, 5).map(e => e.name) // five each: enough to pick from, short enough to scan
   const popularChips = (muscle ? fromCatalogue('', data.exercises, data.aliases, muscle).map(c => c.name) : STAPLES.filter(n => { const k = matchExercise(n, data.exercises, data.aliases); return !k || !recentDate(k.id) }))
-    .filter(n => !inRoutine.has(n.toLowerCase())).slice(0, 8)
+    .filter(n => !inRoutine.has(n.toLowerCase())).slice(0, 5)
 
   // Drag the ☰, as in the logger: a lifted copy follows the finger and the row's place shows as a dashed outline.
   // ponytail: same approach as Log.tsx's startDrag; share one hook if a third list needs it.
@@ -273,11 +274,12 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
         <div className="space-y-3">
           <div>
             <p className="mb-2 text-[13px] font-semibold text-muted">Need ideas? What are you working on?</p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Working on">
+            {/* Six tiles, three across: all on screen, big enough to tap mid-set. */}
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Working on">
               {MUSCLES.map(m => (
                 <button key={m} type="button" aria-pressed={muscle === m} onClick={() => setMuscle(muscle === m ? null : m)}
-                  className={`press relative min-h-11 rounded-full border px-4 text-sm font-medium capitalize ${muscle === m ? 'border-accent bg-accent/15 text-ink' : 'border-line text-muted'}`}>
-                  <Tap />{m}
+                  className={`press relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border text-[13px] font-semibold capitalize ${muscle === m ? 'border-accent bg-accent/15 text-ink' : 'border-line bg-surface text-muted'}`}>
+                  <Tap /><Icon d={MUSCLE_ICON[m]} className="size-[22px] text-accent" />{m}
                 </button>
               ))}
             </div>
