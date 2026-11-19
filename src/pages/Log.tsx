@@ -17,7 +17,7 @@ import { PbMoment } from '../components/PbMoment'
 import { pbShow } from '../lib/pbMoment'
 import { workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { beep, isTimed, loadActive, matchExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -78,6 +78,43 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [peek, setPeek] = useState<string | null>(null) // exercise whose history sheet is open
   const [restFor, setRestFor] = useState<number | null>(null) // exercise whose rest picker is open
   const [swapFor, setSwapFor] = useState<number | null>(null) // exercise being swapped
+  // Drag the ☰ to reorder: each time the finger passes the middle of the card above or below, they swap places.
+  // Only the finger that started it counts. Cards are keyed by their own id, so the ☰ under the finger stays in the DOM.
+  // ponytail: one place per pointer move and no auto-scroll; folded cards fit a phone screen. Add both if lists get long.
+  const [dragging, setDragging] = useState<number | null>(null)
+  const stopDrag = useRef<() => void>(null)
+  useEffect(() => () => stopDrag.current?.(), []) // left the logger mid-drag: no listeners left behind
+  const startDrag = (e: React.PointerEvent, from: number) => {
+    e.stopPropagation()
+    stopDrag.current?.()
+    const id = e.pointerId
+    let i = from
+    setDragging(i)
+    setFx(null) // a finish burst is kept by position: it would replay on whichever card lands there
+    const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== id) return
+      const cards = [...document.querySelectorAll('[data-ex]')].map(c => c.getBoundingClientRect())
+      const prev = cards[i - 1], next = cards[i + 1]
+      const to = prev && ev.clientY < prev.top + prev.height / 2 ? i - 1 : next && ev.clientY > next.top + next.height / 2 ? i + 1 : i
+      if (to === i) return
+      const at = i
+      update(x => moveExercise(x, at, to))
+      i = to
+      setDragging(to)
+    }
+    const end = (ev?: PointerEvent) => {
+      if (ev && ev.pointerId !== id) return
+      removeEventListener('pointermove', move)
+      removeEventListener('pointerup', end)
+      removeEventListener('pointercancel', end)
+      stopDrag.current = null
+      setDragging(null)
+    }
+    stopDrag.current = end
+    addEventListener('pointermove', move)
+    addEventListener('pointerup', end)
+    addEventListener('pointercancel', end)
+  }
   const closePeek = useCallback(() => setPeek(null), [])
   const [voice, setVoiceState] = useState(voiceOn)
 
@@ -172,7 +209,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
         return (
           // Folded, the whole card opens it; open, the whole header row folds it. The rest picker and ✕ keep their own taps.
-          <section key={i} className={`rounded-2xl border border-line bg-surface p-4 ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
+          <section key={ex.key ?? i} data-ex={i} className={`rounded-2xl border bg-surface p-4 transition-shadow ${dragging === i ? 'relative z-[1] border-accent shadow-lg' : 'border-line'} ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
             {/* Press and hold the name for this exercise's history; a plain tap folds it. */}
             <div className="flex cursor-pointer items-center gap-2" onClick={e => {
               e.stopPropagation() // the card's own handler would undo it
@@ -193,6 +230,22 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 <span className="grid size-11 shrink-0 animate-pop place-items-center rounded-full text-good" role="img" aria-label={`${ex.name} done`}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="size-6" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>
                 </span>
+              )}
+              {/* Folded and not finished: a ☰ to drag it up or down (arrow keys too). Finished ones stay put with their tick. */}
+              {ex.collapsed && done < ex.sets.length && a.exercises.length > 1 && (
+                <button type="button" data-move={i} className="grid size-11 shrink-0 cursor-grab touch-none select-none place-items-center rounded-full text-muted active:cursor-grabbing active:text-ink"
+                  aria-label={`Move ${ex.name}: drag, or use the arrow keys`}
+                  onClick={e => e.stopPropagation()} onPointerDown={e => startDrag(e, i)}
+                  onKeyDown={e => {
+                    const to = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : null
+                    if (to === null || !a.exercises[to]) return
+                    e.preventDefault()
+                    setFx(null)
+                    update(x => moveExercise(x, i, to))
+                    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-move="${to}"]`)?.focus())
+                  }}>
+                  <Icon d={GRIP} />
+                </button>
               )}
             </div>
             {ex.sets.length > 0 && done === ex.sets.length && (
@@ -456,6 +509,7 @@ const HISTORY = 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v
 const SHUFFLE = 'M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22M18 2l4 4-4 4M2 6h1.9c1.5 0 2.9.9 3.6 2.2M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8M18 14l4 4-4 4' // Lucide shuffle
 const TIMER = 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z' // Lucide timer
 const PLUS = 'M12 5v14M5 12h14'
+const GRIP = 'M4 6h16M4 12h16M4 18h16' // Lucide menu: the ☰ to drag an exercise
 const SEARCH = 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5'
 
 /** Rest between sets as big buttons; the current one filled. Remembered per exercise (rememberRest). */

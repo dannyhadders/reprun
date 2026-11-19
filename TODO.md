@@ -11,7 +11,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 
 - [x] **Spoken cue pauses music**: the beep now mixes with music (`navigator.audioSession.type = "transient"`); speech can't, so the voice is off by default (speaker button turns it on). Tested on iPhone 2026-11-19.
 - [x] **Rest alert arrives with the app open**: cause: −15 down to nothing asked the server for an alert "now", and fast taps could reach it out of order (a cancel overtaken by the alert). Fixed 2026-11-19. the push should be cancelled 2 s before the end while the logger is on screen; it got through a few times. Find out why the cancel misses (slow network, page in the background for a moment, timer drift).
-- [ ] **Reorder exercises mid-workout**: a drag handle (☰) on each collapsed exercise, today only. Once an exercise is done it stays put: tick, no handle.
+- [x] **Reorder exercises mid-workout**: a ☰ on each folded, unfinished exercise to drag it up or down (arrow keys too). A finished one shows its tick instead, so it can't be picked up (others can still move past it).
 - [x] **Name a plan on import**: today the name comes from the first line of the pasted text ("Workout" if ChatGPT left it out), and changing it means editing the text. Make the name in the preview editable.
 - [x] **"Empty workout" wording**: say what it does, e.g. "Start an empty workout" / "Start without a routine".
 - [x] **Popular exercises in search**: the exercise picker only knows exercises you've logged. Seed it from `shared/catalogue.ts` (grow it to ~100 common lifts) so a new user's search has options; picking one creates it with the right muscle.

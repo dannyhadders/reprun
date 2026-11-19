@@ -181,7 +181,7 @@ console.log('running milestones self-check passed')
 Object.assign(globalThis, { __LOCAL__: false, __BUILD__: { sha: 'check', date: '' }, addEventListener: () => {} })
 // ponytail: a non-literal path so tsc doesn't pull session.ts (browser code) into the Node type-check; typed as any here.
 const sessionPath: string = '../src/lib/session.ts'
-const { swapExercise } = await import(sessionPath)
+const { swapExercise, moveExercise } = await import(sessionPath)
 {
   const ex = {
     name: 'Bench Press', muscle: 'chest' as const, restS: 120, rpe: 8, collapsed: true,
@@ -198,6 +198,16 @@ const { swapExercise } = await import(sessionPath)
   eq([s.suggest?.weight, s.rpe, s.collapsed], ['42.5', undefined, undefined], 'swap: suggestion from the new one, effort and fold reset')
   eq(swapExercise({ ...ex, target: undefined }, 'Dips', 'chest', []).suggest, undefined, 'swap: no plan, no suggestion')
   console.log('swap self-check passed')
+}
+{
+  // Drag to reorder: the order changes, a running hold follows its exercise, a bad index does nothing.
+  const w = (hold: number) => ({ exercises: ['A', 'B', 'C', 'D'].map(name => ({ name })), hold: { i: hold, j: 0 } })
+  const names = (a: { exercises: { name: string }[] }) => a.exercises.map(e => e.name).join('')
+  const down = w(0); moveExercise(down, 0, 2); eq([names(down), down.hold.i], ['BCAD', 2], 'move: down, the hold goes with it')
+  const up = w(1); moveExercise(up, 3, 0); eq([names(up), up.hold.i], ['DABC', 2], 'move: up, a hold below shifts down')
+  const past = w(3); moveExercise(past, 0, 2); eq([names(past), past.hold.i], ['BCAD', 3], 'move: a hold outside the range stays')
+  const bad = w(0); moveExercise(bad, 0, 9); eq(names(bad), 'ABCD', 'move: out of range does nothing')
+  console.log('reorder self-check passed')
 }
 
 // Streak nudge and Sunday recap (src/lib/reminders.ts). Same data: weeks of 3, then 1 so far in the week of Mon 2026-11-16.

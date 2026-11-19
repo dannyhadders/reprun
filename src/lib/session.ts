@@ -10,6 +10,7 @@ import { localISO } from './format'
 
 export type LogSet = { reps: string; weight: string; done: boolean; note?: string } // strings: they're straight from inputs; note undefined = no note box
 export type LogExercise = {
+  key?: string // stable React key, so a dragged card keeps its DOM node (and the finger on it) as it moves
   name: string
   muscle: Muscle
   restS: number
@@ -53,6 +54,7 @@ export const start = (title = '', exercises: LogExercise[] = []): Active =>
 export const newExercise = (raw: string, muscle?: Muscle, sets = 1, reps = '', weight = ''): LogExercise => {
   const e = resolveExercise(raw, null)
   return {
+    key: crypto.randomUUID(),
     name: e.name,
     muscle: muscle ?? e.muscle,
     restS: read<Record<string, number>>(KEY.rest, {})[e.name] ?? DEFAULT_REST,
@@ -100,10 +102,18 @@ export function swapExercise(ex: LogExercise, name: string, muscle: Muscle, last
   const target = ex.target && { ...ex.target, note: null }
   const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last)
   return {
-    name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }),
+    key: ex.key, name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }),
     sets: ex.sets.map(x => (x.done ? x : { ...x, weight: '', reps: '' })),
     suggest: s && { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last.length, held: s.held },
   }
+}
+
+/** Move the exercise at `from` to `to` (drag to reorder). A running hold keeps pointing at its own exercise. */
+export function moveExercise(a: Active, from: number, to: number) {
+  if (from === to || !a.exercises[from] || !a.exercises[to]) return
+  a.exercises.splice(to, 0, ...a.exercises.splice(from, 1))
+  const h = a.hold
+  if (h) h.i = h.i === from ? to : h.i > from && h.i <= to ? h.i - 1 : h.i < from && h.i >= to ? h.i + 1 : h.i
 }
 
 export const rememberRest =(name: string, s: number) => write(KEY.rest, { ...read<Record<string, number>>(KEY.rest, {}), [name]: s })

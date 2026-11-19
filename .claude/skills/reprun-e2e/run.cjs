@@ -299,6 +299,42 @@ const CHECKS = {
     await t.shot('Restored')
   }],
 
+  'reorder': ['Mid-workout: drag an exercise by its ☰ (or arrow keys), the order sticks; a finished one has no ☰', async t => {
+    await begin(t, true)
+    await t.page.getByRole('button', { name: 'Start', exact: true }).click()
+    await t.page.getByRole('button', { name: 'Finish' }).waitFor()
+    const names = () => t.page.locator('section[data-ex] h2').allInnerTexts()
+    const before = await names()
+    const handle = n => t.page.getByRole('button', { name: `Move ${n}: drag, or use the arrow keys` })
+    await t.expect(handle(before[0]), 'Folded, unfinished exercises have a ☰')
+    // Drag the first one down past the next two cards.
+    const from = await handle(before[0]).boundingBox()
+    const target = await t.page.locator('section[data-ex]').nth(2).boundingBox()
+    await t.page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await t.page.mouse.down()
+    await t.page.mouse.move(from.x + from.width / 2, target.y + target.height * 0.75, { steps: 12 })
+    await t.page.mouse.up()
+    const dragged = await names()
+    if (dragged.indexOf(before[0]) !== 2) throw new Error(`Dragged ${before[0]} to the 3rd place, got: ${dragged.join(', ')}`)
+    await t.expect(t.page.locator('section[data-ex] button[aria-expanded="true"]'), 'Dragging opens nothing: every card is still folded', 0)
+    await t.shot('After dragging the first exercise down')
+    await handle(before[0]).focus()
+    await t.page.keyboard.press('ArrowUp')
+    if ((await names()).indexOf(before[0]) !== 1) throw new Error('ArrowUp moves it up one')
+    await t.page.reload()
+    await t.page.getByRole('button', { name: 'Finish' }).waitFor()
+    if ((await names()).indexOf(before[0]) !== 1) throw new Error('The new order survives a reload')
+    // Finish the top exercise: it folds with a tick and loses its ☰.
+    const top = t.page.locator('section[data-ex]').first()
+    const topName = await top.locator('h2').innerText()
+    await top.locator('button[aria-expanded]').click()
+    const open = top.getByRole('button', { name: /^Set \d+ done$/, pressed: false })
+    while (await open.count()) await open.first().click()
+    await t.expect(t.page.getByRole('img', { name: `${topName} done` }), `${topName} shows its tick`)
+    await t.expect(handle(topName), 'A finished exercise has no ☰', 0)
+    await t.shot('Finished exercise: tick, no handle')
+  }],
+
   'logger-tools': ['Mid-workout: + / − Set, rest time, set note, swap an exercise', async t => {
     await begin(t, true)
     await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
