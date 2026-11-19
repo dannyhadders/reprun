@@ -40,7 +40,10 @@ export function Chart({ config, height = 220, label }: { config: ChartConfigurat
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const c = new ChartJS(ref.current!, config)
-    return () => c.destroy()
+    // Measure again once the page has laid out: built while the intro was closing, a chart measured the whole 393px
+    // phone instead of its card and kept it (Chart.js only re-measures when its box changes size).
+    const f = requestAnimationFrame(() => c.resize())
+    return () => (cancelAnimationFrame(f), c.destroy())
   }, [config])
   return (
     <div style={{ height }} className="relative w-full">

@@ -32,8 +32,16 @@ export function UpdateBanner() {
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
     const sw = navigator.serviceWorker
-    let reloaded = false
-    sw.addEventListener('controllerchange', () => reloaded || ((reloaded = true), location.reload()))
+    // Reload only when one version takes over from another. The very first install also "changes controller", but the
+    // page already is that version, and reloading threw away a tap on the welcome screen (back to slide 1). Only that
+    // first takeover is skipped: a later Update in the same session still reloads, once.
+    let controlled = !!sw.controller, reloaded = false
+    sw.addEventListener('controllerchange', () => {
+      if (!controlled) return void (controlled = true)
+      if (reloaded) return
+      reloaded = true
+      location.reload()
+    })
     // The build's sha in the address makes every deploy a new service worker, even when sw.js itself didn't change.
     void sw.register(`/sw.js?v=${__BUILD__.sha}`).then(reg => {
       // Only an update waits: with no controller this is the first install, which takes over by itself.

@@ -12,7 +12,9 @@ export const CHECK = 'M5 12.5 10 17.5 19 7'
 
 export function Card({ title, action, children, className = '' }: { title?: ReactNode; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-line bg-surface p-5 ${className}`}>
+    // min-w-0: a grid item won't shrink below its content, so a chart drawn too wide kept its card (and the page) wider
+    // than the screen.
+    <section className={`min-w-0 rounded-2xl border border-line bg-surface p-5 ${className}`}>
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-3">
           {title && <h2 className="text-[13px] font-semibold uppercase tracking-wider text-muted">{title}</h2>}

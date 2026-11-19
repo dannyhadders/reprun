@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Opening RepRun for the very first time: tapping Start fresh or the sample data straight away no longer sends you back to the start of the welcome screens.',
       'Change the order of exercises mid-workout: fold them up and drag the ☰ on the right up or down. Once an exercise is done it shows its tick instead of the ☰.',
       'Scrolling a pop-up list (swapping an exercise, history, the rest picker) no longer scrolls the page behind it.',
       'Searching for an exercise in a workout now suggests about 100 popular lifts you haven\'t done yet (Hip Thrust, Arnold Press, Cable Fly…), marked "new", so there\'s something to pick on day one. Swap shows them too.',

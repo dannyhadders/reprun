@@ -469,7 +469,11 @@ async function run(id, device, browser) {
       if (!ok) throw new Error(`Expected: ${label}`)
     },
     async noOverflow(name) {
-      const w = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      // Too wide for a moment doesn't count: straight after the intro closes, Home's charts draw once at full width, then
+      // fit (longer on a busy machine). A page that stays wider than the screen for 2 s does.
+      const extra = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+      let w = await extra()
+      for (let i = 0; i < 8 && w > 0; i++) (await page.waitForTimeout(250), w = await extra())
       res.steps.push({ step: `${name}: no sideways scroll`, ok: w <= 0, note: w > 0 ? `${w}px too wide` : undefined })
       if (w > 0) res.status = 'FAIL'
     },
