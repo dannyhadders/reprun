@@ -262,6 +262,9 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
   const { data, reload } = useData()
   const [text, setText] = useState(routine ? `${routine.name}:\n${routine.body}` : '')
   const [rename, setRename] = useState<Record<string, string>>({}) // plan name (lower case) -> existing exercise
+  // `${index}:${parsed name}` -> name typed in the preview. Editing the day's line in the text drops it: the text wins.
+  const [titles, setTitles] = useState<Record<string, string>>({})
+  const title = (r: { name: string }, i: number) => titles[`${i}:${r.name}`] ?? r.name
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -269,7 +272,7 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
   const nameFor = (raw: string) => rename[raw.toLowerCase()] ?? matchExercise(raw, data.exercises, data.aliases)?.name ?? null
 
   const save = async () => {
-    const out = parsed.map(r => ({ name: r.name, body: r.items.map(p => formatLine({ ...p, name: nameFor(p.name) ?? p.name })).join('\n') }))
+    const out = parsed.map((r, i) => ({ name: title(r, i).trim() || r.name, body: r.items.map(p => formatLine({ ...p, name: nameFor(p.name) ?? p.name })).join('\n') }))
     setBusy(true)
     try {
       if (routine) {
@@ -301,11 +304,14 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
           {copied ? 'Copied: paste it into ChatGPT and answer its questions' : 'Copy a prompt for ChatGPT'}
         </button>
       ) : <AskChatGPT />}
-      <textarea className="input min-h-48 font-mono text-[13px]" placeholder={'Arm day:\nEZ-bar Curl – 3x10-12 @ 19kg, rest 75s\n…'} value={text} onChange={e => setText(e.target.value)} aria-label="Plan text" />
+      <textarea className="input min-h-48 font-mono text-[13px]" placeholder={'Arm day:\nEZ-bar Curl – 3x10-12 @ 19kg, rest 75s\n…'} value={text} onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setTitles({}) /* a fresh paste doesn't inherit names typed for the last one */ }} aria-label="Plan text" />
 
       {parsed.map((r, i) => (
         <section key={i} className="rounded-2xl border border-line bg-surface p-4">
-          <h2 className="font-bold">{r.name} <span className="text-sm font-normal text-muted">· {plural(r.items.length, 'exercise')}</span></h2>
+          <h2 className="flex items-center gap-2 font-bold">
+            <input className="input min-w-0 flex-1 py-1.5 text-base font-bold" aria-label={`Name of routine ${i + 1}`} placeholder={r.name} enterKeyHint="done" onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()} value={title(r, i)} onChange={e => setTitles({ ...titles, [`${i}:${r.name}`]: e.target.value })} />
+            <span className="shrink-0 text-sm font-normal text-muted">· {plural(r.items.length, 'exercise')}</span>
+          </h2>
           <ul className="mt-2 space-y-2 text-sm">
             {r.items.map((p, j) => {
               const matched = nameFor(p.name)

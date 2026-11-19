@@ -183,12 +183,15 @@ const CHECKS = {
     await planner(t)
     await t.page.getByRole('button', { name: /^\+ Import/ }).click()
     await t.page.getByRole('textbox', { name: 'Plan text' }).fill(PLAN)
-    await t.expect(t.page.getByRole('heading', { name: /Arm day · 2 exercises/ }), 'Preview reads 1 day, 2 exercises')
+    const name = t.page.getByRole('textbox', { name: 'Name of routine 1' })
+    if (await name.inputValue() !== 'Arm day') throw new Error('Preview should name the routine Arm day')
+    await t.expect(t.page.getByText('· 2 exercises'), 'Preview reads 1 day, 2 exercises')
     await t.shot('Plan preview')
+    await name.fill('Big arms') // the name can be changed in the preview
     await t.page.getByRole('button', { name: 'Save 1 routine' }).click()
     await t.page.goto(BASE + '/')
     await planner(t)
-    await t.expect(t.page.getByText('Arm day').first(), 'Arm day is in the planner')
+    await t.expect(t.page.getByText('Big arms').first(), 'The routine is saved under the name typed in the preview')
     await t.shot('Planner with the routine')
   }],
 
@@ -202,7 +205,7 @@ const CHECKS = {
       '1. Back Squat – 4x6 @ 100kg, rest 120s', '2. Romanian Deadlift – 3x8-10 @ 80kg', '3. Walking Lunge – 3x12', '',
       '**Why this works:**', '- If 4x6 feels easy at 100kg, go to 102.5kg next time.', '', 'Want me to make an upper body day too?',
     ].join('\n'))
-    await t.expect(t.page.getByRole('heading', { name: /Legs · 3 exercises/ }), 'Preview reads 1 day, 3 exercises')
+    await t.expect(t.page.getByText('· 3 exercises'), 'Preview reads 1 day, 3 exercises')
     await t.expect(t.page.getByRole('button', { name: 'Save 1 routine' }), 'Only one routine to save: the tips are not a second day')
     await t.shot('Chatty reply preview')
   }],
