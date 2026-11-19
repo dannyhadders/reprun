@@ -157,7 +157,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
         </section>
       )}
 
-      <button className="relative btn-ghost w-full py-3" onClick={() => go(start())}><Tap />Empty workout</button>
+      <button className="relative btn-ghost w-full flex-col gap-0 border-dashed py-3" onClick={() => go(start())}><Tap />Start an empty workout<span className="text-xs font-normal text-muted">Add exercises as you go</span></button>
     </div>
   )
 }

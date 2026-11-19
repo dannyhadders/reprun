@@ -2,6 +2,12 @@
 // Every user-facing change adds a line under today's date (see CLAUDE.md).
 export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
+    date: '2026-11-19',
+    changes: [
+      'Empty workout is now Start an empty workout, with "Add exercises as you go" underneath and a dashed outline, so it\'s clear what it does.',
+    ],
+  },
+  {
     date: '2026-11-18',
     changes: [
       'Planks and other holds: a plan line like "Plank – 3x45s" is seconds, not reps. The box says Secs, − and + move 5 seconds, and ✓ starts a countdown that beeps, ticks the set and starts your rest when it\'s done (or tap Done or Cancel). Next time it suggests 5 seconds longer than your best.',

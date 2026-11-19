@@ -44,7 +44,7 @@ async function pbThrough(t) {
 // From Home: an empty workout with one exercise and one ticked set, finished. Leaves the done screen up.
 async function logOneSet(t, exercise, kg, reps) {
   await planner(t)
-  await t.page.getByRole('button', { name: 'Empty workout' }).click()
+  await t.page.getByRole('button', { name: /^Start an empty workout/ }).click()
   await t.page.getByRole('textbox', { name: 'Exercise name' }).fill(exercise)
   await t.page.getByRole('button', { name: 'Add', exact: true }).click()
   await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).fill(String(kg))
@@ -122,7 +122,7 @@ const CHECKS = {
   'log-empty': ['Fresh copy: empty workout, add an exercise, type a set, finish; it shows up everywhere', async t => {
     await begin(t, false)
     await planner(t)
-    await t.page.getByRole('button', { name: 'Empty workout' }).click()
+    await t.page.getByRole('button', { name: /^Start an empty workout/ }).click()
     await t.page.getByRole('textbox', { name: 'Exercise name' }).fill('Bench Press')
     await t.page.getByRole('button', { name: 'Add', exact: true }).click()
     await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).fill('60')
@@ -141,7 +141,7 @@ const CHECKS = {
   'pb': ['Beating a best shows the trophy', async t => {
     await begin(t, true)
     await planner(t)
-    await t.page.getByRole('button', { name: 'Empty workout' }).click()
+    await t.page.getByRole('button', { name: /^Start an empty workout/ }).click()
     await t.page.getByRole('textbox', { name: 'Exercise name' }).fill('Bench Press')
     await t.page.getByRole('button', { name: 'Add', exact: true }).click()
     await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).fill('100')
@@ -168,7 +168,7 @@ const CHECKS = {
   'discard': ['Discarding a workout saves nothing', async t => {
     await begin(t, false)
     await planner(t)
-    await t.page.getByRole('button', { name: 'Empty workout' }).click()
+    await t.page.getByRole('button', { name: /^Start an empty workout/ }).click()
     await t.page.getByRole('textbox', { name: 'Exercise name' }).fill('Squat')
     await t.page.getByRole('button', { name: 'Add', exact: true }).click()
     await t.page.getByRole('button', { name: 'Discard workout' }).click()

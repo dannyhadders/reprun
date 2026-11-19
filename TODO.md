@@ -13,7 +13,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [ ] **Rest alert arrives with the app open**: the push should be cancelled 2 s before the end while the logger is on screen; it got through a few times. Find out why the cancel misses (slow network, page in the background for a moment, timer drift).
 - [ ] **Reorder exercises mid-workout**: a drag handle (☰) on each collapsed exercise, today only. Once an exercise is done it stays put: tick, no handle.
 - [ ] **Name a plan on import**: today the name comes from the first line of the pasted text ("Workout" if ChatGPT left it out), and changing it means editing the text. Make the name in the preview editable.
-- [ ] **"Empty workout" wording**: say what it does, e.g. "Start an empty workout" / "Start without a routine".
+- [x] **"Empty workout" wording**: say what it does, e.g. "Start an empty workout" / "Start without a routine".
 - [ ] **Popular exercises in search**: the exercise picker only knows exercises you've logged. Seed it from `shared/catalogue.ts` (grow it to ~100 common lifts) so a new user's search has options; picking one creates it with the right muscle.
 - [ ] **Share picture themes**: a few looks (dark, light, bold colour, minimal) to swipe through in the share preview before sending. Brand book tokens only; add the themes to the brand book.
 - [ ] **"Change" on Next up looks like a button**, not a text link.
