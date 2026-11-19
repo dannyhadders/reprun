@@ -1,5 +1,7 @@
-// A finished workout as a 1080×1350 picture (Instagram's portrait size) for the share sheet.
-// ponytail: hand-drawn on a canvas. An HTML-to-image library would be a dependency for one card.
+// A finished workout as a picture for the share sheet, in a few looks to swipe between (like Strava's):
+// Full (1080×1350, Instagram portrait), Bold (the brand gradient), Story (1080×1920, huge numbers) and Sticker (see-through,
+// to lay over your own photo in a story).
+// ponytail: hand-drawn on a canvas. An HTML-to-image library would be a dependency for a few cards.
 /** What the card needs: an ImportWorkout fits, and so does a saved workout with its exercise names filled in. */
 export type CardWorkout = {
   date: string; title: string | null; duration_s?: number | null
@@ -35,12 +37,195 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, max: number, most: nu
   return lines.length > most ? [...lines.slice(0, most - 1), fit(ctx, lines.slice(most - 1).join(' '), max)] : lines
 }
 
+export const LOOKS = [
+  { id: 'full', name: 'Full' },
+  { id: 'bold', name: 'Bold' },
+  { id: 'story', name: 'Story' },
+  { id: 'sticker', name: 'Sticker' },
+] as const
+export type Look = (typeof LOOKS)[number]['id']
+
+/** Time, Sets, Volume, and PBs when there are any: what every look shows. */
+function statsOf(w: CardWorkout, pbs: string[]): [string, string][] {
+  const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
+  const out: [string, string][] = [[duration(w.duration_s ?? null), 'Time'], [String(w.sets.length), 'Sets'], [`${num(volume)} kg`, 'Volume']]
+  if (pbs.length) out.push([`🏆 ${pbs.length}`, pbs.length === 1 ? 'PB' : 'PBs'])
+  return out
+}
+
+/** "RepRun" at x, y: "Run" in the accent gradient, or all one colour (on the gradient look). */
+function wordmark(ctx: CanvasRenderingContext2D, x: number, y: number, px: number, solid?: string) {
+  ctx.font = font(800, px)
+  const rep = ctx.measureText('Rep').width
+  ctx.fillStyle = solid ?? C.ink
+  ctx.fillText('Rep', x, y)
+  if (!solid) {
+    const g = ctx.createLinearGradient(x + rep, 0, x + rep + px * 2, 0)
+    g.addColorStop(0, C.accent)
+    g.addColorStop(1, C.accent2)
+    ctx.fillStyle = g
+  }
+  ctx.fillText('Run', x + rep, y)
+}
+
+/** Biggest font from `px` down that fits `max` px wide. */
+function shrink(ctx: CanvasRenderingContext2D, text: string, weight: number, px: number, max: number) {
+  do ctx.font = font(weight, px)
+  while (ctx.measureText(text).width > max && (px -= 2) > 24)
+  return px
+}
+
+/** Title lines as big as fit in `lines` lines, from `big` down to `small` px. */
+function titleLines(ctx: CanvasRenderingContext2D, text: string, big: number, small: number, max: number, lines: number) {
+  let size = big, out: string[] = []
+  for (; size >= small; size -= 4) {
+    ctx.font = font(800, size)
+    out = wrap(ctx, text, max, lines)
+    if (!out.at(-1)!.endsWith('…')) break
+  }
+  size = Math.max(size, small)
+  ctx.font = font(800, size)
+  return { size, out }
+}
+
+/** The brand gradient filling the card, dark text on it. PBs by name and the session's line under the title. */
+function drawBold(w: CardWorkout, pbs: string[], line?: string) {
+  const canvas = Object.assign(document.createElement('canvas'), { width: W, height: H })
+  const ctx = canvas.getContext('2d')!
+  const bg = ctx.createLinearGradient(0, 0, W, H)
+  bg.addColorStop(0, C.accent)
+  bg.addColorStop(1, C.accent2)
+  ctx.fillStyle = bg
+  ctx.fillRect(0, 0, W, H)
+  wordmark(ctx, PAD, PAD + 30, 44, C.bg)
+  ctx.fillStyle = C.bg
+  ctx.font = font(600, 34)
+  ctx.textAlign = 'right'
+  ctx.fillText(date(w.date, { weekday: 'short', day: 'numeric', month: 'short' }), W - PAD, PAD + 30)
+  ctx.textAlign = 'left'
+  const { size, out } = titleLines(ctx, w.title || 'Workout', 128, 72, W - PAD * 2, 3)
+  let y = 230
+  for (const t of out) ctx.fillText(t, PAD, (y += size * 1.04))
+  if (pbs.length) {
+    ctx.font = font(700, 38)
+    y += 70
+    for (const l of wrap(ctx, `🏆 PB${pbs.length > 1 ? 's' : ''}: ${pbs.join(', ')}`, W - PAD * 2, 2)) {
+      ctx.fillText(l, PAD, y)
+      y += 50
+    }
+  }
+  if (line) {
+    ctx.font = font(600, 40)
+    y += pbs.length ? 30 : 90
+    for (const l of wrap(ctx, line, W - PAD * 2, 4)) {
+      ctx.fillText(l, PAD, y)
+      y += 54
+    }
+  }
+  // Stats two by two along the bottom.
+  const stats = statsOf(w, pbs), colW = (W - PAD * 2) / 2, rowH = 190
+  const top = H - 150 - Math.ceil(stats.length / 2) * rowH
+  stats.forEach(([value, label], i) => {
+    const x = PAD + (i % 2) * colW, sy = top + Math.floor(i / 2) * rowH
+    ctx.fillStyle = C.bg
+    shrink(ctx, value, 800, 96, colW - 30)
+    ctx.fillText(value, x, sy + 96)
+    ctx.font = font(600, 32)
+    ctx.fillText(label.toUpperCase(), x, sy + 144)
+  })
+  ctx.font = font(600, 30)
+  ctx.fillText('Lift. Run. Repeat.', PAD, H - 75)
+  return canvas
+}
+
+/** Instagram story size: the title, then each number huge, one under another. */
+function drawStory(w: CardWorkout, pbs: string[]) {
+  const SH = 1920
+  const canvas = Object.assign(document.createElement('canvas'), { width: W, height: SH })
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = C.bg
+  ctx.fillRect(0, 0, W, SH)
+  const glow = ctx.createRadialGradient(W / 2, 260, 0, W / 2, 260, 900)
+  glow.addColorStop(0, 'rgba(129,140,248,0.30)')
+  glow.addColorStop(0.5, 'rgba(34,211,238,0.08)')
+  glow.addColorStop(1, 'rgba(10,12,17,0)')
+  ctx.fillStyle = glow
+  ctx.fillRect(0, 0, W, SH)
+  ctx.textAlign = 'center'
+  ctx.font = font(800, 56)
+  const mark = ctx.measureText('RepRun').width
+  ctx.textAlign = 'left'
+  wordmark(ctx, (W - mark) / 2, 230, 56)
+  ctx.textAlign = 'center'
+  ctx.fillStyle = C.ink
+  const { size, out } = titleLines(ctx, w.title || 'Workout', 96, 64, W - PAD * 2, 2)
+  let y = 330
+  for (const t of out) ctx.fillText(t, W / 2, (y += size * 1.06))
+  ctx.fillStyle = C.muted
+  ctx.font = font(500, 38)
+  ctx.fillText(date(w.date, { weekday: 'long', day: 'numeric', month: 'long' }), W / 2, (y += 70))
+  const stats = statsOf(w, pbs)
+  const step = Math.min(300, (SH - 260 - (y + 120)) / stats.length)
+  y += 120
+  stats.forEach(([value, label], i) => {
+    const vy = y + step * i + step * 0.55
+    if (i === 3) ctx.fillStyle = C.pb
+    else {
+      const g = ctx.createLinearGradient(PAD, 0, W - PAD, 0)
+      g.addColorStop(0, C.accent)
+      g.addColorStop(1, C.accent2)
+      ctx.fillStyle = g
+    }
+    shrink(ctx, value, 800, 150, W - PAD * 2)
+    ctx.fillText(value, W / 2, vy)
+    ctx.fillStyle = C.muted
+    ctx.font = font(600, 36)
+    ctx.fillText(label.toUpperCase(), W / 2, vy + 60)
+  })
+  ctx.fillStyle = C.muted
+  ctx.font = font(500, 34)
+  ctx.fillText('Lift. Run. Repeat.', W / 2, SH - 130)
+  return canvas
+}
+
+/** See-through: just the numbers and the wordmark, with a soft shadow so they read on any photo. */
+function drawSticker(w: CardWorkout, pbs: string[]) {
+  const stats = statsOf(w, pbs), rowH = 220
+  const SH = 120 + 110 + stats.length * rowH + 150
+  const canvas = Object.assign(document.createElement('canvas'), { width: W, height: SH })
+  const ctx = canvas.getContext('2d')!
+  Object.assign(ctx, { shadowColor: 'rgba(0,0,0,0.55)', shadowBlur: 24, shadowOffsetY: 4, textAlign: 'center', fillStyle: C.ink })
+  ctx.font = font(800, shrink(ctx, w.title || 'Workout', 800, 72, W - PAD * 2))
+  ctx.fillText(fit(ctx, w.title || 'Workout', W - PAD * 2), W / 2, 150)
+  let y = 230
+  for (const [value, label] of stats) {
+    ctx.fillStyle = C.ink
+    ctx.font = font(600, 34)
+    ctx.fillText(label.toUpperCase(), W / 2, y + 50)
+    shrink(ctx, value, 800, 120, W - PAD * 2)
+    ctx.fillText(value, W / 2, y + 170)
+    y += rowH
+  }
+  ctx.textAlign = 'left'
+  ctx.font = font(800, 52)
+  wordmark(ctx, (W - ctx.measureText('RepRun').width) / 2, y + 90, 52, C.ink)
+  return canvas
+}
+
+/** One look of the card. Full is the default and the most detailed. */
+export function drawCard(w: CardWorkout, pbs: string[], line?: string, look: Look = 'full'): HTMLCanvasElement {
+  if (look === 'bold') return drawBold(w, pbs, line)
+  if (look === 'story') return drawStory(w, pbs)
+  if (look === 'sticker') return drawSticker(w, pbs)
+  return drawFull(w, pbs, line)
+}
+
 /**
  * `pbs`: names of the exercises with a PB in this workout (they go first, in gold). `line`: the session's one-liner
  * (motivation.ts), so no two cards read the same. Everything below the header sizes itself to fit, so long titles wrap
  * and every exercise gets a row; past ~13 rows the rest becomes "+N more".
  */
-export function drawCard(w: CardWorkout, pbs: string[], line?: string): HTMLCanvasElement {
+function drawFull(w: CardWorkout, pbs: string[], line?: string): HTMLCanvasElement {
   const canvas = Object.assign(document.createElement('canvas'), { width: W, height: H })
   const ctx = canvas.getContext('2d')!
   const grad = (x0: number, x1: number) => ctx.createLinearGradient(x0, 0, x1, 0)
@@ -90,9 +275,7 @@ export function drawCard(w: CardWorkout, pbs: string[], line?: string): HTMLCanv
   ctx.fillText('done 💪', PAD, y)
 
   // Stats band: Time, Sets, Volume, and PBs when there are any.
-  const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
-  const stats: [string, string][] = [[duration(w.duration_s ?? null), 'Time'], [String(w.sets.length), 'Sets'], [`${num(volume)} kg`, 'Volume']]
-  if (pbs.length) stats.push([`🏆 ${pbs.length}`, pbs.length === 1 ? 'PB' : 'PBs'])
+  const stats = statsOf(w, pbs)
   const bandTop = y + 40, bandH = 150, col = (W - PAD * 2) / stats.length
   ctx.fillStyle = C.surface
   ctx.beginPath()
@@ -189,11 +372,11 @@ export function drawCard(w: CardWorkout, pbs: string[], line?: string): HTMLCanv
 }
 
 /** The card as a PNG file. Made ahead of the tap: iOS only lets navigator.share run straight off a tap, not after awaits. */
-export async function cardFile(w: CardWorkout, pbs: string[], line?: string) {
+export async function cardFile(w: CardWorkout, pbs: string[], line?: string, look: Look = 'full') {
   await document.fonts?.load(font(800, 96)).catch(() => {})
-  const blob = await new Promise<Blob | null>(r => drawCard(w, pbs, line).toBlob(r, 'image/png'))
+  const blob = await new Promise<Blob | null>(r => drawCard(w, pbs, line, look).toBlob(r, 'image/png'))
   if (!blob) throw new Error("Couldn't make the picture")
-  return new File([blob], `reprun-${w.date}.png`, { type: 'image/png' })
+  return new File([blob], `reprun-${w.date}${look === 'full' ? '' : `-${look}`}.png`, { type: 'image/png' })
 }
 
 /** Share sheet with the picture where the phone supports sharing files (iOS, Android); a download everywhere else. */

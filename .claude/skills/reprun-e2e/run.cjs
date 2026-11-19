@@ -299,6 +299,25 @@ const CHECKS = {
     await t.shot('Restored')
   }],
 
+  'share-looks': ['Finish a workout, Share as a picture: four looks to swipe through, each saves', async t => {
+    await begin(t, true)
+    await logOneSet(t, 'Bench Press', 100, 5)
+    await pbThrough(t)
+    await t.page.evaluate(() => { navigator.canShare = () => false }) // iPhone opens the share sheet; take the download path
+    await t.page.getByRole('button', { name: 'Share as a picture' }).click()
+    const sheet = t.page.getByRole('dialog', { name: 'Share picture' })
+    await t.expect(sheet.locator('figure img'), 'Four looks in the strip', 4)
+    for (const look of ['Full', 'Bold', 'Story', 'Sticker']) {
+      await sheet.getByRole('tab', { name: look }).click()
+      await t.expect(sheet.getByRole('tab', { name: look, selected: true }), `${look} is the one on screen`)
+      await t.shot(`Share: ${look}`)
+      const [dl] = await Promise.all([t.page.waitForEvent('download'), sheet.getByRole('button', { name: 'Download' }).click()])
+      const file = OUT + `${t.id}-${look.toLowerCase()}.png`
+      await dl.saveAs(file)
+      await t.expect(null, `${look} saves a picture (${Math.round(fs.statSync(file).size / 1024)} KB)`, fs.statSync(file).size > 10_000)
+    }
+  }],
+
   'reorder': ['Mid-workout: drag an exercise by its ☰ (or arrow keys), the order sticks; a finished one has no ☰', async t => {
     await begin(t, true)
     await t.page.getByRole('button', { name: 'Start', exact: true }).click()

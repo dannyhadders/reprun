@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Share as a picture now has four looks to swipe through, like Strava: Full (every exercise), Bold (the RepRun gradient), Story (tall, big numbers, for Instagram stories) and Sticker (see-through, to put over your own photo). It opens on the one you shared last.',
       'Dragging an exercise to a new place: a copy of the card follows your finger, and a dashed outline shows where it will land.',
       'Opening RepRun for the very first time: tapping Start fresh or the sample data straight away no longer sends you back to the start of the welcome screens.',
       'Change the order of exercises mid-workout: fold them up and drag the ☰ on the right up or down. Once an exercise is done it shows its tick instead of the ☰.',

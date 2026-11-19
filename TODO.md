@@ -15,7 +15,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **Name a plan on import**: today the name comes from the first line of the pasted text ("Workout" if ChatGPT left it out), and changing it means editing the text. Make the name in the preview editable.
 - [x] **"Empty workout" wording**: say what it does, e.g. "Start an empty workout" / "Start without a routine".
 - [x] **Popular exercises in search**: the exercise picker only knows exercises you've logged. Seed it from `shared/catalogue.ts` (grow it to ~100 common lifts) so a new user's search has options; picking one creates it with the right muscle.
-- [ ] **Share picture themes**: a few looks (dark, light, bold colour, minimal) to swipe through in the share preview before sending. Brand book tokens only; add the themes to the brand book.
+- [x] **Share picture themes**: a few looks (dark, light, bold colour, minimal) to swipe through in the share preview before sending. Brand book tokens only; add the themes to the brand book.
 - [x] **"Change" on Next up looks like a button**, not a text link.
 - [ ] **Build a routine in the app**, no AI or typing the plan format: name it, add exercises from the same search as the logger (your lifts + popular ones), set sets × reps, weight and rest with − / + steppers, drag to reorder, save. Today the only way in is pasting text (+ Import / create plan), which assumes ChatGPT or knowing the format.
 - [ ] **"Save as routine" on the finish screen**, only when the workout is new: not started from a routine and not the same exercises as a routine you already have. Takes the exercises, sets, reps and weights you just did, with the workout's name; editable after like any routine.
