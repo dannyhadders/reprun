@@ -183,6 +183,9 @@ export function useNow() {
 // iOS only lets audio play from a context that was unlocked inside a tap, so unlock() runs on each set tick.
 let ctx: AudioContext | null = null
 export const unlockAudio = () => {
+  // iPhone (Safari 16.4+): mix with music, quieter for a moment, instead of pausing Spotify for a beep.
+  const session = (navigator as { audioSession?: { type: string } }).audioSession
+  if (session) session.type = 'transient'
   ctx ??= new AudioContext()
   void ctx.resume()
   // iOS speaks later only if speech was started once inside a tap: a silent, empty line does it.
@@ -193,7 +196,8 @@ let spoke = false
 
 // ---------- spoken cues ----------
 const VOICE = 'reprun.voice'
-export const voiceOn = () => read(VOICE, true)
+// Off unless turned on: iPhone pauses your music for the voice (no web setting mixes speech), while the beep mixes in.
+export const voiceOn = () => read(VOICE, false)
 export const setVoice = (on: boolean) => {
   write(VOICE, on)
   if (!on) window.speechSynthesis?.cancel()
