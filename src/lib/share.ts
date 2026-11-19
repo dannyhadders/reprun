@@ -53,8 +53,31 @@ function statsOf(w: CardWorkout, pbs: string[]): [string, string][] {
   return out
 }
 
-/** "RepRun" at x, y: "Run" in the accent gradient, or all one colour (on the gradient look). */
+// The RR mark (the app icon's SVG), drawn left of the wordmark. Loaded once by cardFile before any drawing; without it
+// (it failed to load) the wordmark just goes on its own.
+let logo: HTMLImageElement | null = null
+let loading: Promise<void> | null = null
+const loadLogo = () => (loading ??= new Promise<void>(done => {
+  const img = new Image()
+  img.onload = () => ((logo = img), done())
+  img.onerror = () => done()
+  img.src = '/favicon.svg'
+}))
+const logoSize = (px: number) => (logo ? px * 1.7 : 0)
+const logoGap = (px: number) => (logo ? px * 0.36 : 0)
+/** How wide the RR mark plus "RepRun" is at `px`, to centre it. */
+function markWidth(ctx: CanvasRenderingContext2D, px: number) {
+  ctx.font = font(800, px)
+  return logoSize(px) + logoGap(px) + ctx.measureText('RepRun').width
+}
+
+/** The RR mark and "RepRun" at x, y (text baseline): "Run" in the accent gradient, or all one colour (gradient look). */
 function wordmark(ctx: CanvasRenderingContext2D, x: number, y: number, px: number, solid?: string) {
+  if (logo) {
+    const size = logoSize(px)
+    ctx.drawImage(logo, x, y - px * 0.36 - size / 2, size, size) // centred on the letters' middle
+    x += size + logoGap(px)
+  }
   ctx.font = font(800, px)
   const rep = ctx.measureText('Rep').width
   ctx.fillStyle = solid ?? C.ink
@@ -151,11 +174,8 @@ function drawStory(w: CardWorkout, pbs: string[]) {
   glow.addColorStop(1, 'rgba(10,12,17,0)')
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, W, SH)
-  ctx.textAlign = 'center'
-  ctx.font = font(800, 56)
-  const mark = ctx.measureText('RepRun').width
   ctx.textAlign = 'left'
-  wordmark(ctx, (W - mark) / 2, 230, 56)
+  wordmark(ctx, (W - markWidth(ctx, 56)) / 2, 230, 56)
   ctx.textAlign = 'center'
   ctx.fillStyle = C.ink
   const { size, out } = titleLines(ctx, w.title || 'Workout', 96, 64, W - PAD * 2, 2)
@@ -207,8 +227,7 @@ function drawSticker(w: CardWorkout, pbs: string[]) {
     y += rowH
   }
   ctx.textAlign = 'left'
-  ctx.font = font(800, 52)
-  wordmark(ctx, (W - ctx.measureText('RepRun').width) / 2, y + 90, 52, C.ink)
+  wordmark(ctx, (W - markWidth(ctx, 52)) / 2, y + 90, 52, C.ink)
   return canvas
 }
 
@@ -240,15 +259,7 @@ function drawFull(w: CardWorkout, pbs: string[], line?: string): HTMLCanvasEleme
   ctx.fillRect(0, 0, W, H)
 
   ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = C.ink
-  ctx.font = font(800, 44)
-  ctx.fillText('Rep', PAD, PAD + 30)
-  const rep = ctx.measureText('Rep').width
-  const g = grad(PAD + rep, PAD + rep + 90)
-  g.addColorStop(0, C.accent)
-  g.addColorStop(1, C.accent2)
-  ctx.fillStyle = g
-  ctx.fillText('Run', PAD + rep, PAD + 30)
+  wordmark(ctx, PAD, PAD + 30, 44)
   ctx.fillStyle = C.muted
   ctx.font = font(500, 34)
   ctx.textAlign = 'right'
@@ -373,7 +384,7 @@ function drawFull(w: CardWorkout, pbs: string[], line?: string): HTMLCanvasEleme
 
 /** The card as a PNG file. Made ahead of the tap: iOS only lets navigator.share run straight off a tap, not after awaits. */
 export async function cardFile(w: CardWorkout, pbs: string[], line?: string, look: Look = 'full') {
-  await document.fonts?.load(font(800, 96)).catch(() => {})
+  await Promise.all([document.fonts?.load(font(800, 96)).catch(() => {}), loadLogo()])
   const blob = await new Promise<Blob | null>(r => drawCard(w, pbs, line, look).toBlob(r, 'image/png'))
   if (!blob) throw new Error("Couldn't make the picture")
   return new File([blob], `reprun-${w.date}${look === 'full' ? '' : `-${look}`}.png`, { type: 'image/png' })
