@@ -10,7 +10,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 ## Feedback 2026-11-19
 
 - [ ] **Spoken cue pauses music**: "Rest over…" stops Spotify/Apple Music instead of talking over it. iOS gives web speech its own audio session and there's no web setting to duck instead of pause; check whether music resumes after, and if not, offer beep-only as the default on iPhone.
-- [ ] **Rest alert arrives with the app open**: the push should be cancelled 2 s before the end while the logger is on screen; it got through a few times. Find out why the cancel misses (slow network, page in the background for a moment, timer drift).
+- [x] **Rest alert arrives with the app open**: cause: −15 down to nothing asked the server for an alert "now", and fast taps could reach it out of order (a cancel overtaken by the alert). Fixed 2026-11-19. the push should be cancelled 2 s before the end while the logger is on screen; it got through a few times. Find out why the cancel misses (slow network, page in the background for a moment, timer drift).
 - [ ] **Reorder exercises mid-workout**: a drag handle (☰) on each collapsed exercise, today only. Once an exercise is done it stays put: tick, no handle.
 - [x] **Name a plan on import**: today the name comes from the first line of the pasted text ("Workout" if ChatGPT left it out), and changing it means editing the text. Make the name in the preview editable.
 - [x] **"Empty workout" wording**: say what it does, e.g. "Start an empty workout" / "Start without a routine".

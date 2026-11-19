@@ -91,8 +91,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   }, [])
 
   // Rest over: beep and clear. A negative delay (app reopened after the rest ended) fires straight away.
-  // Rest alerts (lib/push): the server buzzes the lock screen when rest ends, unless the app is still on screen 2 s
-  // before, when it cancels and beeps itself. A locked phone pauses this timer, so the alert goes. Left for another
+  // Rest alerts (lib/push): the server buzzes the lock screen when rest ends, unless the app is still on screen 5 s
+  // before, when it cancels and beeps itself (5 s so the cancel gets there on gym signal; 2 s didn't always). A locked phone pauses this timer, so the alert goes. Left for another
   // page mid-rest, nothing here cancels it either, which is what you want: the logger isn't there to beep.
   useEffect(() => scheduleRest(a.restEndsAt), [a.restEndsAt])
   useEffect(() => {
@@ -101,7 +101,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     // "On screen" means the screen is drawing: a locked iPhone can keep running timers (the beep's audio keeps the page
     // awake) and still say 'visible', but it stops animation frames. No frame within a second: leave the alert to go.
     const ends = a.restEndsAt
-    const early = setTimeout(() => requestAnimationFrame(() => Date.now() < ends - 1000 && scheduleRest(null)), ends - Date.now() - 2000)
+    const early = setTimeout(() => requestAnimationFrame(() => Date.now() < ends - 1000 && scheduleRest(null)), ends - Date.now() - 5000)
     return () => (clearTimeout(t), clearTimeout(early))
   })
 

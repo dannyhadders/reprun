@@ -19,15 +19,22 @@ const subscription = async () => pushSupported() ? (await navigator.serviceWorke
 
 type Kind = 'rest' | Note['kind']
 const sent = new Map<Kind, number | null>() // what the Worker was last told, so a re-render doesn't resend it
+// One request at a time per kind, in order: tap ✓ then Skip fast and a "cancel" overtaking the "alert at 10:32" left
+// the alert waiting, so it buzzed with the app open.
+const queue = new Map<Kind, Promise<unknown>>()
 /** Ask for a push of `kind` at `at` (ms); null cancels. Quietly does nothing when off or offline. */
 function post(kind: Kind, at: number | null) {
   if (sent.has(kind) && sent.get(kind) === at) return
   sent.set(kind, at)
-  void subscription().then(sub => sub && fetch(PUSH_URL, { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint, at, kind }), keepalive: true })).catch(() => {})
+  const send = () => subscription().then(sub => sub && fetch(PUSH_URL, { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint, at, kind }), keepalive: true })).catch(() => {})
+  queue.set(kind, (queue.get(kind) ?? Promise.resolve()).then(send))
 }
 
 /** Rest ends at `at` (ms): ask for an alert then. null cancels. The in-app beep still works without it. */
 export function scheduleRest(at: number | null) {
+  // Ending within 3 s (−15 down to nothing) is someone looking at the timer: cancel. The server sends a time that's
+  // already gone straight away, and the logger's own cancel 5 s before never gets the chance.
+  if (at !== null && at - Date.now() < 3000) at = null
   if (at !== null || sent.has('rest')) post('rest', at)
 }
 

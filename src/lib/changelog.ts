@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Rest alerts no longer buzz while you\'re looking at the timer: taking it down with −15 or skipping it cancels the alert properly, and the app cancels it a little earlier so it gets through on slow gym signal.',
       'Pasting a plan: the routine\'s name in the preview is a box you can type in, so a plan from ChatGPT gets a proper name before you save it (no more "Workout").',
       'Change on the Next up card is a proper button now, with a swap icon.',
       'Empty workout is now Start an empty workout, with "Add exercises as you go" underneath and a dashed outline, so it\'s clear what it does.',
