@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Dragging an exercise to a new place: a copy of the card follows your finger, and a dashed outline shows where it will land.',
       'Opening RepRun for the very first time: tapping Start fresh or the sample data straight away no longer sends you back to the start of the welcome screens.',
       'Change the order of exercises mid-workout: fold them up and drag the ☰ on the right up or down. Once an exercise is done it shows its tick instead of the ☰.',
       'Scrolling a pop-up list (swapping an exercise, history, the rest picker) no longer scrolls the page behind it.',

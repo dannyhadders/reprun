@@ -78,9 +78,11 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [peek, setPeek] = useState<string | null>(null) // exercise whose history sheet is open
   const [restFor, setRestFor] = useState<number | null>(null) // exercise whose rest picker is open
   const [swapFor, setSwapFor] = useState<number | null>(null) // exercise being swapped
-  // Drag the ☰ to reorder: each time the finger passes the middle of the card above or below, they swap places.
+  // Drag the ☰ to reorder: a lifted copy of the card (the ghost) follows the finger, and the card's real place shows as a
+  // dashed outline. Each time the ghost's middle passes the middle of the card above or below, they swap places.
   // Only the finger that started it counts. Cards are keyed by their own id, so the ☰ under the finger stays in the DOM.
-  // ponytail: one place per pointer move and no auto-scroll; folded cards fit a phone screen. Add both if lists get long.
+  // ponytail: one place per pointer move, no slide animation for the others and no auto-scroll; folded cards fit a phone
+  // screen. Add them if lists get long.
   const [dragging, setDragging] = useState<number | null>(null)
   const stopDrag = useRef<() => void>(null)
   useEffect(() => () => stopDrag.current?.(), []) // left the logger mid-drag: no listeners left behind
@@ -89,13 +91,29 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     stopDrag.current?.()
     const id = e.pointerId
     let i = from
+    // The ghost: a copy of the card as it looks now, fixed to the screen, moved with the finger. Hidden from screen
+    // readers and taps; the real card stays in the list as the drop spot.
+    const card = e.currentTarget.closest('section')!
+    const box = card.getBoundingClientRect()
+    const grab = e.clientY - box.top
+    const ghost = card.cloneNode(true) as HTMLElement
+    ghost.removeAttribute('data-ex')
+    ghost.dataset.ghost = ''
+    ghost.setAttribute('aria-hidden', 'true')
+    ghost.inert = true
+    ghost.classList.replace('border-line', 'border-accent')
+    ghost.className += ' pointer-events-none fixed z-50 m-0 scale-[1.03] shadow-2xl shadow-black/50'
+    Object.assign(ghost.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px` })
+    document.body.append(ghost)
     setDragging(i)
     setFx(null) // a finish burst is kept by position: it would replay on whichever card lands there
     const move = (ev: PointerEvent) => {
       if (ev.pointerId !== id) return
+      ghost.style.top = `${ev.clientY - grab}px`
+      const mid = ev.clientY - grab + box.height / 2
       const cards = [...document.querySelectorAll('[data-ex]')].map(c => c.getBoundingClientRect())
       const prev = cards[i - 1], next = cards[i + 1]
-      const to = prev && ev.clientY < prev.top + prev.height / 2 ? i - 1 : next && ev.clientY > next.top + next.height / 2 ? i + 1 : i
+      const to = prev && mid < prev.top + prev.height / 2 ? i - 1 : next && mid > next.top + next.height / 2 ? i + 1 : i
       if (to === i) return
       const at = i
       update(x => moveExercise(x, at, to))
@@ -107,6 +125,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       removeEventListener('pointermove', move)
       removeEventListener('pointerup', end)
       removeEventListener('pointercancel', end)
+      ghost.remove()
       stopDrag.current = null
       setDragging(null)
     }
@@ -209,7 +228,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
         return (
           // Folded, the whole card opens it; open, the whole header row folds it. The rest picker and ✕ keep their own taps.
-          <section key={ex.key ?? i} data-ex={i} className={`rounded-2xl border bg-surface p-4 transition-shadow ${dragging === i ? 'relative z-[1] border-accent shadow-lg' : 'border-line'} ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
+          <section key={ex.key ?? i} data-ex={i} className={`rounded-2xl border p-4 ${dragging === i ? 'border-dashed border-accent/60 [&>*]:invisible' : 'border-line bg-surface'} ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
             {/* Press and hold the name for this exercise's history; a plain tap folds it. */}
             <div className="flex cursor-pointer items-center gap-2" onClick={e => {
               e.stopPropagation() // the card's own handler would undo it
