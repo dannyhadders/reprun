@@ -16,7 +16,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **"Empty workout" wording**: say what it does, e.g. "Start an empty workout" / "Start without a routine".
 - [ ] **Popular exercises in search**: the exercise picker only knows exercises you've logged. Seed it from `shared/catalogue.ts` (grow it to ~100 common lifts) so a new user's search has options; picking one creates it with the right muscle.
 - [ ] **Share picture themes**: a few looks (dark, light, bold colour, minimal) to swipe through in the share preview before sending. Brand book tokens only; add the themes to the brand book.
-- [ ] **"Change" on Next up looks like a button**, not a text link.
+- [x] **"Change" on Next up looks like a button**, not a text link.
 - [ ] **AI review of a workout / week** (big): "Analyse my week" reads your history and suggests new targets and routine changes, which you accept or not. Needs an OpenAI API key (platform.openai.com, pay-as-you-go: separate from a ChatGPT subscription) held as a Cloudflare secret and called from the Worker, never the phone. Doesn't fit phone-only or the demo as-is; behind Feature toggles. The copy-a-prompt-to-ChatGPT route stays the free option.
 
 ## Logging a workout

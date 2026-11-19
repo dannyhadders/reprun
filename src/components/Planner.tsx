@@ -91,7 +91,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
         <section className="rounded-2xl border border-accent/40 bg-accent/10 p-4">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-accent">Next up{picked && <span className="normal-case tracking-normal text-muted"> · your pick</span>}</p>
-            {routines.length > 1 && <button className="relative -my-1 px-1 py-1 text-sm font-medium text-accent" onClick={() => setChoosing(true)}><Tap />Change</button>}
+            {routines.length > 1 && <button className="relative btn-ghost -my-1 border-accent/40 py-1.5 text-accent" onClick={() => setChoosing(true)}><Tap /><Icon d={SWAP} className="h-4 w-4" />Change</button>}
           </div>
           <h2 className="mt-1 text-xl font-bold">{next.r.name}</h2>
           <button className="relative mt-1 w-full text-left text-sm text-muted" aria-expanded={open === 'next'} onClick={() => toggle('next')}><Tap />
@@ -161,6 +161,8 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
     </div>
   )
 }
+
+const SWAP = 'M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4' // Lucide arrow-left-right
 
 // Lucide "clock", inline like the app's other icons.
 const CLOCK = 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2'

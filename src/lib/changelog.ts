@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Change on the Next up card is a proper button now, with a swap icon.',
       'Empty workout is now Start an empty workout, with "Add exercises as you go" underneath and a dashed outline, so it\'s clear what it does.',
     ],
   },
