@@ -343,6 +343,31 @@
     .d-rlist .t { flex: 1; min-width: 0; }
     .d-rlist .t b { display: block; }
     .d-rlist small { color: var(--muted); font-size: 12px; }
+    /* Make a routine (src/components/Planner.tsx ImportPlan + RoutineBuilder): DIY / AI or paste tabs. */
+    .d-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); margin-bottom: 14px; }
+    .d-tabs button { flex: 1; min-height: 40px; border-radius: 9px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; color: var(--muted); }
+    .d-tabs button[aria-selected="true"] { background: var(--accent); color: #fff; }
+    .d-tabs .d-ic { width: 16px; height: 16px; }
+    .d-lab { margin: 14px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .d-lab span { text-transform: none; letter-spacing: 0; font-weight: 600; }
+    .d-tbl { border-radius: 16px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; }
+    .d-tbl > div { display: grid; grid-template-columns: minmax(0, 1fr) 34px 46px 44px 28px; gap: 5px; align-items: center; padding: 8px 6px 8px 12px; border-top: 1px solid var(--line); font-size: 14px; animation: d-in 0.35s var(--ease) backwards; }
+    .d-tbl > div:first-child { border-top: 0; animation: none; font-size: 9px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); padding-top: 7px; padding-bottom: 5px; }
+    .d-tbl b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .d-tbl i { font-style: normal; text-align: center; border-radius: 7px; background: var(--surface-2); padding: 4px 0; font-weight: 600; font-variant-numeric: tabular-nums; font-size: 13px; }
+    .d-tbl button { color: var(--muted); font-size: 15px; min-height: 28px; }
+    .d-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dphone .d-chip { min-height: 38px; padding: 0 11px; border-radius: 11px; border: 1px solid var(--line); background: var(--surface-2); font-weight: 600; font-size: 13px; }
+    .dphone .d-chip::before { content: "+ "; color: var(--accent); }
+    .d-ai { border-radius: 16px; padding: 14px; border: 1px solid rgba(129, 140, 248, 0.35); background: radial-gradient(80% 120% at 100% 0, rgba(129, 140, 248, 0.22), transparent 60%), var(--surface); font-size: 13px; color: var(--muted); }
+    .d-ai b { display: flex; align-items: center; gap: 6px; color: var(--ink); font-size: 15px; margin-bottom: 4px; }
+    .d-ai .d-ic { color: var(--accent); }
+    .dphone .d-paste { width: 100%; min-height: 50px; margin-top: 12px; border-radius: 14px; border: 1px dashed var(--line-strong); color: var(--accent); display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .d-found { margin: 14px 0 8px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .d-found em { font-style: normal; color: var(--good); text-transform: none; letter-spacing: 0; }
+    .d-done-bar { position: sticky; bottom: 0; margin: 14px -16px 0; padding: 18px 16px 4px; background: linear-gradient(to top, var(--bg) 70%, transparent); }
+    .d-done-bar .d-btn { width: 100%; min-height: 48px; font-size: 15px; }
+    .d-done-bar .d-btn:disabled { opacity: 0.45; }
     .d-sheet { position: absolute; inset: 70px 0 0; z-index: 10; background: var(--surface); border-radius: 26px 26px 0 0; border-top: 1px solid var(--line-strong); padding: 14px 16px 26px; display: flex; flex-direction: column; gap: 10px; transform: translateY(105%); transition: transform 0.45s var(--ease); }
     .d-sheet.up { transform: none; }
     .d-sheet .grab { width: 40px; height: 5px; border-radius: 9px; background: var(--line-strong); margin: 0 auto 4px; }
@@ -653,8 +678,8 @@
             <div><h3>A workout, live</h3><p>Tick a set and rest starts. − and + change the weight. Tap the phone and it's yours.</p><button class="btn btn-ghost btn-sm" type="button" id="d1again">Start again</button></div>
           </div>
           <div class="dcell reveal">
-            <div class="dbox" role="img" aria-label="Pasting a plan: each day becomes a routine"><div class="dphone" id="d2" inert></div></div>
-            <div><h3>Paste in a plan</h3><p>From your PT or ChatGPT. Each day becomes a routine, with weights to start on.</p><button class="btn btn-ghost btn-sm" type="button" id="d2again">Play again</button></div>
+            <div class="dbox"><div class="dphone" id="d2"></div></div>
+            <div><h3>Make a routine</h3><p>Build it yourself from tap-to-add lifts, or paste a plan from your PT or ChatGPT: each day becomes a routine. Tap the phone and it's yours.</p><button class="btn btn-ghost btn-sm" type="button" id="d2again">Start again</button></div>
           </div>
           <div class="dcell reveal">
             <div class="dbox"><div class="dphone" id="d3"></div></div>
@@ -1156,46 +1181,84 @@
         log1 = workout(fresh);
       };
 
-      // ── Demo 2: pasting a plan, plays by itself on a loop. ──
+      // ── Demo 2: make a routine (DIY or AI or paste), yours to use; plays by itself until someone touches it. ──
       const d2 = $('#d2');
-      const PLAN_TEXT = 'Push\nBench Press – 4x8\nOverhead Press – 3x10\nDips – 3x12\n\nPull\nDeadlift – 3x5\nBarbell Row – 3x8\n\nLegs\nSquat – 4x6\nLeg Press – 3x12';
-      const ROUTINES = [['Push', '3 exercises', 'Bench Press 4 × 8 · 62.5 kg'], ['Pull', '2 exercises', 'Deadlift 3 × 5 · 120 kg'], ['Legs', '2 exercises', 'Squat 4 × 6 · 100 kg']];
-      const startPage = (full) => `<div class="d-scr"><div class="d-scroll" style="padding-top:60px"><span style="font-size:14px;color:var(--muted)">← Dashboard</span><div class="d-h1">Start a workout</div>
-        ${full ? '<div class="d-next"><span class="k">Next up</span><b>Push</b><p>Bench Press · Overhead Press · Dips</p><p style="font-size:12px;margin-top:4px">~50 min · Not done yet</p><button class="d-btn d-pri">Start Push</button></div>' : ''}
-        <div class="d-rhead">Routines<button class="d-btn d-gho" data-k="import">+ Import plan</button></div>
-        ${full ? `<div class="d-rlist">${ROUTINES.map(([n, m], i) => `<div style="animation-delay:${0.2 + i * 0.15}s"><span class="t"><b>${n}</b><small>${m} · not done yet</small></span><span style="color:var(--muted);padding:0 6px">✎</span><button class="d-btn d-pri">Start</button></div>`).join('')}</div>`
-          : '<div class="d-add">No routines yet. Start with ours, or import a plan from your PT or ChatGPT: paste the text and each day becomes a routine.</div>'}
-        </div><div class="d-sheet"><span class="grab"></span><b style="font-size:18px">Import a plan</b><p>Paste a plan from your PT or ChatGPT. Each day's name on its own line, then one exercise per line.</p><div class="d-ta"></div><div class="d-prev"></div><button class="d-btn d-pri" style="opacity:0.5">Paste a plan to preview it</button></div></div>`;
-      let run2 = 0;
-      async function playPaste() {
-        const me = ++run2, ok = async (ms) => { await sleep(ms); while (me === run2 && !onScreen(d2)) await sleep(400); return me === run2; };
-        if (calm) { d2.innerHTML = startPage(true); return; }
-        d2.innerHTML = startPage(false);
-        if (!await ok(1200)) return;
-        await tapAt(d2, $('[data-k="import"]', d2));
-        if (me !== run2) return;
-        $('.d-finger', d2)?.remove();
-        $('.d-sheet', d2).classList.add('up');
-        if (!await ok(600)) return;
-        const ta = $('.d-ta', d2);
-        ta.classList.add('typing');
-        for (let i = 0; i <= PLAN_TEXT.length; i += 2) { ta.textContent = PLAN_TEXT.slice(0, i); if (!await ok(26)) return; }
-        ta.classList.remove('typing'); ta.classList.add('small');
-        $('.d-prev', d2).innerHTML = ROUTINES.map(([n, , s], i) => `<div style="animation-delay:${0.2 + i * 0.15}s"><b>${n}</b><small>${s}</small></div>`).join('');
-        const save = $('.d-sheet .d-btn', d2);
-        save.textContent = 'Save 3 routines'; save.style.opacity = 1;
-        if (!await ok(1800)) return;
-        await tapAt(d2, save);
-        if (me !== run2) return;
-        $('.d-finger', d2)?.remove();
-        $('.d-sheet', d2).classList.remove('up');
-        if (!await ok(450)) return;
-        d2.innerHTML = startPage(true);
-        if (await ok(5000)) playPaste();
+      const PENCIL = 'M13 21h8M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z';
+      const SPARKLE = 'M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.14 1.58a.5.5 0 0 1 0 .96l-6.14 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z';
+      const CLIP = 'M9 3h6v3H9zM9 4.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H15';
+      // Tap-to-add lifts: name, sets, reps, kg.
+      const LIFTS = [['Squat', 4, '5', '100'], ['Bench Press', 3, '8', '62.5'], ['Romanian Deadlift', 3, '8-10', '80'], ['Pull-up', 3, '8', 'BW'], ['Plank', 3, '45s', 'BW']];
+      // What "Paste from clipboard" finds: three days, each with its first lift.
+      const PASTED = [['Push', 3, 'Bench Press 4 × 8 · 62.5 kg'], ['Pull', 2, 'Deadlift 3 × 5 · 120 kg'], ['Legs', 2, 'Squat 4 × 6 · 100 kg']];
+      const st = { page: 'list', tab: 'diy', rows: [], pasted: false, routines: [] };
+      const mins = (sets) => Math.max(5, Math.round((sets * 2.4) / 5) * 5); // ~2.4 min a set with rest, as the app's estimate
+      function render2() {
+        // Drawn into an inner box, so the ghost finger (a child of the phone) stays put between taps.
+        const host = $('.d2-host', d2) || (d2.innerHTML = '<div class="d2-host" style="height:100%"></div>', $('.d2-host', d2));
+        const sets = st.rows.reduce((n, r) => n + r[1], 0);
+        if (st.page === 'list') {
+          const next = st.routines[0];
+          host.innerHTML = `<div class="d-scr"><div class="d-scroll" style="padding-top:60px"><span style="font-size:14px;color:var(--muted)">← Dashboard</span><div class="d-h1">Start a workout</div>
+            ${next ? `<div class="d-next"><span class="k">Next up</span><b>${next[0]}</b><p>${next[1]}</p><button class="d-btn d-pri">Start ${next[0]}</button></div>` : ''}
+            <div class="d-rhead">Routines<button class="d-btn d-gho" data-a="create">+ Import / create plan</button></div>
+            ${st.routines.length ? `<div class="d-rlist">${st.routines.map(([n, m], i) => `<div style="animation-delay:${0.1 + i * 0.12}s"><span class="t"><b>${n}</b><small>${m} · not done yet</small></span><button class="d-btn d-pri">Start</button></div>`).join('')}</div>`
+              : '<div class="d-add">No routines yet. Build one yourself, or paste a plan from your PT or ChatGPT.</div>'}</div></div>`;
+          return;
+        }
+        const diy = st.tab === 'diy';
+        host.innerHTML = `<div class="d-scr"><div class="d-scroll" style="padding-top:60px"><button style="font-size:14px;color:var(--muted)" data-a="back">← Back</button><div class="d-h1">${diy ? "What's in it?" : 'Get a plan'}</div>
+          <div class="d-tabs" role="tablist"><button role="tab" aria-selected="${diy}" data-a="tab" data-v="diy">${ic(PENCIL)}DIY</button><button role="tab" aria-selected="${!diy}" data-a="tab" data-v="ai">${ic(SPARKLE)}AI or paste</button></div>
+          ${diy ? `
+            ${st.rows.length ? `<p class="d-lab">In this routine <span>· ${st.rows.length} exercise${st.rows.length === 1 ? '' : 's'} · ${sets} sets · ~${mins(sets)} min</span></p>
+              <div class="d-tbl"><div><span>EXERCISE</span><span style="text-align:center">SETS</span><span style="text-align:center">REPS</span><span style="text-align:center">KG</span><span></span></div>
+              ${st.rows.map(([n, s, r, k], i) => `<div><b>${n}</b><i>${s}</i><i>${r}</i><i style="${k === 'BW' ? 'color:var(--muted)' : ''}">${k}</i><button data-a="remove" data-v="${i}" aria-label="Remove ${n}">✕</button></div>`).join('')}</div>` : ''}
+            <p class="d-lab">${st.rows.length ? 'Add more' : 'Tap to add'}</p>
+            <div class="d-chips">${LIFTS.filter(([n]) => !st.rows.some((r) => r[0] === n)).map(([n]) => `<button class="d-chip" data-a="add" data-v="${n}">${n}</button>`).join('')}</div>
+            <div class="d-done-bar"><button class="d-btn d-pri" data-a="done" ${st.rows.length ? '' : 'disabled'}>${st.rows.length ? `Done · ${st.rows.length} exercise${st.rows.length === 1 ? '' : 's'} · ~${mins(sets)} min` : 'Add an exercise to start'}</button></div>`
+          : `
+            <div class="d-ai"><b>${ic(SPARKLE)}Create one with AI</b>Copy a prompt into ChatGPT, then copy its reply and tap Paste from clipboard.</div>
+            <button class="d-paste" data-a="paste">${ic(CLIP)}Paste from clipboard</button>
+            ${st.pasted ? `<p class="d-found">Found 3 days · 7 exercises <em>· all matched</em></p>
+              <div class="d-rlist">${PASTED.map(([n, c, first], i) => `<div style="animation-delay:${0.1 + i * 0.12}s"><span class="t"><b>${n}</b><small>${c} exercises · ${first}</small></span></div>`).join('')}</div>
+              <div class="d-done-bar"><button class="d-btn d-pri" data-a="save">Save 3 routines</button></div>` : ''}`}
+        </div></div>`;
       }
-      whenSeen(d2, playPaste);
-      $('#d2again').onclick = playPaste;
-      $('#d2again').hidden = calm;
+      // Every button, whether a visitor taps it or the demo does.
+      function act2(a, v) {
+        if (a === 'create') Object.assign(st, { page: 'create', tab: 'diy', rows: [], pasted: false });
+        else if (a === 'back') st.page = 'list';
+        else if (a === 'tab') st.tab = v;
+        else if (a === 'add') st.rows.push(LIFTS.find(([n]) => n === v));
+        else if (a === 'remove') st.rows.splice(+v, 1);
+        else if (a === 'paste') st.pasted = true;
+        else if (a === 'done') { const sets = st.rows.reduce((n, r) => n + r[1], 0); st.routines.unshift(['My routine', `${st.rows.length} exercises · ~${mins(sets)} min`]); st.page = 'list'; }
+        else if (a === 'save') { st.routines.push(...PASTED.map(([n, c]) => [n, `${c} exercises`])); st.page = 'list'; }
+        render2();
+      }
+      d2.addEventListener('click', (e) => { const b = e.target.closest('[data-a]'); if (b && !b.disabled) act2(b.dataset.a, b.dataset.v); });
+      // Plays by itself while on screen; any touch, key, wheel or focus in the phone hands it over (the brand rule).
+      let run2 = 0, touched2 = false;
+      for (const t of ['pointerdown', 'keydown', 'wheel', 'focusin']) d2.addEventListener(t, () => { touched2 = true; run2++; $('.d-finger', d2)?.remove(); });
+      async function playMake() {
+        const me = ++run2, ok = async (ms) => { await sleep(ms); while (me === run2 && !onScreen(d2)) await sleep(400); return me === run2; };
+        Object.assign(st, { page: 'list', tab: 'diy', rows: [], pasted: false, routines: [] });
+        render2();
+        if (calm) return; // still: the empty list, ready to use
+        const tap = async (sel) => { const el = $(sel, d2); if (!el || me !== run2) return false; await tapAt(d2, el); if (me !== run2) return false; act2(el.dataset.a, el.dataset.v); return ok(500); };
+        if (!await ok(1200)) return;
+        // DIY: three lifts, Done.
+        if (!await tap('[data-a="create"]')) return;
+        for (const n of ['Squat', 'Romanian Deadlift', 'Plank']) if (!await tap(`[data-a="add"][data-v="${n}"]`)) return;
+        if (!await ok(700) || !await tap('[data-a="done"]')) return;
+        if (!await ok(1600)) return;
+        // AI or paste: paste a plan, save the three days.
+        if (!await tap('[data-a="create"]') || !await tap('[data-a="tab"][data-v="ai"]') || !await tap('[data-a="paste"]')) return;
+        if (!await ok(1200) || !await tap('[data-a="save"]')) return;
+        $('.d-finger', d2)?.remove();
+        if (await ok(5000) && !touched2) playMake();
+      }
+      whenSeen(d2, playMake);
+      $('#d2again').onclick = () => { touched2 = false; playMake(); };
 
       // ── Demo 3: the PB pop-up with confetti, then the finish screen. ──
       function confetti(host) {
