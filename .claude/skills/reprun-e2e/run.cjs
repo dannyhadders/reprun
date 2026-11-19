@@ -178,6 +178,18 @@ const CHECKS = {
     await t.expect(t.page.getByRole('article'), 'Workouts is still empty', 0)
   }],
 
+  'popular-lifts': ['Fresh copy: searching finds popular lifts never logged, and picking one adds it', async t => {
+    await begin(t, false)
+    await planner(t)
+    await t.page.getByRole('button', { name: /^Start an empty workout/ }).click()
+    await t.page.getByRole('textbox', { name: 'Exercise name' }).fill('hip')
+    const pick = t.page.getByRole('list', { name: 'Matching exercises' }).getByRole('button', { name: /^Hip Thrust/ })
+    await t.expect(pick, 'Typing "hip" offers Hip Thrust on a copy with nothing logged')
+    await t.shot('Popular lifts in search')
+    await pick.click()
+    await t.expect(t.page.getByRole('heading', { name: 'Hip Thrust' }), 'Hip Thrust is added to the workout')
+  }],
+
   'plan-import': ['Paste a plan: preview, save, it becomes a routine', async t => {
     await begin(t, false)
     await planner(t)

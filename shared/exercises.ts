@@ -1,7 +1,7 @@
 // Renaming and merging exercises: the rules both the Worker and the phone-only copy (src/lib/local.ts) apply.
 // Old names live on as your own aliases (settings 'aliases': old name, lower case → current name), so routines,
 // unsent uploads, a workout in progress and spreadsheet re-imports that still say the old name land on the right one.
-import { resolveExercise } from './catalogue.ts'
+import { CATALOGUE, resolveExercise } from './catalogue.ts'
 import { parseLine } from './plan.ts'
 import type { Exercise, Muscle } from './types.ts'
 
@@ -37,6 +37,15 @@ export const matchExercise = (raw: string, known: Exercise[], aliases: Aliases =
   const name = applyAlias(aliases, raw) // a name you've since renamed or merged
   const key = applyAlias(aliases, resolveExercise(name, null).name).toLowerCase() // the catalogue's name may be renamed too
   return known.find(e => e.name.toLowerCase() === name.trim().toLowerCase() || e.name.toLowerCase() === key) ?? null
+}
+
+/** Popular lifts you haven't logged: name or another name for it contains `term` (starts-with first), or with no term,
+ * the ones for `muscle`. Lets a new user's search find something. */
+export function fromCatalogue(term: string, known: Exercise[], aliases: Aliases = {}, muscle?: Muscle) {
+  const t = term.trim().toLowerCase()
+  const hit = (c: typeof CATALOGUE[number]) => t ? [c.name.toLowerCase(), ...c.aliases].some(a => a.includes(t)) : c.muscle === muscle
+  return CATALOGUE.filter(c => hit(c) && !matchExercise(c.name, known, aliases))
+    .sort((x, y) => Number(!x.name.toLowerCase().startsWith(t)) - Number(!y.name.toLowerCase().startsWith(t)))
 }
 
 /** Remember that `from` is now `to`. Older aliases that pointed at `from` follow it; renaming back undoes the loop. */

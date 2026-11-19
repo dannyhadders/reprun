@@ -1,6 +1,7 @@
 // Self-check for the plan parser and progression rule: npx tsx scripts/check-plan.ts
 import { estimateS, focusChoices, formatLine, parseLine, parsePlan, roughTime, suggest, workoutPrompt } from '../shared/plan.ts'
-import { resolveExercise } from '../shared/catalogue.ts'
+import { CATALOGUE, resolveExercise } from '../shared/catalogue.ts'
+import { fromCatalogue } from '../shared/exercises.ts'
 import { STARTER_ROUTINES } from '../shared/starter.ts'
 import { livePb, type ExerciseSession } from '../src/lib/stats.ts'
 import { fromStravaCsv, isStravaCsv, parseCsv, stravaDate } from '../shared/stravaCsv.ts'
@@ -17,6 +18,14 @@ eq(parseLine('Squats - 4 sets of 6-8 @ 80kg, rest 2 min'), { name: 'Squats', set
 eq(parseLine('1. **Chest-supported Dumbbell Row**: 3×12, 90s rest')?.name, 'Chest-supported Dumbbell Row', 'markdown + dash in name')
 eq(parseLine('1. **Chest-supported Dumbbell Row**: 3×12, 90s rest')?.restS, 90, 'rest after value')
 eq(parseLine('Warm up 5 min on the bike'), null, 'no sets = not an exercise')
+
+// Popular lifts in search: by name or another name, starts-with first, never one you've logged (or renamed away).
+assert(CATALOGUE.length >= 100, 'catalogue has 100 lifts')
+eq(fromCatalogue('hip', [])[0]?.name, 'Hip Thrust', 'catalogue: starts-with first')
+eq(fromCatalogue('ohp', []).map(c => c.name), ['Overhead Press'], 'catalogue: found by another name')
+assert(!fromCatalogue('bench', [{ id: 1, name: 'Bench Press', muscle: 'chest' } as never]).some(c => c.name === 'Bench Press'), 'catalogue: logged ones left out')
+assert(!fromCatalogue('bench', [{ id: 1, name: 'Flat Bench', muscle: 'chest' } as never], { 'bench press': 'Flat Bench' }).some(c => c.name === 'Bench Press'), 'catalogue: renamed ones left out')
+assert(fromCatalogue('', [], {}, 'core').every(c => c.muscle === 'core'), 'catalogue: no term, same muscle')
 
 const plan = parsePlan(`Here's your plan!\n\nArm day\nEZ-bar Curl – 3x10-12 @ 19kg\nHammer Curl – 3x12\n\nBack day:\nWarm up 5 min row\nLat Pulldown 4x8-12 @ 52kg`)
 eq(plan.map(r => [r.name, r.items.length]), [['Arm day', 2], ['Back day', 1]], 'splits on headings, drops chatter')

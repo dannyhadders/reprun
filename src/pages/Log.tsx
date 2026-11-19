@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { targetText } from '../../shared/plan'
+import { fromCatalogue } from '../../shared/exercises'
 import { Outbox } from '../components/Layout'
 import { Planner } from '../components/Planner'
 import { BackupNudge } from '../components/PhoneOnly'
@@ -133,6 +134,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     .map(e => ({ e, hist: model.exHistory.get(e.id) ?? [] }))
     .sort((x, y) => (y.hist.at(-1)?.date ?? '').localeCompare(x.hist.at(-1)?.date ?? ''))
     .slice(0, 6) : []
+  // Then popular lifts you haven't logged, so a new user's search finds something.
+  const popular = q ? fromCatalogue(q, data.exercises, data.aliases).slice(0, 8 - matches.length) : []
 
   return (
     <div className="space-y-4">
@@ -331,7 +334,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           <input className="input" placeholder="Add exercise" value={name} onChange={e => setName(e.target.value)} aria-label="Exercise name" autoComplete="off" />
           <button className="btn" disabled={!name.trim()}>Add</button>
         </div>
-        {matches.length > 0 && (
+        {matches.length + popular.length > 0 && (
           <ul className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface-2" aria-label="Matching exercises">
             {matches.map(({ e, hist }) => {
               const last = hist.at(-1)
@@ -349,6 +352,15 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 </li>
               )
             })}
+            {popular.map(c => (
+              <li key={c.name}>
+                <button type="button" className="relative w-full px-3 py-2.5 text-left" onClick={() => add(c.name, c.muscle)}>
+                  <Tap />
+                  <span className="block font-medium">{c.name}</span>
+                  <span className="block text-xs capitalize text-muted">{c.muscle} · new</span>
+                </button>
+              </li>
+            ))}
           </ul>
         )}
         {isNew && (
@@ -477,7 +489,9 @@ function SwapPicker({ current, pick, close }: { current: { name: string; muscle:
     .filter(e => e.name !== current.name && (term ? e.name.toLowerCase().includes(term) : e.muscle === current.muscle))
     .sort((x, y) => recent(y.id).localeCompare(recent(x.id)))
     .slice(0, 8)
-  const typed = q.trim() && !data.exercises.some(e => e.name.toLowerCase() === term) ? q.trim() : null
+  // Popular lifts you haven't logged fill it up: same muscle, or matching the search.
+  const popular = fromCatalogue(term, data.exercises, data.aliases, current.muscle).filter(c => c.name !== current.name).slice(0, 8 - list.length)
+  const typed = q.trim() && !data.exercises.some(e => e.name.toLowerCase() === term) && !popular.some(c => c.name.toLowerCase() === term) ? q.trim() : null
   return (
     <Sheet close={close} label={`Swap ${current.name}`}>
       <h2 className="truncate text-lg font-bold">Swap {current.name} for…</h2>
@@ -486,7 +500,7 @@ function SwapPicker({ current, pick, close }: { current: { name: string; muscle:
         <Icon d={SEARCH} className="size-4 shrink-0 text-muted" />
         <input className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted" placeholder="Search exercises" value={q} onChange={e => setQ(e.target.value)} autoComplete="off" aria-label="Search exercises" />
       </label>
-      {!term && list.length > 0 && <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted">Also {current.muscle}</p>}
+      {!term && list.length + popular.length > 0 && <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-wider text-muted">Also {current.muscle}</p>}
       <ul className="divide-y divide-line">
         {list.map(e => {
           const hist = model.exHistory.get(e.id) ?? []
@@ -506,11 +520,23 @@ function SwapPicker({ current, pick, close }: { current: { name: string; muscle:
             </li>
           )
         })}
+        {popular.map(c => (
+          <li key={c.name}>
+            <button className="row-press relative flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left" onClick={() => pick(c.name, c.muscle)}>
+              <Tap />
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-surface-2 text-xs font-bold text-muted">{initials(c.name)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{c.name}</span>
+                <span className="block text-xs capitalize text-muted">{c.muscle} · new</span>
+              </span>
+            </button>
+          </li>
+        ))}
       </ul>
       {typed && (
         <button className="btn-ghost mt-2 w-full" onClick={() => pick(typed, newExercise(typed).muscle === 'other' ? current.muscle : newExercise(typed).muscle)}>Use "{typed}"</button>
       )}
-      {!list.length && !typed && <p className="py-6 text-center text-sm text-muted">Nothing else logged for {current.muscle} yet. Search or type a name.</p>}
+      {!list.length && !popular.length && !typed && <p className="py-6 text-center text-sm text-muted">Nothing else logged for {current.muscle} yet. Search or type a name.</p>}
     </Sheet>
   )
 }

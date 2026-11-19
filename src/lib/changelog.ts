@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Searching for an exercise in a workout now suggests about 100 popular lifts you haven\'t done yet (Hip Thrust, Arnold Press, Cable Fly…), marked "new", so there\'s something to pick on day one. Swap shows them too.',
       'Rest alerts no longer buzz while you\'re looking at the timer: taking it down with −15 or skipping it cancels the alert properly, and the app cancels it a little earlier so it gets through on slow gym signal.',
       'The rest-over beep plays over your music now instead of pausing it. The spoken "Rest over. Next: …" is off to start with, since iPhone pauses music while it talks; turn it on with the speaker button at the top of a workout.',
       'Pasting a plan: the routine\'s name in the preview is a box you can type in, so a plan from ChatGPT gets a proper name before you save it (no more "Workout").',
