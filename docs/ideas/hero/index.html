@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Hero options</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0a0c11; --surface:#12151d; --surface-2:#1a1f2b; --line:#242a38; --ink:#e8eaf0; --muted:#8b93a7; --accent:#818cf8; --accent-2:#22d3ee; --good:#34d399; --pb:#fbbf24; --grad:linear-gradient(90deg,var(--accent),var(--accent-2)); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#05060a; color:var(--ink); font:15px/1.45 Inter,system-ui,sans-serif; }
+  .intro { max-width:1180px; margin:0 auto; padding:40px 32px 8px; }
+  .intro h1 { margin:0 0 8px; font-size:28px; letter-spacing:-.02em; }
+  .intro p { margin:0; color:var(--muted); max-width:820px; }
+  .opt { max-width:1180px; margin:36px auto 0; padding:0 32px; }
+  .opt > h2 { margin:0 0 4px; font-size:20px; }
+  .opt > h2 small { color:var(--muted); font-weight:500; font-size:14px; margin-left:8px; }
+  .opt > .why { margin:0 0 16px; color:var(--muted); max-width:860px; }
+  .hero { position:relative; overflow:hidden; border-radius:28px; border:1px solid var(--line); min-height:640px; display:grid; grid-template-columns:1.05fr 1fr; align-items:center; gap:24px; padding:40px 56px;
+          background: radial-gradient(60% 70% at 15% 10%, rgba(129,140,248,.22), transparent 60%), radial-gradient(50% 60% at 90% 90%, rgba(34,211,238,.12), transparent 60%), var(--bg); }
+  .copy .lab { font:700 12px/1 ui-monospace,Menlo,monospace; letter-spacing:.18em; color:var(--accent-2); }
+  .copy h3 { margin:18px 0 16px; font-size:60px; line-height:.98; letter-spacing:-.04em; font-weight:800; }
+  .copy h3 .g { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .copy p { color:var(--muted); font-size:17px; max-width:430px; margin:0 0 22px; }
+  .btns { display:flex; gap:10px; } .btns span { height:46px; padding:0 20px; border-radius:12px; display:inline-flex; align-items:center; font-weight:600; }
+  .btns .pri { background:var(--grad); color:var(--bg); } .btns .gho { border:1px solid var(--line); }
+  .stage { position:relative; display:grid; justify-items:center; }
+  .cap { text-align:center; margin-bottom:14px; min-height:62px; }
+  .cap .k { font:700 11px/1 ui-monospace,Menlo,monospace; letter-spacing:.2em; color:var(--accent-2); }
+  .cap b { display:block; font-size:28px; letter-spacing:-.02em; margin-top:6px; }
+  .phone { position:relative; width:260px; height:562px; border-radius:40px; overflow:hidden; box-shadow:0 0 0 1px #2e3546, 0 40px 80px -20px rgba(0,0,0,.8), 0 0 120px -30px rgba(129,140,248,.45); background:var(--bg); }
+  .phone img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:top; }
+  .note { margin:12px 2px 0; font-size:13px; color:var(--muted); } .note b { color:var(--ink); }
+  /* 1 · story: five frames crossfade, captions in step */
+  .story img, .story .c { opacity:0; animation:frame 15s infinite; }
+  .story .c { position:absolute; left:0; right:0; }
+  .story img:nth-child(1), .story .c:nth-child(1) { animation-delay:0s; } .story img:nth-child(2), .story .c:nth-child(2) { animation-delay:3s; }
+  .story img:nth-child(3), .story .c:nth-child(3) { animation-delay:6s; } .story img:nth-child(4), .story .c:nth-child(4) { animation-delay:9s; }
+  .story img:nth-child(5), .story .c:nth-child(5) { animation-delay:12s; }
+  @keyframes frame { 0% { opacity:0; } 2%, 19% { opacity:1; } 21%, 100% { opacity:0; } }
+  .caps { position:relative; height:62px; width:100%; }
+  .dash { display:flex; gap:6px; margin-top:16px; } .dash i { width:30px; height:3px; border-radius:3px; background:var(--line); position:relative; overflow:hidden; }
+  .dash i::after { content:""; position:absolute; inset:0; background:var(--accent-2); transform:scaleX(0); transform-origin:left; animation:fill 15s infinite linear; }
+  .dash i:nth-child(2)::after { animation-delay:3s; } .dash i:nth-child(3)::after { animation-delay:6s; } .dash i:nth-child(4)::after { animation-delay:9s; } .dash i:nth-child(5)::after { animation-delay:12s; }
+  @keyframes fill { 0% { transform:scaleX(0); } 20% { transform:scaleX(1); } 20.1%, 100% { transform:scaleX(0); } }
+  .strip { display:flex; gap:12px; margin-top:16px; overflow-x:auto; }
+  .strip figure { margin:0; flex:none; width:150px; } .strip img { width:150px; border-radius:18px; border:1px solid var(--line); display:block; }
+  .strip figcaption { font-size:12px; color:var(--muted); margin-top:6px; } .strip figcaption b { color:var(--ink); display:block; font-size:13px; }
+  /* 2 · your turn: a pulsing ring and a bubble on the PB set's ✓ */
+  .ring { position:absolute; width:46px; height:46px; margin:-23px 0 0 -23px; border-radius:50%; border:2px solid var(--pb); box-shadow:0 0 0 0 rgba(251,191,36,.6); animation:ring 1.3s infinite; }
+  @keyframes ring { 0% { box-shadow:0 0 0 0 rgba(251,191,36,.55); } 100% { box-shadow:0 0 0 18px rgba(251,191,36,0); } }
+  .bubble { position:absolute; right:12px; padding:8px 12px; border-radius:12px; background:var(--pb); color:#1a1300; font-weight:700; font-size:13px; white-space:nowrap; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+  .bubble::after { content:""; position:absolute; right:22px; top:100%; border:7px solid transparent; border-top-color:var(--pb); }
+  .count { position:absolute; left:14px; bottom:14px; right:14px; padding:8px 10px; border-radius:12px; background:rgba(10,12,17,.85); border:1px solid var(--line); font-size:12px; color:var(--muted); display:flex; justify-content:space-between; }
+  .count b { color:var(--ink); }
+  /* 3 · fanned phones */
+  .fan { position:relative; width:520px; height:600px; }
+  .fan .phone { position:absolute; top:20px; width:230px; height:498px; transition:transform .4s; }
+  .fan .l { left:0; transform:rotate(-9deg) translateY(30px); opacity:.85; animation:bob 6s ease-in-out infinite; }
+  .fan .r { right:0; transform:rotate(9deg) translateY(30px); opacity:.85; animation:bob 6s ease-in-out infinite 3s; }
+  .fan .m { left:145px; z-index:2; transform:scale(1.04); }
+  @keyframes bob { 50% { margin-top:-10px; } }
+  .tag { position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); font-size:12px; color:var(--muted); white-space:nowrap; }
+  /* 4 · video */
+  .play { position:absolute; inset:0; display:grid; place-items:center; background:linear-gradient(to top, rgba(0,0,0,.55), transparent 40%); }
+  .play span { width:74px; height:74px; border-radius:50%; background:rgba(255,255,255,.16); backdrop-filter:blur(6px); border:2px solid rgba(255,255,255,.6); display:grid; place-items:center; font-size:26px; }
+  .vtag { position:absolute; bottom:16px; left:16px; right:16px; display:flex; justify-content:space-between; font-size:12px; color:#fff; }
+  .vtag i { font-style:normal; background:rgba(0,0,0,.5); padding:3px 8px; border-radius:8px; }
+  /* 5 · slideshow with a live touch: a finger taps Start, the number counts */
+  .finger { position:absolute; width:40px; height:40px; margin:-20px 0 0 -20px; border-radius:50%; border:2px solid rgba(255,255,255,.75); background:rgba(255,255,255,.18); animation:tap 3s infinite; }
+  @keyframes tap { 0%, 30% { transform:translate(-60px, 120px); opacity:0; } 45% { transform:none; opacity:1; } 55% { transform:scale(.75); } 65%, 80% { transform:none; opacity:1; } 100% { opacity:0; } }
+  .plus { position:absolute; font-weight:800; color:var(--good); font-size:16px; animation:plus 3s infinite; }
+  @keyframes plus { 0%, 55% { opacity:0; transform:translateY(6px); } 65% { opacity:1; transform:none; } 90% { opacity:1; } 100% { opacity:0; transform:translateY(-10px); } }
+  .pick { margin:28px auto 60px; max-width:1180px; padding:0 32px; color:var(--muted); }
+  .pick b { color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="intro">
+  <h1>Hero: five options for the phone at the top of reprun.co.uk</h1>
+  <p style="color:var(--pb);margin:0 0 10px">Kept for later (2026-11-19). Option 3 is the one that shipped; 1, 2 and 5 are liked too. Frames are screenshots of the website's live demos, made-up numbers.</p>
+  <p>Each is shown in a copy of the hero. Today's hero flicks through seven still screenshots with a caption each. The frames below are real: screenshots of the website's own live demos (made-up numbers). On the site, anything moving would play only while on screen, stop at the first touch, and stay still with Reduce Motion.</p>
+</div>
+
+<section class="opt">
+  <h2>1 · A guided story <small>the finger acts out one workout in ~15 s</small></h2>
+  <p class="why">Tick a set, rest is timed, beat last time, the PB moment, share it. The caption above the phone follows each beat; the dashes are the beats. Recommended.</p>
+  <div class="hero">
+    <div class="copy"><span class="lab">FREE · OPEN SOURCE · NO ACCOUNT</span><h3>Your gym app,<br><span class="g">for £0.</span></h3><p>Log your lifting and your running in one place. Paste in a plan from your PT or ChatGPT, watch your PBs climb, and keep every bit of it on your own phone.</p><div class="btns"><span class="pri">Open the app →</span><span class="gho">▷ Try the demo</span></div></div>
+    <div class="stage">
+      <div class="caps story">
+        <div class="c cap"><span class="k">LOG IT</span><b>Tick a set.</b></div>
+        <div class="c cap"><span class="k">REST</span><b>Rest is timed.</b></div>
+        <div class="c cap"><span class="k">PROGRESS</span><b>Beat last time.</b></div>
+        <div class="c cap"><span class="k">PBS</span><b>PBs get a moment.</b></div>
+        <div class="c cap"><span class="k">SHARE</span><b>Then share it.</b></div>
+      </div>
+      <div class="phone story"><img src="f1-start.webp" alt=""><img src="f2-rest.webp" alt=""><img src="f3-weight.webp" alt=""><img src="f5-trophy.webp" alt=""><img src="f6-finish.webp" alt=""></div>
+      <div class="dash"><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+  <div class="strip">
+    <figure><img src="f1-start.webp" alt=""><figcaption><b>1 · Tick a set</b>the finger taps ✓</figcaption></figure>
+    <figure><img src="f2-rest.webp" alt=""><figcaption><b>2 · Rest is timed</b>the bar drains, 1:29</figcaption></figure>
+    <figure><img src="f3-weight.webp" alt=""><figcaption><b>3 · Beat last time</b>+ takes it to 67.5 kg</figcaption></figure>
+    <figure><img src="f4-pb.webp" alt=""><figcaption><b>3b · ✓ the PB set</b>the trophy pops on the set</figcaption></figure>
+    <figure><img src="f5-trophy.webp" alt=""><figcaption><b>4 · PBs get a moment</b>trophy and confetti</figcaption></figure>
+    <figure><img src="f6-finish.webp" alt=""><figcaption><b>5 · Share it</b>the picture swipes its looks</figcaption></figure>
+  </div>
+  <p class="note"><b>Good:</b> the first thing people see is the app's best moment, moving. Reuses the tested demo code. <b>Watch:</b> ~15 s before the loop repeats; the slideshow's other screens (Runs, Year, Backup) move to the strip lower down.</p>
+</section>
+
+<section class="opt">
+  <h2>2 · "Your turn" <small>1, but it stops for you at the PB</small></h2>
+  <p class="why">Same story, paused at the key moment: the PB set's ✓ pulses gold with "Tap ✓ — that's a PB". Tap it and you get the trophy and confetti yourself. Nobody taps in ~4 s, the finger does it.</p>
+  <div class="hero">
+    <div class="copy"><span class="lab">FREE · OPEN SOURCE · NO ACCOUNT</span><h3>Your gym app,<br><span class="g">for £0.</span></h3><p>Log your lifting and your running in one place. Paste in a plan from your PT or ChatGPT, watch your PBs climb, and keep every bit of it on your own phone.</p><div class="btns"><span class="pri">Open the app →</span><span class="gho">▷ Try the demo</span></div></div>
+    <div class="stage">
+      <div class="cap"><span class="k">YOUR TURN</span><b>Beat last time.</b></div>
+      <div class="phone" id="turn"><img src="f3-weight.webp" alt=""><span class="ring" style="left:82.8%;top:48.7%"></span><span class="bubble" style="top:calc(48.7% - 64px)">Tap ✓: that's a PB</span></div>
+    </div>
+  </div>
+  <p class="note"><b>Good:</b> people feel the PB moment themselves in the first 10 seconds: the strongest pull to "Open the app". <b>Watch:</b> a little more to build than 1 (a waiting step and a timeout); the bubble must not cover the numbers.</p>
+</section>
+
+<section class="opt">
+  <h2>3 · Three phones, fanned <small>logger, Make a routine, finish</small></h2>
+  <p class="why">The range at a glance: a workout in progress, building a routine, the share-picture finish. The side phones float gently; the middle comes forward on hover (or swipe on a phone).</p>
+  <div class="hero">
+    <div class="copy"><span class="lab">FREE · OPEN SOURCE · NO ACCOUNT</span><h3>Your gym app,<br><span class="g">for £0.</span></h3><p>Log your lifting and your running in one place. Paste in a plan from your PT or ChatGPT, watch your PBs climb, and keep every bit of it on your own phone.</p><div class="btns"><span class="pri">Open the app →</span><span class="gho">▷ Try the demo</span></div></div>
+    <div class="stage"><div class="fan">
+      <div class="phone l"><img src="make.webp" alt=""></div>
+      <div class="phone r"><img src="f6-finish.webp" alt=""></div>
+      <div class="phone m"><img src="f2-rest.webp" alt=""></div>
+      <span class="tag">Make a routine · Log a workout · Share it</span>
+    </div></div>
+  </div>
+  <p class="note"><b>Good:</b> looks premium; shows three features at once. <b>Watch:</b> nothing actually happens unless each runs its own loop (heavier on phones); on a phone screen only one fits, so it falls back to 1 or the slideshow.</p>
+</section>
+
+<section class="opt">
+  <h2>4 · A real screen recording <small>a 15 s loop from an iPhone</small></h2>
+  <p class="why">The actual app on a real iPhone: log a set, the rest buzz, the PB, the share picture. Like the "add to home screen" clip in the app's intro. Auto-plays muted, loops.</p>
+  <div class="hero">
+    <div class="copy"><span class="lab">FREE · OPEN SOURCE · NO ACCOUNT</span><h3>Your gym app,<br><span class="g">for £0.</span></h3><p>Log your lifting and your running in one place. Paste in a plan from your PT or ChatGPT, watch your PBs climb, and keep every bit of it on your own phone.</p><div class="btns"><span class="pri">Open the app →</span><span class="gho">▷ Try the demo</span></div></div>
+    <div class="stage">
+      <div class="cap"><span class="k">THE REAL THING</span><b>Recorded on an iPhone.</b></div>
+      <div class="phone"><img src="f4-pb.webp" alt=""><div class="play"><span>▶</span></div><div class="vtag"><i>Real iPhone · muted</i><i>0:15 loop</i></div></div>
+    </div>
+  </div>
+  <p class="note"><b>Good:</b> smoothest and most convincing ("that's really the app"); no code to maintain. <b>Watch:</b> needs a recording session on your phone with the demo data; ~1–2 MB of video; not interactive; re-record when screens change.</p>
+</section>
+
+<section class="opt">
+  <h2>5 · Today's slideshow, with a live touch <small>the smallest change</small></h2>
+  <p class="why">Keep the seven screenshots and captions, and give each a small movement: here the finger taps Start on Next up and the session count ticks up; on Exercises a PB number rises; on Runs the chart grows.</p>
+  <div class="hero">
+    <div class="copy"><span class="lab">FREE · OPEN SOURCE · NO ACCOUNT</span><h3>Your gym app,<br><span class="g">for £0.</span></h3><p>Log your lifting and your running in one place. Paste in a plan from your PT or ChatGPT, watch your PBs climb, and keep every bit of it on your own phone.</p><div class="btns"><span class="pri">Open the app →</span><span class="gho">▷ Try the demo</span></div></div>
+    <div class="stage">
+      <div class="cap"><span class="k">PROGRESS</span><b>Every lift, tracked.</b></div>
+      <div class="phone"><img src="home.webp" alt=""><span class="finger" style="left:83%;top:31.5%"></span><span class="plus" style="left:30%;top:43%">+1 session</span></div>
+    </div>
+  </div>
+  <p class="note"><b>Good:</b> quickest; keeps the tour of every screen. <b>Watch:</b> still mostly pictures; the movement is decoration rather than the app doing something.</p>
+</section>
+
+<p class="pick">My pick: <b>2</b> (which includes 1). The hero becomes the app's best moment, and people do it themselves. Second: <b>4</b>, if you'd rather show the real phone than an HTML copy.</p>
+</body>
+</html>
