@@ -356,15 +356,58 @@
     .d-prev small { color: var(--muted); }
     .d-sheet .d-btn { min-height: 48px; margin-top: auto; transition: opacity 0.3s; }
     /* Finish screen, with the PB pop-up on top */
-    .d-fin { padding: 84px 16px 16px; text-align: center; display: grid; gap: 18px; align-content: start; }
-    .d-fin .big { font-size: 48px; line-height: 1.2; }
-    .d-fin .h { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
-    .d-stats { display: grid; grid-template-columns: repeat(3, 1fr); border-radius: 16px; border: 1px solid var(--line); background: var(--surface); padding: 16px; }
-    .d-stats b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
-    .d-stats small { color: var(--muted); font-size: 12px; }
-    .d-pbline { position: relative; width: fit-content; margin: 0 auto; color: var(--pb); font-weight: 600; }
-    .d-mile { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 0 auto; border-radius: 99px; border: 1px solid rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.1); padding: 6px 16px 6px 10px; font-size: 14px; font-weight: 600; }
-    .d-fin .d-btn { width: 100%; min-height: 48px; font-size: 15px; }
+    /* Finish screen (src/pages/Log.tsx Summary): the share picture is the page, swiped between its four looks. */
+    .d-fin { height: 100%; overflow-x: hidden; overflow-y: auto; scrollbar-width: none; padding: 56px 16px 20px; display: grid; grid-auto-rows: max-content; gap: 12px; align-content: start; }
+    .d-strip { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 0 -16px; }
+    .d-strip > div { flex: none; width: 100%; height: 330px; padding: 0 16px; display: grid; place-items: center; scroll-snap-align: center; }
+    .d-card { box-sizing: border-box; position: relative; height: 100%; aspect-ratio: 4 / 5; border-radius: 14px; border: 1px solid var(--line); overflow: hidden; padding: 16px 14px; display: flex; flex-direction: column; gap: 7px; font-size: 10px; line-height: 1.3; background: radial-gradient(70% 45% at 88% 4%, rgba(129, 140, 248, 0.35), transparent 70%), var(--bg); }
+    .d-card .mk { display: flex; align-items: center; gap: 5px; font-weight: 800; font-size: 12px; }
+    .d-card .mk img { width: 19px; height: 19px; }
+    .d-card .top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
+    .d-card .t { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin-top: 8px; }
+    .d-card .band { display: grid; grid-template-columns: repeat(var(--n), 1fr); text-align: center; background: var(--surface); border-radius: 9px; padding: 7px 2px; color: var(--muted); }
+    .d-card .band b { display: block; font-size: 14px; font-weight: 800; }
+    .d-card .row { display: flex; justify-content: space-between; gap: 6px; font-weight: 600; }
+    .d-card .row.pb { color: var(--pb); font-weight: 700; }
+    .d-card .row span:last-child { color: var(--muted); font-weight: 500; white-space: nowrap; }
+    .d-card .row.pb span:last-child { color: var(--pb); }
+    .d-card .foot { margin-top: auto; border-top: 1px solid var(--line); padding-top: 6px; color: var(--muted); }
+    .d-card.bold { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: var(--bg); }
+    .d-card.bold .top, .d-card.bold .foot { color: var(--bg); border-color: transparent; }
+    .d-card.bold .t { font-size: 34px; margin-top: 18px; }
+    .d-card.bold .grid { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; }
+    .d-card.bold .grid b { display: block; font-size: 22px; font-weight: 800; line-height: 1; }
+    .d-card.bold .grid small { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; }
+    .d-card.story { aspect-ratio: 9 / 16; text-align: center; align-items: center; gap: 1px; padding: 18px 10px; }
+    .d-card.story .t { font-size: 17px; margin: 4px 0 2px; }
+    .d-card.story b { display: block; font-size: 23px; font-weight: 800; line-height: 1.05; margin-top: 7px; }
+    .d-card.story small { color: var(--muted); font-size: 8px; font-weight: 700; letter-spacing: 0.08em; }
+    .d-card.sticker { aspect-ratio: auto; height: auto; padding: 18px 26px; text-align: center; align-items: center; gap: 2px; background: repeating-conic-gradient(var(--surface-2) 0 25%, var(--surface) 0 50%) 0 0 / 16px 16px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6); }
+    .d-card.sticker b { font-size: 24px; font-weight: 800; line-height: 1.1; }
+    .d-card.sticker small { font-size: 8px; font-weight: 700; letter-spacing: 0.08em; margin-top: 6px; }
+    .d-grad { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .d-dots { display: flex; justify-content: center; gap: 6px; }
+    .d-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 99px; background: var(--line); cursor: pointer; transition: width 0.2s, background 0.2s; }
+    .d-dots button[aria-selected="true"] { width: 22px; background: var(--accent); }
+    .dphone .d-look { margin: -4px 0 0; max-width: none; text-align: center; color: var(--muted); font-size: 12px; }
+    .d-look b { color: var(--ink); }
+    .d-hl { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); overflow: hidden; }
+    .d-hl li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--line); font-weight: 600; font-size: 14px; }
+    .d-hl li:first-child { border-top: 0; }
+    .d-hl li i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: rgba(251, 191, 36, 0.15); font-style: normal; flex: none; }
+    .d-hl li small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; }
+    .d-fin .d-btn { width: 100%; min-height: 48px; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .d-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .d-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); font-size: 12px; font-weight: 600; text-align: center; }
+    .d-tile i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: rgba(129, 140, 248, 0.15); color: var(--accent); font-style: normal; }
+    /* No PB: a big pulsing tick and a few words for 2.5 s, then the page. */
+    .d-done { position: absolute; inset: 0; z-index: 15; display: grid; place-items: center; padding: 28px; background: rgba(10, 12, 17, 0.92); cursor: pointer; transition: opacity 0.4s; }
+    .d-done.gone { opacity: 0; pointer-events: none; }
+    .d-done > div { width: 100%; display: grid; justify-items: center; gap: 18px; padding: 40px 20px; border-radius: 26px; border: 1px solid var(--line); background: var(--surface); animation: d-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+    .d-done .tick { position: relative; display: grid; place-items: center; width: 92px; height: 92px; border-radius: 50%; background: rgba(52, 211, 153, 0.15); color: var(--good); }
+    .d-done .tick::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: rgba(52, 211, 153, 0.2); animation: d-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
+    .dphone .d-done p { margin: 0; max-width: none; color: var(--ink); font-size: 28px; font-weight: 800; letter-spacing: -0.02em; } /* beats .dcell p */
+    @keyframes d-ping { 75%, 100% { transform: scale(1.6); opacity: 0; } }
     .d-pbpop { position: absolute; inset: 0; z-index: 15; display: grid; place-items: center; align-content: center; gap: 14px; padding: 24px; text-align: center; cursor: pointer; background: radial-gradient(80% 50% at 50% 40%, rgba(251, 191, 36, 0.22), transparent 70%), var(--bg); transition: opacity 0.4s; }
     .d-pbpop.gone { opacity: 0; pointer-events: none; }
     .d-pbpop .cup { font-size: 110px; line-height: 1; animation: d-cup 0.9s var(--ease) both; filter: drop-shadow(0 10px 40px rgba(251, 191, 36, 0.5)); }
@@ -615,7 +658,7 @@
           </div>
           <div class="dcell reveal">
             <div class="dbox"><div class="dphone" id="d3"></div></div>
-            <div><h3>Workout done</h3><p>PBs get a trophy and confetti. Then share it as a picture.</p><button class="btn btn-ghost btn-sm" type="button" id="d3again">Play again</button></div>
+            <div><h3>Workout done</h3><p>PBs get a trophy and confetti. Your share picture is right there: swipe through four styles and send one.</p><button class="btn btn-ghost btn-sm" type="button" id="d3again">Play again</button></div>
           </div>
         </div>
       </div>
@@ -990,7 +1033,12 @@
               const was = more ? `Best was ${kg(x.best[0])} kg` : `Best was ${x.best[0] ? `${kg(x.best[0])} kg` : 'BW'} × ${x.best[1]}`;
               return [`${x.name} ${w ? `${s.w} kg` : 'BW'} × ${s.r}`, more ? `+${kg(w - x.best[0])} kg` : `+${+s.r - x.best[1]} rep${+s.r - x.best[1] === 1 ? '' : 's'}`, was];
             });
-            return onFinish?.({ secs: Math.round((Date.now() - st.started) / 1000), sets: sets.length, vol: sets.reduce((v, s) => v + (+s.w || 0) * (+s.r || 0), 0), pbs });
+            // Each exercise with sets ticked, as the Full picture lists it: "3 sets · 60 kg × 8" (its heaviest set).
+            const ex = st.ex.map((x) => [x.name, x.sets.filter((s) => s.done)]).filter(([, d]) => d.length).map(([name, d]) => {
+              const top = d.reduce((b, s) => ((+s.w || 0) > (+b.w || 0) || ((+s.w || 0) === (+b.w || 0) && +s.r > +b.r) ? s : b));
+              return [name, `${d.length} set${d.length === 1 ? '' : 's'} · ${+top.w ? `${top.w} kg` : 'BW'} × ${top.r}`];
+            });
+            return onFinish?.({ secs: Math.round((Date.now() - st.started) / 1000), sets: sets.length, vol: sets.reduce((v, s) => v + (+s.w || 0) * (+s.r || 0), 0), pbs, ex });
           }
           if (a === 'fold') return setOpen(i, !e.open);
           if (a === 'rpe') e.rpe = e.rpe === +el.dataset.k ? null : +el.dataset.k;
@@ -1163,41 +1211,89 @@
           if (++f < 200 && c.isConnected) requestAnimationFrame(frame); else c.remove();
         })();
       }
-      let run3 = 0;
-      const SAMPLE = { secs: 2860, sets: 8, vol: 2715, pbs: [['Bench Press 62.5 kg × 8', '+2.5 kg', 'Best was 60 kg'], ['Overhead Press 42.5 kg × 8', '+2.5 kg', 'Best was 40 kg']], mile: true };
+      let run3 = 0, stopWatching = null;
+      const SAMPLE = { secs: 2860, sets: 8, vol: 2715, pbs: [['Bench Press 62.5 kg × 8', '+2.5 kg', 'Best was 60 kg'], ['Overhead Press 42.5 kg × 8', '+2.5 kg', 'Best was 40 kg']], mile: true,
+        ex: [['Bench Press', '3 sets · 62.5 kg × 8'], ['Overhead Press', '3 sets · 42.5 kg × 8'], ['Dips', '2 sets · BW × 12']] };
+      // Same twenty as the app's DONE_WORDS (src/lib/motivation.ts).
+      const DONE_WORDS = ['Smashed it', 'Job done', 'One in the bank', 'Strong session', 'Well earned', 'Done and dusted', 'Proper session', 'Good work today', 'Another one done', "That's how it's done", 'Solid work', 'You turned up', 'Big effort', 'Banked', 'Graft done', 'Stronger for it', 'Nailed it', 'On to the next', 'Consistency wins', 'That counts'];
+      const LOOKS = ['Full', 'Bold', 'Story', 'Sticker'];
+      const SHARE = 'M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7', PLUS = 'M12 5v14M5 12h14'; // Lucide, as in the app
+      const COPY = 'M9 3h6v3H9zM9 4.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V5.5a1 1 0 0 0-1-1H15';
+      const dur = (s) => { if (!s) return '–'; const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m`; }; // the app's duration()
+      // "Bench Press 62.5 kg × 8" → ["Bench Press", "62.5 kg × 8"]
+      const split = (t) => { const m = t.match(/^(.*?) ((?:[\d.]+ kg|BW) × .*)$/); return m ? [m[1], m[2]] : [t, '']; };
+      // HTML copies of the four share pictures (src/lib/share.ts), filled with this workout's numbers.
+      function cards(sum) {
+        const n = sum.pbs.length, day = new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+        const stats = [[dur(sum.secs), 'Time'], [String(sum.sets), 'Sets'], [`${kg(sum.vol)} kg`, 'Volume'], ...(n ? [[`🏆 ${n}`, n === 1 ? 'PB' : 'PBs']] : [])];
+        const mark = (cls = '') => `<span class="mk"><img src="/favicon.svg" alt=""><span>Rep<span class="${cls}">Run</span></span></span>`;
+        const pbNames = sum.pbs.map(([t]) => split(t)[0]);
+        const rows = [...(sum.ex || sum.pbs.map(([t]) => split(t))).map(([name, set]) => [name, set, pbNames.includes(name)])].sort((a, b) => b[2] - a[2]);
+        const full = `<div class="d-card"><div class="top">${mark('d-grad')}<span>${day}</span></div><div class="t">Push day</div><div style="color:var(--muted);margin-top:-5px">done 💪</div>
+          <div class="band" style="--n:${stats.length}">${stats.map(([v, l], i) => `<div><b class="${i === 3 ? '' : 'd-grad'}" style="${i === 3 ? 'color:var(--pb)' : ''}">${v}</b>${l}</div>`).join('')}</div>
+          ${rows.map(([name, set, pb]) => `<div class="row${pb ? ' pb' : ''}"><span>${pb ? '🏆 ' : ''}${name}</span><span>${set}</span></div>`).join('')}
+          <div class="foot">Lift. Run. Repeat.</div></div>`;
+        const bold = `<div class="d-card bold"><div class="top">${mark()}<span>${day}</span></div><div class="t">Push day</div>
+          ${n ? `<b style="font-size:11px">🏆 PB${n === 1 ? '' : 's'}: ${sum.pbs.map(([t]) => split(t)[0]).join(', ')}</b>` : ''}
+          <div class="grid">${stats.map(([v, l]) => `<div><b style="${v.length > 9 ? 'font-size:15px' : ''}">${v}</b><small>${l.toUpperCase()}</small></div>`).join('')}</div><div class="foot">Lift. Run. Repeat.</div></div>`;
+        const long = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+        const story = `<div class="d-card story">${mark('d-grad')}<div class="t">Push day</div><small style="letter-spacing:0;font-weight:500">${long}</small>
+          ${stats.map(([v, l], i) => `<b class="${i === 3 ? '' : 'd-grad'}" style="${i === 3 ? 'color:var(--pb)' : ''}">${v}</b><small>${l.toUpperCase()}</small>`).join('')}</div>`;
+        const sticker = `<div class="d-card sticker"><b style="font-size:16px">Push day</b>${stats.map(([v, l]) => `<small>${l.toUpperCase()}</small><b>${v}</b>`).join('')}<div style="margin-top:8px">${mark()}</div></div>`;
+        return [full, bold, story, sticker];
+      }
       async function playFinish(sum = SAMPLE) {
         const me = ++run3, ok = async (ms) => { await sleep(ms); while (me === run3 && !onScreen(d3)) await sleep(400); return me === run3; };
-        const n = sum.pbs.length, pop = n > 0 && !calm;
+        const n = sum.pbs.length, pop = n > 0 && !calm, cheer = !n && !calm;
+        const hl = [...sum.pbs.map(([t]) => split(t)).map(([name, set]) => `<li><i>🏆</i><span>PB: ${name}<small>${set}</small></span></li>`), ...(sum.mile ? ['<li><i>🎹</i><span>Milestone: a grand piano lifted</span></li>'] : [])];
         d3.innerHTML = `<div class="d-scr"><div class="d-fin">
-          <div class="big">💪</div><div class="h">Push day done</div>
-          <div class="d-stats"><div><b data-n="${sum.secs}" data-t>0:00</b><small>Time</small></div><div><b data-n="${sum.sets}">0</b><small>Sets</small></div><div><b data-n="${sum.vol}" data-kg>0 kg</b><small>Volume</small></div></div>
-          ${n ? `<p class="d-pbline">🏆 ${n} PB${n === 1 ? '' : 's'}</p>` : ''}${sum.mile ? '<div class="d-mile"><span style="font-size:18px">🎹</span>Milestone: a grand piano lifted</div>' : ''}
-          <span class="d-btn d-gho" style="display:grid;place-items:center">Share as a picture</span><span class="d-btn d-gho" style="display:grid;place-items:center">Copy workout as text</span><span class="d-btn d-pri" style="display:grid;place-items:center">Done</span></div>
-          ${pop ? `<div class="d-pbpop" role="button" tabindex="0" aria-label="${n} new PBs. Carry on"><div class="cup">🏆</div><div class="h">${n} new PB${n === 1 ? '' : 's'}</div><ul>${sum.pbs.map(([t, plus, was], i) => `<li style="animation-delay:${0.5 + i * 0.12}s"><span><b>${t}</b><small>${was}</small></span><em>${plus}</em></li>`).join('')}</ul><p>Tap to carry on</p></div>` : ''}</div>`;
-        const count = () => {
-          const t0 = performance.now();
-          (function frame(now) {
-            const k = Math.min(1, (now - t0) / 900), e = 1 - (1 - k) ** 3;
-            d3.querySelectorAll('[data-n]').forEach((b) => { const v = Math.round(e * b.dataset.n); b.textContent = 't' in b.dataset ? clock(v) : 'kg' in b.dataset ? `${kg(v)} kg` : v; });
-            if (k < 1) requestAnimationFrame(frame);
-          })(t0);
+          <div class="d-strip" aria-label="Picture styles">${cards(sum).map((c, i) => `<div aria-hidden="${i !== 0}">${c}</div>`).join('')}</div>
+          <div class="d-dots" role="tablist" aria-label="Picture style">${LOOKS.map((l, i) => `<button type="button" role="tab" aria-label="${l}" aria-selected="${i === 0}"></button>`).join('')}</div>
+          <p class="d-look"><b>Full</b> · swipe for other styles</p>
+          ${hl.length ? `<ul class="d-hl">${hl.join('')}</ul>` : ''}
+          <span class="d-btn d-pri">${ic(SHARE)}Share as a picture</span>
+          <div class="d-tiles"><span class="d-tile"><i>${ic(COPY)}</i>Copy results as text</span><span class="d-tile"><i>${ic(PLUS)}</i>Save as routine</span></div>
+          <p class="d-look">Uploaded ✓</p>
+          <span class="d-btn d-gho">Done</span></div>
+          ${pop ? `<div class="d-pbpop" role="button" tabindex="0" aria-label="${n} new PBs. Carry on"><div class="cup">🏆</div><div class="h">${n} new PB${n === 1 ? '' : 's'}</div><ul>${sum.pbs.map(([t, plus, was], i) => `<li style="animation-delay:${0.5 + i * 0.12}s"><span><b>${t}</b><small>${was}</small></span><em>${plus}</em></li>`).join('')}</ul><p>Tap to carry on</p></div>` : ''}
+          ${cheer ? `<div class="d-done" role="button" tabindex="0" aria-label="Workout done. Carry on"><div><span class="tick"><svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><p>${DONE_WORDS[Math.floor(Math.random() * DONE_WORDS.length)]}</p></div></div>` : ''}</div>`;
+        // Swipe (or tap a dot) between the looks; they also step through by themselves until someone touches the phone.
+        const strip = $('.d-strip', d3), dots = [...d3.querySelectorAll('.d-dots button')];
+        const show = (i, smooth = true) => strip.scrollTo({ left: i * strip.clientWidth, behavior: smooth && !calm ? 'smooth' : 'auto' });
+        const slides = [...strip.children], caption = $('.d-look', d3);
+        strip.onscroll = () => {
+          const i = Math.round(strip.scrollLeft / strip.clientWidth);
+          dots.forEach((d, k) => d.setAttribute('aria-selected', k === i));
+          slides.forEach((x, k) => x.setAttribute('aria-hidden', k !== i));
+          caption.innerHTML = `<b>${LOOKS[i]}</b> · ${i === 3 ? 'see-through, to lay over your own photo' : 'swipe for other styles'}`;
         };
-        if (!pop) { count(); if (calm || !await ok(8000)) return; return playFinish(sum); }
-        const card = $('.d-pbpop', d3);
-        confetti($('.d-scr', d3));
+        dots.forEach((d, i) => (d.onclick = () => show(i)));
+        // Any touch, click, key, wheel or focus in the phone stops it playing by itself (the brand rule). Each run
+        // takes the last run's listeners off first, so they don't pile up.
+        let touched = false;
+        stopWatching?.abort();
+        stopWatching = new AbortController();
+        for (const t of ['pointerdown', 'keydown', 'wheel', 'focusin']) d3.addEventListener(t, () => { touched = true; }, { signal: stopWatching.signal });
+        const tour = async () => { if (calm) return; for (let i = 1; i <= LOOKS.length; i++) { if (!await ok(1800) || touched) return; show(i % LOOKS.length); } };
+        const overlay = $('.d-pbpop', d3) || $('.d-done', d3);
+        if (!overlay) return; // reduced motion: no pop-up, and nothing moves by itself
+        if (pop) confetti($('.d-scr', d3));
         const carryOn = () => {
-          if (card.classList.contains('gone')) return;
-          card.classList.add('gone');
-          const line = $('.d-pbline', d3);
-          repop(line); burst(line, 24, 90); count();
+          if (overlay.classList.contains('gone')) return;
+          overlay.classList.add('gone');
+          overlay.removeAttribute('tabindex');
+          overlay.setAttribute('aria-hidden', 'true');
+          const first = $('.d-hl li', d3);
+          if (first) { repop(first); burst(first, 24, 90); }
         };
-        card.onclick = carryOn;
-        card.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); carryOn(); } };
-        if (!await ok(3800)) return;
+        overlay.onclick = carryOn;
+        overlay.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); carryOn(); } };
+        if (!await ok(pop ? 3800 : 2100)) return;
         carryOn();
-        if (await ok(6500)) playFinish(sum);
+        await tour();
+        if (!touched && await ok(4000)) playFinish(sum);
       }
-      whenSeen(d3, () => playFinish());
+      whenSeen(d3, () => run3 || playFinish()); // not over a result someone just finished in the live demo
       $('#d3again').onclick = () => playFinish();
 
     }
