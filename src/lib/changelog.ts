@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-19',
     changes: [
+      'Build a routine right in the app, no ChatGPT needed: Start a workout → + Import / create plan → Build it. Name it, search to add exercises (yours or popular ones), set sets, reps, kg and rest on each, drag the ☰ to put them in order, and save. Editing a routine opens the same cards; Edit as text is still there.',
       'Finishing without a PB gets its own moment: a big green tick and a few words ("Smashed it", "One in the bank"…) before the finish screen. Done is now at the bottom of that screen, under Share and the backup.',
       'Backups on the phone-only version are always called reprun-backup.json, so saving one into the same folder in Files offers Replace and you keep just the one, newest file. The finish screen\'s Save a backup says when the last one was, and asks again after every workout, since an older backup won\'t have it.',
       'Share pictures now carry the RR logo next to the RepRun name, on all four looks.',

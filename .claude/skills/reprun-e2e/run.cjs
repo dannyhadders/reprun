@@ -192,10 +192,63 @@ const CHECKS = {
     await t.expect(t.page.getByRole('heading', { name: 'Hip Thrust' }), 'Hip Thrust is added to the workout')
   }],
 
+  'build-routine': ['Build a routine in the app: search, add, change, reorder, save; start it; edit it', async t => {
+    await begin(t, true)
+    await planner(t)
+    await t.page.getByRole('button', { name: /^\+ Import/ }).click()
+    await t.expect(t.page.getByRole('heading', { name: 'Create a routine' }), 'Opens on Build it')
+    // Typed boxes survive a look at the other tab.
+    await t.page.getByRole('textbox', { name: 'Routine name' }).fill('Garage legs')
+    await t.page.getByRole('button', { name: 'Paste a plan', exact: true }).click()
+    await t.page.getByRole('button', { name: 'Build it', exact: true }).click()
+    if (await t.page.getByRole('textbox', { name: 'Routine name' }).inputValue() !== 'Garage legs') throw new Error('The name survives switching tabs')
+    const search = t.page.getByRole('textbox', { name: 'Add an exercise' })
+    const pick = re => t.page.getByRole('list', { name: 'Matching exercises' }).getByRole('button', { name: re }).first().click()
+    await search.fill('squat')
+    await pick(/^Squat/)
+    await search.fill('hip thr')
+    await pick(/^Hip Thrust/)
+    await search.fill('Sled Push') // a name of your own
+    await t.page.getByRole('button', { name: 'Add', exact: true }).click()
+    await t.expect(t.page.getByRole('heading', { level: 3 }), 'Three exercise cards', 3)
+    await t.page.getByRole('spinbutton', { name: 'Squat sets' }).fill('') // clear and retype: no "1" sneaking back
+    await t.page.getByRole('spinbutton', { name: 'Squat sets' }).fill('3')
+    await t.page.getByRole('button', { name: 'Squat sets up' }).click()
+    await t.page.getByRole('textbox', { name: 'Squat reps' }).fill('5')
+    await t.page.getByRole('textbox', { name: 'Hip Thrust reps' }).fill('lots')
+    await t.page.getByRole('button', { name: /^Save routine/ }).click()
+    await t.expect(t.page.getByRole('alert'), 'Bad reps get a plain-words message, not a broken routine', 'Hip Thrust: reps should look like')
+    await t.page.getByRole('textbox', { name: 'Hip Thrust reps' }).fill('10-12')
+    await t.expect(t.page.getByRole('alert'), 'Fixing it clears the message', 0)
+    await t.page.getByRole('button', { name: 'Remove Sled Push' }).click()
+    await t.page.getByRole('button', { name: 'Move Hip Thrust: drag, or use the arrow keys' }).focus()
+    await t.page.keyboard.press('ArrowUp') // Hip Thrust first
+    await t.shot('Builder with two exercises', true)
+    await t.page.getByRole('button', { name: /^Save routine/ }).click()
+    const row = t.page.locator('li').filter({ hasText: 'Garage legs' })
+    await t.expect(row.getByText(/· 2 exercises ·/), 'Garage legs is on Start a workout with 2 exercises')
+    await row.getByRole('button', { name: 'Start', exact: true }).click()
+    await t.page.getByRole('button', { name: 'Finish' }).waitFor()
+    const names = await t.page.locator('section[data-ex] h2').allInnerTexts()
+    if (names.join() !== 'Hip Thrust,Squat') throw new Error(`Starts in the built order, got: ${names}`)
+    await t.page.getByRole('button', { name: 'Discard workout' }).click()
+    await t.page.getByRole('button', { name: 'Discard', exact: true }).click()
+    // Edit it again (Discard lands back on Start a workout): the cards come back as saved.
+    await t.page.getByRole('button', { name: 'Edit Garage legs' }).click()
+    await t.expect(t.page.getByRole('textbox', { name: 'Squat reps' }), 'Editing opens the cards')
+    if (await t.page.getByRole('textbox', { name: 'Squat reps' }).inputValue() !== '5') throw new Error('Squat reps come back as 5')
+    if (await t.page.getByRole('spinbutton', { name: 'Squat sets' }).inputValue() !== '4') throw new Error('Squat sets come back as 4')
+    await t.page.getByRole('textbox', { name: 'Routine name' }).fill('Garage legs B')
+    await t.page.getByRole('button', { name: 'Save routine', exact: true }).click()
+    await t.expect(t.page.locator('li').filter({ hasText: /^Garage legs B/ }).getByRole('button', { name: 'Start', exact: true }), 'Renamed in place', 1)
+    await t.expect(t.page.locator('li').filter({ hasText: /^Garage legs(?! B)/ }), 'No copy left under the old name', 0)
+  }],
+
   'plan-import': ['Paste a plan: preview, save, it becomes a routine', async t => {
     await begin(t, false)
     await planner(t)
     await t.page.getByRole('button', { name: /^\+ Import/ }).click()
+    await t.page.getByRole('button', { name: 'Paste a plan', exact: true }).click() // the screen opens on Build it
     await t.page.getByRole('textbox', { name: 'Plan text' }).fill(PLAN)
     const name = t.page.getByRole('textbox', { name: 'Name of routine 1' })
     if (await name.inputValue() !== 'Arm day') throw new Error('Preview should name the routine Arm day')
@@ -213,6 +266,7 @@ const CHECKS = {
     await begin(t, false)
     await planner(t)
     await t.page.getByRole('button', { name: /^\+ Import/ }).click()
+    await t.page.getByRole('button', { name: 'Paste a plan', exact: true }).click() // the screen opens on Build it
     await t.page.getByRole('textbox', { name: 'Plan text' }).fill([
       "Great choice! Since you ran 10 km yesterday, here's a legs session that won't overcook you.", '',
       '**Legs:**', '', 'Warm-up: 5 minutes on the bike, then 2 sets of 10 bodyweight squats.', '',
@@ -258,6 +312,7 @@ const CHECKS = {
     await begin(t, false)
     await planner(t)
     await t.page.getByRole('button', { name: /^\+ Import/ }).click()
+    await t.page.getByRole('button', { name: 'Paste a plan', exact: true }).click() // the screen opens on Build it
     await t.page.getByRole('textbox', { name: 'Plan text' }).fill('Core:\nPlank – 2x5s, rest 30s')
     await t.page.getByRole('button', { name: 'Save 1 routine' }).click()
     await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()

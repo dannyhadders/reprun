@@ -91,6 +91,44 @@ export function parsePlan(text: string): ParsedRoutine[] {
 export const formatLine = (p: PlanItem) =>
   `${p.name} – ${p.sets}x${p.repsMin}${p.repsMax > p.repsMin ? `-${p.repsMax}` : ''}${p.timed ? 's' : ''}${p.weight !== null ? ` @ ${p.weight}kg` : ''}${p.restS ? `, rest ${p.restS}s` : ''}${p.note ? `; ${p.note}` : ''}`
 
+// ---------- the routine builder (src/components/RoutineBuilder.tsx) ----------
+/** One exercise card in the builder, its boxes as typed: sets, reps ("8", "8-12", "45s"), kg ('' or 0 = bodyweight). */
+export type BuilderRow = { name: string; sets: string; reps: string; weight: string; restS: number | null; note: string | null }
+
+/** A routine's lines as builder cards. */
+export const toRows = (body: string): BuilderRow[] => parsePlan(body).flatMap(d => d.items).map(p => ({
+  name: p.name, sets: String(p.sets), reps: `${p.repsMin}${p.repsMax > p.repsMin ? `-${p.repsMax}` : ''}${p.timed ? 's' : ''}`,
+  weight: p.weight === null ? '' : String(p.weight), restS: p.restS, note: p.note,
+}))
+
+/**
+ * Builder cards as a routine's body, the same plan text Import saves. Or what's wrong, in plain words: reps that aren't
+ * "8", "8-12" or "45s", a weight that isn't a number, or a name the plan text would read back differently (a ";", a
+ * bracket, a number that looks like sets), since a routine naming the wrong exercise is worse than asking.
+ */
+export const nameError = (name: string) => `"${name}" can't go in a routine as it is: brackets, ; # * _ or a number at either end get read as part of the plan. Rename the exercise first (Exercises → it → Edit).`
+
+export function fromRows(rows: BuilderRow[]): { body: string } | { error: string } {
+  if (!rows.length) return { error: 'Add at least one exercise.' }
+  const lines: string[] = []
+  for (const r of rows) {
+    const name = r.name.trim()
+    const sets = Math.round(+r.sets)
+    if (!(sets >= 1 && sets <= 50)) return { error: `${name}: sets should be a number from 1 to 50.` }
+    const m = r.reps.trim().match(/^(\d+)\s*(?:[-–]\s*(\d+))?\s*(s|secs?|seconds)?$/i)
+    if (!m || +m[1] < 1) return { error: `${name}: reps should look like 8, 8-12 or 45s.` }
+    const lo = Math.min(+m[1], +(m[2] ?? m[1])), hi = Math.max(+m[1], +(m[2] ?? m[1])) // "12-8" means 8-12
+    const kg = r.weight.trim() === '' ? 0 : +r.weight
+    if (!(kg >= 0 && kg < 1000)) return { error: `${name}: the weight should be a number of kg.` }
+    const weight = kg || null // 0 is bodyweight
+    const item: PlanItem = { name, sets, repsMin: lo, repsMax: hi, weight, restS: r.restS, note: r.note, ...(m[3] && { timed: true }) }
+    const line = formatLine(item)
+    if (parseLine(line)?.name !== name) return { error: nameError(name) }
+    lines.push(line)
+  }
+  return { body: lines.join('\n') }
+}
+
 /**
  * Rough session length: ~40 s per set plus its rest, and a minute per exercise to set up.
  * Rest falls back to 90 s when the plan doesn't say.

@@ -307,3 +307,17 @@ export function useCountUp(to: number, ms = 700) {
   }, [to, ms])
   return still ? to : v
 }
+
+/** − and + either side of a number box (kg ±2.5, reps ±1): the logger's and the routine builder's. An empty box steps from the grey placeholder. */
+export function Stepper({ value, placeholder, by, min, label, done = false, set }: { value: string; placeholder: string; by: number; min: number; label: string; done?: boolean; set: (v: string) => void }) {
+  const step = (d: number) => set(String(Math.max(min, Math.round(((value === '' ? +placeholder || 0 : +value) + d) * 100) / 100)))
+  const btn = 'press relative w-7 shrink-0 rounded-lg bg-line text-lg text-accent' // own tone, so you can see where to press
+  return (
+    <div className={`flex h-11 rounded-xl border bg-surface-2 p-[3px] focus-within:border-accent ${done ? 'border-good/30' : 'border-line'}`}>
+      <button type="button" className={btn} aria-label={`${label} down`} onClick={() => step(-by)}><Tap />−</button>
+      <input className={`min-w-0 flex-1 bg-transparent p-0 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-sm outline-none placeholder:text-muted ${done ? 'text-muted' : 'text-ink'}`} type="number" min={min} step={by === 1 ? 1 : 0.5}
+        inputMode={by === 1 ? 'numeric' : 'decimal'} aria-label={label} placeholder={placeholder} value={value} onChange={e => set(e.target.value)} />
+      <button type="button" className={btn} aria-label={`${label} up`} onClick={() => step(by)}><Tap />+</button>
+    </div>
+  )
+}

@@ -7,6 +7,7 @@ import { api, useData } from '../lib/data'
 import { activityText, ago, date as fmtDate, plural, workoutText } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets, type Model } from '../lib/stats'
+import { RoutineBuilder } from './RoutineBuilder'
 import { ask, CHECK, COPY, Icon, Sheet, Tabs } from './ui'
 import { fromRoutine, fromWorkout, matchExercise, start, type Active } from '../lib/session'
 
@@ -260,6 +261,12 @@ function AskChatGPT() {
 
 function ImportPlan({ routine, close }: { routine: Routine | null; close: () => void }) {
   const { data, reload } = useData()
+  // Build it here (cards), or paste a plan's text. The intro's "Paste a plan" (/log#import) opens on Paste, and so does a
+  // routine the builder couldn't show line for line (several days, or lines it doesn't read).
+  const [mode, setMode] = useState<'build' | 'paste'>(() => {
+    const days = routine ? parsePlan(routine.body) : []
+    return location.hash === '#import' || days.length > 1 || days.some(d => d.unparsed.length) ? 'paste' : 'build'
+  })
   const [text, setText] = useState(routine ? `${routine.name}:\n${routine.body}` : '')
   const [rename, setRename] = useState<Record<string, string>>({}) // plan name (lower case) -> existing exercise
   // `${index}:${parsed name}` -> name typed in the preview. Editing the day's line in the text drops it: the text wins.
@@ -294,10 +301,15 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
     close()
   }
 
+  const tabs = <Tabs value={mode} onChange={setMode} options={[{ value: 'build', label: routine ? 'Edit here' : 'Build it' }, { value: 'paste', label: routine ? 'Edit as text' : 'Paste a plan' }]} />
+  // Both stay mounted (one hidden), so flicking between the tabs never throws away cards or text already typed.
   return (
     <div className="space-y-4 pt-6">
       <button className="text-sm text-muted" onClick={close}>← Back</button>
-      <h1 className="text-3xl font-bold tracking-tight">{routine ? `Edit ${routine.name}` : 'Import or create a plan'}</h1>
+      <h1 className="text-3xl font-bold tracking-tight">{routine ? `Edit ${routine.name}` : mode === 'build' ? 'Create a routine' : 'Import or create a plan'}</h1>
+      {tabs}
+      <div hidden={mode !== 'build'}><RoutineBuilder routine={routine} close={close} /></div>
+      <div hidden={mode !== 'paste'} className="space-y-4">
       <p className="text-sm text-muted">Paste a plan from your PT or ChatGPT. Each day's name on its own line, then one exercise per line, like <code className="text-ink">Bicep Curl – 3x8-10 @ 12kg, rest 60s</code>.</p>
       {routine ? (
         <button className="btn-ghost w-full" onClick={async () => { await navigator.clipboard.writeText(planPrompt(data.exercises.map(e => e.name), { goals: data.profile.goals, age: data.profile.age, weight_kg: data.profile.weight_kg }) /* not sex: it defaults to male, so it may never have been said */); setCopied(true) }}>
@@ -342,6 +354,7 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
       <button className={`btn w-full py-3 ${busy ? 'busy' : ''}`} disabled={busy || !parsed.length} aria-busy={busy} onClick={save}>
         {routine ? 'Save routine' : parsed.length ? `Save ${plural(parsed.length, 'routine')}` : 'Paste a plan to preview it'}
       </button>
+      </div>
       {routine && <button className="w-full py-2 text-sm text-bad" onClick={remove}>Delete routine</button>}
     </div>
   )

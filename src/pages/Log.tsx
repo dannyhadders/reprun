@@ -11,7 +11,7 @@ import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { ago, clock, EFFORT, effort, kg, num, plural, setText, workoutText } from '../lib/format'
-import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sheet, useShareCards } from '../components/ui'
+import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sheet, Stepper, useShareCards } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
 import { pbShow } from '../lib/pbMoment'
@@ -510,18 +510,6 @@ const BIN_W = 72 // px the row slides to show the bin; also the bin's width
 const SPEAKER_ON = 'M11 5 6 9H2v6h4l5 4zM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14' // Lucide volume-2
 const SPEAKER_OFF = 'M11 5 6 9H2v6h4l5 4zM22 9l-6 6M16 9l6 6' // Lucide volume-x
 /** A kg or reps box with − and + either side, so a sweaty hand can nudge it instead of typing. An empty box steps from its grey number. */
-function Stepper({ value, placeholder, by, min, label, done, set }: { value: string; placeholder: string; by: number; min: number; label: string; done: boolean; set: (v: string) => void }) {
-  const step = (d: number) => set(String(Math.max(min, Math.round(((value === '' ? +placeholder || 0 : +value) + d) * 100) / 100)))
-  const btn = 'press relative w-7 shrink-0 rounded-lg bg-line text-lg text-accent' // own tone, so you can see where to press
-  return (
-    <div className={`flex h-11 rounded-xl border bg-surface-2 p-[3px] focus-within:border-accent ${done ? 'border-good/30' : 'border-line'}`}>
-      <button type="button" className={btn} aria-label={`${label} down`} onClick={() => step(-by)}><Tap />−</button>
-      <input className={`min-w-0 flex-1 bg-transparent p-0 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none text-sm outline-none placeholder:text-muted ${done ? 'text-muted' : 'text-ink'}`} type="number" min={min} step={by === 1 ? 1 : 0.5}
-        inputMode={by === 1 ? 'numeric' : 'decimal'} aria-label={label} placeholder={placeholder} value={value} onChange={e => set(e.target.value)} />
-      <button type="button" className={btn} aria-label={`${label} up`} onClick={() => step(by)}><Tap />+</button>
-    </div>
-  )
-}
 
 const TOOL = 'press relative grid size-11 shrink-0 place-items-center rounded-xl border border-line text-muted active:bg-surface-2 hover:text-ink'
 const HISTORY = 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2' // Lucide history

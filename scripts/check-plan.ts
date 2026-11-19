@@ -1,5 +1,5 @@
 // Self-check for the plan parser and progression rule: npx tsx scripts/check-plan.ts
-import { estimateS, focusChoices, formatLine, parseLine, parsePlan, roughTime, suggest, workoutPrompt } from '../shared/plan.ts'
+import { estimateS, focusChoices, formatLine, fromRows, parseLine, parsePlan, roughTime, suggest, toRows, workoutPrompt } from '../shared/plan.ts'
 import { CATALOGUE, resolveExercise } from '../shared/catalogue.ts'
 import { fromCatalogue } from '../shared/exercises.ts'
 import { STARTER_ROUTINES } from '../shared/starter.ts'
@@ -18,6 +18,22 @@ eq(parseLine('Squats - 4 sets of 6-8 @ 80kg, rest 2 min'), { name: 'Squats', set
 eq(parseLine('1. **Chest-supported Dumbbell Row**: 3×12, 90s rest')?.name, 'Chest-supported Dumbbell Row', 'markdown + dash in name')
 eq(parseLine('1. **Chest-supported Dumbbell Row**: 3×12, 90s rest')?.restS, 90, 'rest after value')
 eq(parseLine('Warm up 5 min on the bike'), null, 'no sets = not an exercise')
+
+// The routine builder: cards to plan text and back, and plain-words errors instead of saving something wrong.
+{
+  const row = (name: string, reps: string, weight = '', sets = '3') => ({ name, sets, reps, weight, restS: null, note: null })
+  const ok = fromRows([row('Squat', '5', '100', '5'), { ...row('Romanian Deadlift', '8-10', '80'), restS: 90, note: 'slow down' }, row('Plank', '45s')])
+  eq(ok, { body: 'Squat – 5x5 @ 100kg\nRomanian Deadlift – 3x8-10 @ 80kg, rest 90s; slow down\nPlank – 3x45s' }, 'builder: rows to plan text')
+  eq('body' in ok && toRows(ok.body), [row('Squat', '5', '100', '5'), { ...row('Romanian Deadlift', '8-10', '80'), restS: 90, note: 'slow down' }, row('Plank', '45s')], 'builder: and back again')
+  eq(fromRows([row('Squat', '12-8')]), { body: 'Squat – 3x8-12' }, 'builder: a backwards range means low to high')
+  eq(fromRows([row('Pull-up', '8', '0')]), { body: 'Pull-up – 3x8' }, 'builder: 0 kg is bodyweight')
+  assert('error' in fromRows([row('Squat', '5', '', '')]), 'builder: no sets')
+  eq(fromRows([]), { error: 'Add at least one exercise.' }, 'builder: empty')
+  assert('error' in fromRows([row('Squat', 'lots')]), 'builder: reps that aren\'t a number')
+  assert('error' in fromRows([row('Squat', '5', 'heavy')]), 'builder: a weight that isn\'t a number')
+  assert('error' in fromRows([row('Cable Fly (low)', '12')]), 'builder: a name that wouldn\'t read back the same')
+  console.log('builder self-check passed')
+}
 
 // Popular lifts in search: by name or another name, starts-with first, never one you've logged (or renamed away).
 assert(CATALOGUE.length >= 100, 'catalogue has 100 lifts')
