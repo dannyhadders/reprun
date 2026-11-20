@@ -31,7 +31,8 @@ function peak(l: Ladder): Milestone[] {
 
 const nth = (n: number) => `${num(n)}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`
 
-export function milestones(m: Model, weeklyRaw?: number | null): Milestone[] {
+// withRuns: the Runs and Strava switch (Settings → Features); off, no running milestones at all.
+export function milestones(m: Model, weeklyRaw?: number | null, withRuns = true): Milestone[] {
   const weekly = weeklyTarget(weeklyRaw)
   const workouts = m.chronological.map(w => ({ ...w, sets: w.sets.filter(working) })) // warm-ups never earn a milestone
   const sessions = [...m.sessions].reverse() // oldest first
@@ -91,5 +92,5 @@ export function milestones(m: Model, weeklyRaw?: number | null): Milestone[] {
     ...peak({ kind: 'distance', emoji: '🏅', steps: RACES.map(r => r[0]), title: n => RACES.find(r => r[0] === n)![1], events: runs.map(r => [r.date, (r.distance_m ?? 0) / 1000]) }),
     // Faster = bigger, so 5K time goes in as 1/minutes: progress is then "your best 5K time vs the target".
     ...peak({ kind: '5k', emoji: '⚡', steps: FIVE_K.map(t => 1 / t), title: n => `5K in under ${num(Math.round(1 / n * 10) / 10, 1)} min`, events: runs.filter(r => (r.distance_m ?? 0) >= 4950 && runPace(r)).map(r => [r.date, 1 / (runPace(r)! * 5 / 60)]) }),
-  ].filter(x => x.date || runs.length || !['runs', 'km', 'distance', '5k'].includes(x.key.split(':')[0])) // no running goals for people who don't run
+  ].filter(x => ((x.date || runs.length) && withRuns) || !['runs', 'km', 'distance', '5k'].includes(x.key.split(':')[0])) // no running goals for people who don't run
 }

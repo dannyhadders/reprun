@@ -4,6 +4,7 @@ import { resolveExercise } from '../../shared/catalogue.ts'
 import { matchExercise } from '../../shared/exercises.ts'
 import type { ImportPayload } from '../../shared/types.ts'
 import { api, useData } from '../lib/data'
+import { useFeature } from '../lib/features'
 import { today, toKg, unitOf } from '../lib/format'
 import { Tabs } from './ui'
 
@@ -17,6 +18,7 @@ export function AddWorkout({ className = '' }: { className?: string }) {
   // A row's unit, found the way the logger finds the exercise: your own names and renames first, then the catalogue.
   const unitFor = (name: string) => unitOf(matchExercise(name, data.exercises, data.aliases)?.name ?? resolveExercise(name, null).name)
   const dlg = useRef<HTMLDialogElement>(null)
+  const runs = useFeature('runs') // off: strength only (Settings → Features)
   const [kind, setKind] = useState<'strength' | 'run'>('strength')
   const [date, setDate] = useState(today())
   const [title, setTitle] = useState('')
@@ -28,6 +30,7 @@ export function AddWorkout({ className = '' }: { className?: string }) {
 
   const open = () => {
     setDate(today()); setTitle(''); setRows([blank]); setDist(''); setTime(''); setError(null)
+    if (!runs) setKind('strength')
     dlg.current?.showModal()
   }
   const setRow = (i: number, r: Partial<Row>) => setRows(rows.map((x, j) => (j === i ? { ...x, ...r } : x)))
@@ -73,7 +76,7 @@ export function AddWorkout({ className = '' }: { className?: string }) {
       <dialog ref={dlg} className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-2xl border border-line bg-surface p-5 text-ink backdrop:bg-black/60">
         <form method="dialog" className="space-y-4" onSubmit={e => (e.preventDefault(), save())}>
           <div className="flex items-center justify-between gap-3">
-            <Tabs value={kind} onChange={setKind} options={[{ value: 'strength', label: 'Strength' }, { value: 'run', label: 'Run' }]} />
+            {runs ? <Tabs value={kind} onChange={setKind} options={[{ value: 'strength', label: 'Strength' }, { value: 'run', label: 'Run' }]} /> : <h2 className="text-lg font-bold">Add past workout</h2>}
             <button type="button" className="icon-btn" aria-label="Close" onClick={() => dlg.current?.close()}>✕</button>
           </div>
           <div className="grid grid-cols-2 gap-3">

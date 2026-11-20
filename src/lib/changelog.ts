@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'Settings → Features: turn off what you don\'t use. First up, Runs and Strava: off hides the Runs tab (Exercises takes its place), runs on Home and Year, adding a past run and Strava. Nothing is deleted, and runs you\'ve saved still count towards your streak.',
       'Reorder without dragging: tap the ☰ on an exercise (in a workout or when building a routine) for Move up, Move down, Move to the top or Move to the bottom. Works with VoiceOver too. Dragging still works as before.',
       'Workouts → Edit: tap the pencil on a set to add, change or clear its note afterwards.',
       'Home: the link to every milestone now says View Milestones.',

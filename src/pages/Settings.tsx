@@ -17,11 +17,13 @@ import { checkForUpdate } from '../components/Update'
 import { Tap } from '../lib/haptic'
 import { ago, date as fmtDate, kg, pendingUnits, localISO, plural, shortDate, shown, toKg, unitOf } from '../lib/format'
 import { rememberUnit } from '../lib/session'
+import { FEATURES, featureOn } from '../lib/features'
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 
 // One icon per row: drawn in a tinted square, like the iPhone's own Settings.
 const ICONS = {
+  toggle: 'M7 6h10a6 6 0 0 1 0 12H7A6 6 0 0 1 7 6zM16 12m-2.5 0a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0',
   you: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0',
   bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4',
   weight: 'M4 18l5-6 4 3 7-9',
@@ -48,12 +50,13 @@ export default function Settings() {
   const groups: [string, Section[]][] = [
     ['Training', [
       ...(notify ? [{ id: 'notifications', title: 'Notifications', icon: ICONS.bell, tint: 'bg-accent/15 text-accent', status: pushSupported() ? <AlertsStatus /> : undefined, page: <NotificationsCard /> }] : []),
+      { id: 'features', title: 'Features', icon: ICONS.toggle, tint: 'bg-accent/15 text-accent', status: `${FEATURES.filter(f => featureOn(data.profile, f.id)).length} of ${FEATURES.length} on`, page: <FeaturesCard /> },
       { id: 'body-weight', title: 'Body weight', icon: ICONS.weight, tint: 'bg-accent-2/15 text-accent-2', status: weighIn ? kg(weighIn.kg) : 'None yet', page: <BodyWeightLog /> },
     ]],
     ['Your data', [
       ...(LOCAL ? [{ id: 'phone', title: 'This phone', icon: ICONS.phone, tint: 'bg-pb/15 text-pb', page: <ThisPhoneCard /> }] : []),
       { id: 'backup', title: 'Backup', icon: ICONS.backup, tint: 'bg-good/15 text-good', status: last ? ago(localISO(new Date(last))) : 'Not saved yet', page: <BackupCard /> },
-      ...(!data.demo && !LOCAL ? [{ id: 'strava', title: 'Strava', icon: ICONS.strava, tint: 'bg-strava/15 text-strava', status: data.strava.connected ? 'Connected' : 'Not connected', page: <StravaCard /> }] : []),
+      ...(!data.demo && !LOCAL && featureOn(data.profile, 'runs') ? [{ id: 'strava', title: 'Strava', icon: ICONS.strava, tint: 'bg-strava/15 text-strava', status: data.strava.connected ? 'Connected' : 'Not connected', page: <StravaCard /> }] : []),
       ...(!data.demo ? [{ id: 'import', title: 'Import from a file', icon: ICONS.file, tint: 'bg-muted/15 text-ink', page: <ImportCard /> }] : []),
     ]],
     ['RepRun', [
@@ -352,6 +355,48 @@ function ImportCard() {
       {strava && <p className="mt-3 text-sm text-good">{strava}</p>}
       {error && <p className="mt-3 text-sm text-bad">{error}</p>}
     </Card>
+  )
+}
+
+/** Settings → Features: a switch per part of the app you can turn off (lib/features.ts). Saved straight away. */
+function FeaturesCard() {
+  const { data, reload } = useData()
+  const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const flip = async (f: (typeof FEATURES)[number]) => {
+    const on = !featureOn(data.profile, f.id)
+    setBusy(f.id)
+    setError(null)
+    try {
+      // Only this switch, on top of what's stored; back to its default goes as a removal (shared/rules.ts patchProfile).
+      await api('PATCH', 'profile', { features: { [f.id]: on === f.on ? null : on } })
+      await reload()
+    } catch {
+      setError("Couldn't save that. Check your signal and try again.")
+    } finally {
+      setBusy(null)
+    }
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted">Turn off what you don't use. Nothing is deleted: turn it back on and it's all there.</p>
+      <div className="divide-y divide-line rounded-2xl border border-line bg-surface">
+        {FEATURES.map(f => {
+          const on = featureOn(data.profile, f.id)
+          return (
+            // The whole row is the switch, as in Notifications.
+            <button key={f.id} role="switch" aria-checked={on} disabled={busy !== null} className="relative flex w-full items-center gap-3 px-3.5 py-3 text-left disabled:opacity-60" onClick={() => void flip(f)}>
+              {busy === null && <Tap />}
+              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{f.title}</span><span className="block text-xs text-muted">{f.about}</span></span>
+              <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? 'bg-good' : 'bg-line'}`} aria-hidden>
+                <span className={`absolute left-0.5 top-0.5 size-6 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {error && <p className="text-sm text-bad" role="alert">{error}</p>}
+    </div>
   )
 }
 

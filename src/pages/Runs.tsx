@@ -1,14 +1,16 @@
 import type { ChartConfiguration } from 'chart.js'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { C, Chart, gradientFill, gradientStroke } from '../components/Chart'
 import { ask, Card, Empty, Icon, Line, PageHeader, SourceBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
+import { useFeature } from '../lib/features'
 import { clock, date as fmtDate, duration, km, num, pace, plural, shortDate, today } from '../lib/format'
 import { inRange, runBests, runPace, weekly, type RangeKey } from '../lib/stats'
 
 export default function Runs() {
   const { model, data, reload } = useData()
+  const on = useFeature('runs')
   const [range, setRange] = useState<RangeKey>('1Y')
   const runs = useMemo(() => model.runs.filter(r => inRange(r.date, range)), [model, range])
   const bests = runBests(runs)
@@ -43,6 +45,7 @@ export default function Runs() {
 
   const records = data.records.filter(r => r.category !== 'Strength')
 
+  if (!on) return <Navigate to="/" replace /> // runs switched off (Settings → Features)
   return (
     <div className="space-y-5">
       <PageHeader title="Runs" sub={`${num(yearKm / 1000)} km so far in ${year}`} action={<Tabs value={range} onChange={setRange} options={['30D', '3M', '1Y', 'All'] as RangeKey[]} />} />

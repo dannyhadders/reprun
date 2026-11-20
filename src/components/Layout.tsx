@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api, useData } from '../lib/data'
+import { featureOn, useFeature } from '../lib/features'
 import { isSample, LOCAL, startLocal } from '../lib/local'
 import { clock, plural, workoutText } from '../lib/format'
 import { loadActive, outbox, restOver, saveActive, totals, useNow } from '../lib/session'
@@ -21,9 +22,9 @@ const I = {
   plus: 'M12 5v14M5 12h14',
   settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.6 15H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6V4a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z',
 }
-// Phone: four tabs around a big Start button; the rest live under More.
-const TABS = ['/', '/workouts', '/runs']
-const NAV = [
+// Phone: four tabs around a big Start button; the rest live under More. With runs off (Settings → Features), Exercises
+// takes the Runs tab's place.
+const ALL_NAV = [
   { to: '/', label: 'Home', icon: I.home },
   { to: '/workouts', label: 'Workouts', icon: I.workouts },
   { to: '/exercises', label: 'Exercises', icon: I.exercises },
@@ -37,11 +38,14 @@ export function Layout() {
   // Streak nudge and Sunday recap, worked out again whenever the data changes (lib/reminders.ts). Not on the demo's
   // shared made-up data, and not mid-workout: the logger's own page leaves them paused until it's saved.
   const { data, model, reload } = useData()
+  const runs = useFeature('runs')
+  const NAV = runs ? ALL_NAV : ALL_NAV.filter(n => n.to !== '/runs')
+  const TABS = ['/', '/workouts', runs ? '/runs' : '/exercises']
   useEffect(() => {
     if (data.demo) return
     if (loadActive()) return pauseReminders()
-    void scheduleReminders(reminders(model, routineRows(data, model).next?.r.name ?? null))
-  }, [data, model])
+    void scheduleReminders(reminders(model, routineRows(data, model).next?.r.name ?? null, undefined, runs))
+  }, [data, model, runs])
   const navigate = useNavigate()
   const [more, setMore] = useState(false)
   // Drag the More sheet down to close it, like an iOS sheet. Styles set directly: no re-render per touchmove.
@@ -68,7 +72,7 @@ export function Layout() {
   // Like Link: tapping where you already are doesn't stack another back-swipe.
   const go = (to: string) => navigate(to, { replace: pathname === to })
   const inMore = NAV.some(n => !TABS.includes(n.to) && on(n.to))
-  const tab = (n: (typeof NAV)[number]) => (
+  const tab = (n: (typeof ALL_NAV)[number]) => (
     <button key={n.to} onClick={() => go(n.to)} aria-current={on(n.to) ? 'page' : undefined} className={`press relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${on(n.to) ? 'text-accent' : 'text-muted'}`}>
       <Tap />
       <Icon d={n.icon} />
@@ -149,7 +153,7 @@ export function Layout() {
           <Tap />
           <Icon d={I.plus} className="h-6 w-6" />
         </button>
-        {tab(NAV[3])}
+        {tab(NAV.find(n => n.to === TABS[2])!)}
         <button onClick={() => setMore(!more)} aria-expanded={more} className={`press relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${more || inMore ? 'text-accent' : 'text-muted'}`}>
           <Tap />
           <Icon d={I.more} />
@@ -192,7 +196,7 @@ function PullToRefresh({ off }: { off: boolean }) {
   const { data, reload, sync } = useData()
   const [pull, setPull] = useState(0)
   const [busy, setBusy] = useState(false)
-  const strava = data.strava.connected
+  const strava = data.strava.connected && featureOn(data.profile, 'runs')
   useEffect(() => {
     if (off || busy) return
     let y0: number | null = null, x0 = 0, d = 0

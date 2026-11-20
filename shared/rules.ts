@@ -31,23 +31,23 @@ export const cleanGoals = (v: unknown): GoalId[] =>
 /** A profile from a request body, as both the Worker and the phone-only copy store it. */
 export const cleanProfile = (b: Partial<Profile>): Profile =>
   ({ age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg), goals: cleanGoals(b.goals), ...(Number.isInteger(b.weekly) && b.weekly! >= 1 && b.weekly! <= 7 ? { weekly: b.weekly } : {}),
-    ...(b.unit === 'lb' && { unit: 'lb' as const }), ...cleanUnits(b.units), ...cleanSetup(b.setup) })
+    ...(b.unit === 'lb' && { unit: 'lb' as const }), ...cleanUnits(b.units), ...cleanSetup(b.setup), ...cleanFeatures(b.features) })
 /**
  * A change to single keys of the profile's per-exercise maps (null removes one), made on top of what's stored. Unit
  * switches and setup notes only ever change this way, and a whole-profile PUT keeps what's stored for both (keepMaps),
  * so a screen holding an older copy of the profile can't undo a note or a switch saved meanwhile.
  */
-export type ProfilePatch = { units?: Record<string, 'kg' | 'lb' | null>; setup?: Record<string, string | null> }
+export type ProfilePatch = { units?: Record<string, 'kg' | 'lb' | null>; setup?: Record<string, string | null>; features?: Record<string, boolean | null> }
 export function patchProfile(p: Profile, b: ProfilePatch): Profile {
   const apply = <V>(m: Record<string, V> | undefined, ch: Record<string, V | null> | undefined) => {
     const out = { ...m }
     for (const [k, v] of Object.entries(ch && typeof ch === 'object' ? ch : {})) if (v === null) delete out[k]; else out[k] = v
     return out
   }
-  return cleanProfile({ ...p, units: apply(p.units, b.units), setup: apply(p.setup, b.setup) })
+  return cleanProfile({ ...p, units: apply(p.units, b.units), setup: apply(p.setup, b.setup), features: apply(p.features, b.features) })
 }
 /** A whole-profile PUT: everything from the body except the per-exercise maps, which stay as stored. */
-export const keepMaps = (b: Partial<Profile>, stored: Profile) => cleanProfile({ ...b, units: stored.units, setup: stored.setup })
+export const keepMaps = (b: Partial<Profile>, stored: Profile) => cleanProfile({ ...b, units: stored.units, setup: stored.setup, features: stored.features })
 /** An exercise renamed or merged: its unit and setup note follow it to the new name (a merge keeps the target's own). */
 export function renameInProfile(p: Profile, from: string, to: string): Profile {
   const f = from.toLowerCase(), t = to.toLowerCase()
@@ -65,6 +65,12 @@ const cleanSetup = (v: unknown): Pick<Profile, 'setup'> => {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return {}
   const setup = Object.fromEntries(Object.entries(v).flatMap(([k, t]) => (k.length <= 100 && typeof t === 'string' && t.trim() ? [[k, t.trim().slice(0, 300)]] : [])).slice(0, 300))
   return Object.keys(setup).length ? { setup } : {}
+}
+// Feature switches: short ids, true or false. Unknown ids are kept, so an older app can't drop a newer one's switch.
+const cleanFeatures = (v: unknown): Pick<Profile, 'features'> => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {}
+  const features = Object.fromEntries(Object.entries(v).filter(([k, on]) => /^[a-z][a-z0-9-]{0,39}$/.test(k) && typeof on === 'boolean').slice(0, 50))
+  return Object.keys(features).length ? { features } : {}
 }
 /** Exercises switched to kg or lb (lower-case name → unit): kept only when well formed, at most 300. */
 const cleanUnits = (v: unknown): Pick<Profile, 'units'> => {

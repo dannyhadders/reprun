@@ -5,6 +5,7 @@ import { C, Chart } from '../components/Chart'
 import { Heatmap } from '../components/Heatmap'
 import { Card, Empty, Line, PbBadge, Tabs } from '../components/ui'
 import { useData } from '../lib/data'
+import { useFeature } from '../lib/features'
 import { duration, kg, km, num, pace, plural, setText, shortDate } from '../lib/format'
 import { overallLine } from '../lib/motivation'
 import { MUSCLES, runPace, yearsWithData, yearSummary } from '../lib/stats'
@@ -13,11 +14,12 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 export default function Year() {
   const { model, data } = useData()
+  const runs = useFeature('runs') // off: the year without runs (Settings → Features)
   const years = yearsWithData(model)
   const [year, setYear] = useState(years[0] ?? new Date().getFullYear())
   const y = useMemo(() => yearSummary(model, year), [model, year])
   const sessions = useMemo(() => model.sessions.filter(s => s.date.startsWith(String(year))), [model, year])
-  const headline = useMemo(() => overallLine(model, sessions, y.run.totalM, `in ${year}`), [model, sessions, y, year])
+  const headline = useMemo(() => overallLine(model, sessions, runs ? y.run.totalM : 0, `in ${year}`), [model, sessions, y, year, runs])
 
   const monthChart = useMemo<ChartConfiguration>(() => ({
     type: 'bar',
@@ -25,11 +27,11 @@ export default function Year() {
       labels: MONTHS.map(m => m.slice(0, 3)),
       datasets: [
         { label: 'Gym', data: y.months.map(m => m.gym), backgroundColor: C().accent, borderRadius: 4, stack: 's' },
-        { label: 'Runs', data: y.months.map(m => m.runs), backgroundColor: C().strava, borderRadius: 4, stack: 's' },
+        ...(runs ? [{ label: 'Runs', data: y.months.map(m => m.runs), backgroundColor: C().strava, borderRadius: 4, stack: 's' }] : []),
       ],
     },
-    options: { plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 } } } },
-  }), [y])
+    options: { plugins: { legend: { display: runs, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 } } } },
+  }), [y, runs])
 
   const muscleChart = useMemo<ChartConfiguration>(() => ({
     type: 'radar',
@@ -42,11 +44,11 @@ export default function Year() {
   const best = y.bestMonth
   const tiles: [string, string][] = [
     [num(y.sessions), 'gym sessions'],
-    [num(y.runs), 'runs'],
+    ...(runs ? [[num(y.runs), 'runs'] as [string, string]] : []),
     [num(y.activeDays), 'active days'],
     [duration(y.durationS), 'training time'],
     [kg(Math.round(y.volume)), 'lifted'],
-    [km(y.run.totalM, 0), 'run'],
+    ...(runs ? [[km(y.run.totalM, 0), 'run'] as [string, string]] : []),
     [num(y.pbSets.length), 'PBs'],
     [`${y.longestStreak} wks`, 'longest streak'],
   ]
@@ -62,7 +64,7 @@ export default function Year() {
           </div>
           <h1 className="mt-3 text-5xl font-extrabold tracking-tight md:text-7xl"><span className="grad-text">{year}</span></h1>
           <p className="mt-4 max-w-2xl text-lg text-ink/90 md:text-xl">{headline}</p>
-          <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-6 md:grid-cols-4">
+          <div className={`mt-8 grid grid-cols-2 gap-x-6 gap-y-6 ${runs ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
             {tiles.map(([v, l]) => (
               <div key={l}>
                 <div className="text-3xl font-bold tracking-tight tabular-nums md:text-4xl">{v}</div>
@@ -86,7 +88,7 @@ export default function Year() {
               <ul className="mt-4 space-y-2 text-sm">
                 <li className="flex justify-between"><span className="text-muted">Active days</span><span className="font-semibold">{best.days}</span></li>
                 <li className="flex justify-between"><span className="text-muted">Gym sessions</span><span className="font-semibold">{best.gym}</span></li>
-                <li className="flex justify-between"><span className="text-muted">Runs</span><span className="font-semibold">{best.runs} · {num(best.km, 1)} km</span></li>
+                {runs && <li className="flex justify-between"><span className="text-muted">Runs</span><span className="font-semibold">{best.runs} · {num(best.km, 1)} km</span></li>}
                 {best.volume > 0 && <li className="flex justify-between"><span className="text-muted">Lifted</span><span className="font-semibold">{kg(Math.round(best.volume))}</span></li>}
               </ul>
               <div className="mt-4"><Line>{best.days >= 12 ? `${best.days} active days in ${MONTHS[best.month]}. That's a habit, not a phase.` : `${MONTHS[best.month]} set the bar. Time to raise it.`}</Line></div>
@@ -95,7 +97,7 @@ export default function Year() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+      <div className={`grid grid-cols-1 gap-5 ${runs ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
         <Card title="Top exercises">
           <ol className="space-y-3">
             {y.topExercises.map((t, i) => (
@@ -109,7 +111,7 @@ export default function Year() {
           {!y.topExercises.length && <Empty>No sets logged this year.</Empty>}
         </Card>
         <Card title="Muscle split">{MUSCLES.some(m => y.muscles[m]) ? <Chart height={240} label="Sets per muscle group this year" config={muscleChart} /> : <Empty>No gym sets this year.</Empty>}</Card>
-        <Card title="Running">
+        {runs && <Card title="Running">
           {!y.run.totalM ? <Empty>No runs this year.</Empty> : <>
           <ul className="space-y-3 text-sm">
             <li className="flex justify-between"><span className="text-muted">Distance</span><span className="font-semibold">{km(y.run.totalM, 1)}</span></li>
@@ -119,7 +121,7 @@ export default function Year() {
           </ul>
           {y.run.totalM > 42195 && <div className="mt-4"><Line>{num(y.run.totalM / 42195, 1)} marathons, one sensible chunk at a time.</Line></div>}
           </>}
-        </Card>
+        </Card>}
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

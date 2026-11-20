@@ -13,6 +13,7 @@ Worker with a D1 (SQLite) database, behind Cloudflare Access. Mostly used as an 
 - One feature per commit, so any one can be reverted on its own.
 - **Every user-facing change adds a line to `src/lib/changelog.ts`** under today's date (newest first, plain words, no jargon). It shows in Settings → About.
 - Tick the item in `TODO.md` when it ships.
+- An optional feature, or a bigger idea to try out, goes behind a switch in `src/lib/features.ts` (Settings → Features): wrap what it shows in `useFeature(id)`. Off hides it; its data stays.
 - The repo is public: no emails, secrets, database IDs or personal data in code or commits. Secrets live in Cloudflare (`ALLOWED_EMAIL`, `ACCESS_TEAM`, `ACCESS_AUD`, `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`).
 - Never run `wrangler deploy` or remote D1 commands against the owner's live `reprun` / `reprun-demo` Workers; deploys happen by pushing, and the owner runs anything remote by hand.
 

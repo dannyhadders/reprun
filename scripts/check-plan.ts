@@ -201,6 +201,10 @@ eq([cleanProfile({ setup: { a: 'z'.repeat(400) } }).setup?.a.length, cleanProfil
   eq([p1.setup, p1.units], [{ squat: 'Pins at 6' }, { 'leg press': 'lb' }], 'profile: PATCH changes only the keys sent (null removes)')
   eq([keepMaps({ age: 40, units: {}, setup: {} }, p1).setup, keepMaps({ age: 40 }, p1).units, keepMaps({ age: 40 }, p1).age], [{ squat: 'Pins at 6' }, { 'leg press': 'lb' }, 40], 'profile: a whole-profile PUT keeps the stored notes and switches')
   eq(renameInProfile(base, 'Bench Press', 'Flat Bench').setup, { 'flat bench': 'Seat 4' }, 'profile: a renamed exercise keeps its setup note')
+  // Feature switches (Settings → Features): one key at a time, back to the default goes as a removal, a PUT keeps them.
+  const f1 = patchProfile(p1, { features: { runs: false } })
+  eq([f1.features, patchProfile(f1, { features: { runs: null } }).features, keepMaps({ age: 40, features: {} }, f1).features, f1.setup], [{ runs: false }, undefined, { runs: false }, p1.setup], 'profile: feature switches PATCH one at a time and survive a PUT')
+  eq(cleanProfile({ features: { runs: 'no', 'Bad Id': true, ok: true } as never }).features, { ok: true }, 'profile: only short ids with true/false')
   eq(renameInProfile(cleanProfile({ setup: { a: 'mine', b: 'theirs' } }), 'A', 'B').setup, { b: 'theirs' }, 'profile: a merge keeps the target exercise its own note')
 }
 eq([cleanProfile({ weekly: 4 }).weekly, cleanProfile({ weekly: 0 }).weekly, cleanProfile({}).weekly], [4, undefined, undefined], 'profile: weekly kept only when 1-7')

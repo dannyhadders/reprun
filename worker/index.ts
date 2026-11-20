@@ -136,7 +136,7 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (m === 'DELETE' && id) return (await db.prepare('DELETE FROM routines WHERE id = ?').bind(id).run(), json({ ok: true }))
   }
 
-  // PUT: the whole profile, except units and setup notes, which only change one key at a time with PATCH (rules.ts).
+  // PUT: the whole profile, except units, setup notes and feature switches, which only change one key at a time with PATCH (rules.ts).
   if (resource === 'profile' && (m === 'PUT' || m === 'PATCH')) {
     const stored = await getSetting<Profile>(db, 'profile', NO_PROFILE)
     const b = await req.json()

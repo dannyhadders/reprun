@@ -34,7 +34,8 @@ const on = (mon: Date, day: number, hour: number) => {
 }
 
 /** This week's nudge (if the streak needs one) and its Sunday recap (if it's still to come), as of `now`. */
-export function reminders(m: Model, next: string | null, now = new Date()): Note[] {
+// runs: the Runs and Strava switch (Settings → Features). Off, the recap and report leave runs out of their words.
+export function reminders(m: Model, next: string | null, now = new Date(), runs = true): Note[] {
   const mon = new Date(now)
   mon.setHours(0, 0, 0, 0)
   mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7))
@@ -68,16 +69,16 @@ export function reminders(m: Model, next: string | null, now = new Date()): Note
   if (recapAt > now.getTime()) {
     const inWeek = (d: string) => d >= week && d <= today
     const gym = m.sessions.filter(s => inWeek(s.date))
-    const runs = m.runs.filter(r => inWeek(r.date))
-    const km = runs.reduce((a, r) => a + (r.distance_m ?? 0), 0) / 1000
+    const wr = runs ? m.runs.filter(r => inWeek(r.date)) : []
+    const km = wr.reduce((a, r) => a + (r.distance_m ?? 0), 0) / 1000
     const pbs = gym.reduce((a, s) => a + (s.workout?.sets.filter(x => m.pbs.has(x.id)).length ?? 0), 0)
     const parts = [
       gym.length && plural(gym.length, 'gym session'),
-      runs.length && `${plural(runs.length, 'run')}${km >= 0.1 ? ` (${num(km, 1)} km)` : ''}`,
+      wr.length && `${plural(wr.length, 'run')}${km >= 0.1 ? ` (${num(km, 1)} km)` : ''}`,
       pbs && `${plural(pbs, 'PB')} 🏆`,
     ].filter(Boolean)
     // Every other week, a fact about your own totals ("… That's 3 double-decker buses.") instead of the general one.
-    const own = overallLine(m, m.sessions, m.runs.reduce((a, r) => a + (r.distance_m ?? 0), 0))
+    const own = overallLine(m, m.sessions, runs ? m.runs.reduce((a, r) => a + (r.distance_m ?? 0), 0) : 0)
     const extra = own.startsWith('Log a few') || Math.floor(mon.getTime() / (7 * 86_400_000)) % 2 ? line : own
     out.push(done
       ? {
@@ -91,19 +92,19 @@ export function reminders(m: Model, next: string | null, now = new Date()): Note
           body: `Nothing logged this week. Monday's a fresh start.${nextUp} ${line}`,
         })
   }
-  out.push(monthly(m, now))
+  out.push(monthly(m, now, runs))
   return out
 }
 
 /** The 1st of next month at 10am (today's, if it's the 1st before 10): the month just gone in numbers, against the one before. */
-function monthly(m: Model, now: Date): Note {
+function monthly(m: Model, now: Date, withRuns: boolean): Note {
   const at = new Date(now.getFullYear(), now.getMonth(), 1, MONTH_HOUR)
   if (at.getTime() <= now.getTime()) at.setMonth(at.getMonth() + 1)
   const start = new Date(at.getFullYear(), at.getMonth() - 1, 1), before = new Date(at.getFullYear(), at.getMonth() - 2, 1)
   const name = start.toLocaleDateString('en-GB', { month: 'long' })
   const count = (from: Date, to: Date) => {
     const inMonth = (d: string) => d >= localISO(from) && d < localISO(to)
-    const gym = m.sessions.filter(s => inMonth(s.date)), runs = m.runs.filter(r => inMonth(r.date))
+    const gym = m.sessions.filter(s => inMonth(s.date)), runs = withRuns ? m.runs.filter(r => inMonth(r.date)) : []
     return {
       gym: gym.length, runs: runs.length,
       km: runs.reduce((a, r) => a + (r.distance_m ?? 0), 0) / 1000,

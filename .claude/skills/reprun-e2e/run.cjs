@@ -772,6 +772,33 @@ const CHECKS = {
     await t.expect(t.page.getByRole('button', { name: 'View Milestones' }), 'Milestones links to the full list as View Milestones')
   }],
 
+  'features': ['Settings → Features: turning off Runs and Strava hides the Runs tab, the runs tile, Year\'s Running card and the Runs page; back on brings them back', async t => {
+    await begin(t, true)
+    await settings(t, 'Features')
+    const sw = t.page.getByRole('switch', { name: /^Runs and Strava/ })
+    await t.expect(null, 'Runs and Strava starts on', (await sw.getAttribute('aria-checked')) === 'true')
+    await sw.click()
+    await t.expect(t.page.getByRole('switch', { name: /^Runs and Strava/, checked: false }), 'and switches off')
+    await t.shot('Features, runs off')
+    await tab(t, '/')
+    await t.expect(t.page.getByText(/^\d+ runs? this week$/), 'Home has no runs tile', 0)
+    if (t.device === 'iphone') {
+      await t.expect(t.page.locator('nav').getByRole('button', { name: 'Runs' }), 'The Runs tab is gone', 0)
+      await t.expect(t.page.locator('nav').getByRole('button', { name: 'Exercises' }), 'Exercises takes its place')
+    } else await t.expect(t.page.locator('aside').getByRole('link', { name: 'Runs' }), 'Runs is gone from the sidebar', 0)
+    await t.shot('Home with runs off')
+    await tab(t, '/year')
+    await t.expect(t.page.getByText('Running', { exact: true }), 'Year has no Running card', 0)
+    await t.page.goto(BASE + '/runs')
+    await t.page.locator('main h1').first().waitFor()
+    await t.expect(null, 'The Runs page sends you Home', new URL(t.page.url()).pathname === '/')
+    await settings(t, 'Features')
+    await t.page.getByRole('switch', { name: /^Runs and Strava/ }).click()
+    await t.expect(t.page.getByRole('switch', { name: /^Runs and Strava/, checked: true }), 'Back on')
+    await tab(t, '/')
+    await t.expect(t.page.getByText(/^\d+ runs? this week$/), 'and the runs tile is back')
+  }],
+
   'units-pending': ['kg / lb: a switch still waiting on the phone (no signal) is listed in Settings, and Back to kg clears it', async t => {
     await begin(t, true)
     await t.page.evaluate(() => localStorage.setItem('reprun.units', JSON.stringify({ 'bench press': 'lb' }))) // what a switch with no signal leaves

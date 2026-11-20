@@ -13,9 +13,11 @@ import { ago, daysAgo, duration, fromKg, greeting, kg, km, pace, plural, shortDa
 import { overallLine } from '../lib/motivation'
 import { lastSets, mainExercises, MUSCLES, muscleSets, runPace, weekly, weekStreak } from '../lib/stats'
 import { milestones, type Milestone } from '../lib/milestones'
+import { useFeature } from '../lib/features'
 
 export default function Home() {
   const { model, data } = useData()
+  const runs = useFeature('runs') // off: no runs tile, bars, recent runs or running headline (Settings → Features)
   const [days, setDays] = useState<'30' | '90'>('30')
   const n = +days
 
@@ -26,7 +28,7 @@ export default function Home() {
     return { gym: s.length, runs: r.length, km: r.reduce((a, x) => a + (x.distance_m ?? 0), 0), volume: s.reduce((a, x) => a + x.volume, 0) }
   }, [model, thisWeek])
   const streak = weekStreak(model, data.profile.weekly)
-  const headline = useMemo(() => overallLine(model, model.sessions, model.runs.reduce((a, r) => a + (r.distance_m ?? 0), 0)), [model])
+  const headline = useMemo(() => overallLine(model, model.sessions, runs ? model.runs.reduce((a, r) => a + (r.distance_m ?? 0), 0) : 0), [model, runs])
 
   const main = useMemo(() => mainExercises(model, n), [model, n])
   const split = useMemo(() => ({ now: muscleSets(model, daysAgo(n)), before: muscleSets(model, daysAgo(n * 2), daysAgo(n + 1)) }), [model, n])
@@ -57,19 +59,19 @@ export default function Home() {
       labels: weeks.map(w => shortDate(w.week)),
       datasets: [
         { label: 'Gym', data: weeks.map(w => w.gym), backgroundColor: C().accent, borderRadius: 4, stack: 's' },
-        { label: 'Runs', data: weeks.map(w => w.runs), backgroundColor: C().strava, borderRadius: 4, stack: 's' },
+        ...(runs ? [{ label: 'Runs', data: weeks.map(w => w.runs), backgroundColor: C().strava, borderRadius: 4, stack: 's' }] : []),
       ],
     },
     options: {
-      plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } }, tooltip: { callbacks: { title: i => `Week of ${i[0].label}` } } },
+      plugins: { legend: { display: runs, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } }, tooltip: { callbacks: { title: i => `Week of ${i[0].label}` } } },
       scales: { x: { stacked: true, grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 12 } }, y: { stacked: true, ticks: { precision: 0 } } },
     },
-  }), [weeks])
+  }), [weeks, runs])
 
   const recent = useMemo(() => [
     ...model.sessions.slice(0, 6).map(s => ({ date: s.date, key: s.key, kind: 'gym' as const, s })),
-    ...model.runs.slice(0, 6).map(r => ({ date: r.date, key: `r${r.id}`, kind: 'run' as const, r })),
-  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6), [model])
+    ...(runs ? model.runs : []).slice(0, 6).map(r => ({ date: r.date, key: `r${r.id}`, kind: 'run' as const, r })),
+  ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6), [model, runs])
 
   return (
     <div className="space-y-5">
@@ -79,11 +81,11 @@ export default function Home() {
       </header>
       <NextUp />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 ${runs ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
         <Card><Stat accent value={<Up to={week.gym} fmt={n => plural(Math.round(n), 'session')} />} label="Gym this week" /></Card>
-        <Card><Stat accent value={<Up to={week.km} fmt={n => km(n, 1)} />} label={`${plural(week.runs, 'run')} this week`} /></Card>
+        {runs && <Card><Stat accent value={<Up to={week.km} fmt={n => km(n, 1)} />} label={`${plural(week.runs, 'run')} this week`} /></Card>}
         <Card><Stat accent value={<Up to={week.volume} fmt={n => kg(Math.round(n))} />} label="Lifted this week" /></Card>
-        <Card><Streak {...streak} /></Card>
+        <Card className={runs ? '' : 'col-span-2 md:col-span-1'}><Streak {...streak} /></Card>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-5">
@@ -115,7 +117,7 @@ export default function Home() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-5">
-        <Card className="lg:col-span-3" title="Last 12 weeks">{weeks.some(w => w.gym || w.runs) ? <Chart height={220} label="Sessions per week" config={weekChart} /> : <Empty>Nothing in the last 12 weeks yet.</Empty>}</Card>
+        <Card className="lg:col-span-3" title="Last 12 weeks">{weeks.some(w => w.gym || (runs && w.runs)) ? <Chart height={220} label="Sessions per week" config={weekChart} /> : <Empty>Nothing in the last 12 weeks yet.</Empty>}</Card>
         <Card className="lg:col-span-2" title="Recent" action={<Link to="/workouts" className="text-sm text-accent hover:underline">All</Link>}>
           <ul className="space-y-3">
             {recent.map(x => (
@@ -133,7 +135,7 @@ export default function Home() {
               </li>
             ))}
           </ul>
-          {!recent.length && <Empty>Log your first workout with the + button{data.strava.configured && !data.strava.connected ? ', or connect Strava in Settings' : ''}.</Empty>}
+          {!recent.length && <Empty>Log your first workout with the + button{runs && data.strava.configured && !data.strava.connected ? ', or connect Strava in Settings' : ''}.</Empty>}
         </Card>
       </div>
 
@@ -255,7 +257,8 @@ function Milestones() {
   const { data, model } = useData()
   const [all, setAll] = useState(false)
   const close = useCallback(() => setAll(false), [])
-  const list = useMemo(() => milestones(model, data.profile.weekly), [model, data.profile.weekly])
+  const runs = useFeature('runs')
+  const list = useMemo(() => milestones(model, data.profile.weekly, runs), [model, data.profile.weekly, runs])
   const earned = list.filter(m => m.date).sort((a, b) => b.date!.localeCompare(a.date!))
   const next = list.filter(m => !m.date).sort((a, b) => b.progress - a.progress)
   if (!earned.length && !model.sessions.length && !model.runs.length) return null
