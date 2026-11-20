@@ -44,8 +44,11 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
     throw new Error('No signal')
   }
   if (res.type === 'opaqueredirect') throw new Error('Sign-in expired')
-  const out = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error((out as { error?: string }).error ?? `Request failed (${res.status})`)
+  const out = await res.json().catch(() => null)
+  if (!res.ok) throw new Error((out as { error?: string } | null)?.error ?? `Request failed (${res.status})`)
+  // Every route answers in JSON, so a 200 that isn't (gym wifi's sign-in page, a proxy) never reached RepRun. Treated
+  // as success it would drop a finished workout from the outbox unsent, or open the app on nothing.
+  if (out === null) throw new Error('No signal')
   return out as T
 }
 
