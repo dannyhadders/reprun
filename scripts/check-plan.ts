@@ -337,6 +337,22 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   console.log('units self-check passed')
 }
 
+// Plate calculator (shared/plates.ts): fewest plates per side for a total that includes the bar.
+{
+  const { load, barFor, PLATES } = await import('../shared/plates.ts')
+  const kgL = (t: number, bar = 20) => load(t, bar, PLATES.kg), lbL = (t: number, bar = 45) => load(t, bar, PLATES.lb)
+  eq(kgL(100), { side: [25, 15], exact: true, lower: null, higher: null }, 'plates: 100 kg is 25 + 15 a side')
+  eq([kgL(20)?.side, kgL(15), kgL(101)?.exact, kgL(101)?.lower, kgL(101)?.higher], [[], null, false, 100, 102.5], 'plates: just the bar, under it, and the nearest loadable either side')
+  eq([lbL(225)?.side, lbL(135)?.side, lbL(165)?.side], [[45, 45], [45], [35, 25]], 'plates: lb, and the fewest plates (35 + 25, not 45 + 10 + 5)')
+  for (let t = 20; t <= 300; t += 2.5) { const l = kgL(t)!; assert(l.exact && Math.abs(20 + 2 * l.side.reduce((a, b) => a + b, 0) - t) < 1e-9, `plates: ${t} kg`) }
+  for (let t = 45; t <= 700; t += 5) { const l = lbL(t)!; assert(l.exact && Math.abs(45 + 2 * l.side.reduce((a, b) => a + b, 0) - t) < 1e-9, `plates: ${t} lb`) }
+  eq(['Squat', 'EZ-bar Curl', 'Trap Bar Deadlift', 'Barbell Lunge', 'Leg Press', 'Hack Squat', 'Dumbbell Bench Press', 'Smith Machine Squat'].map(barFor),
+    ['olympic', 'ez', 'trap', 'olympic', null, null, null, null], 'plates: barbell lifts only')
+  eq([kgL(1e9), kgL(2020), kgL(2021)], [null, kgL(2020), null], 'plates: a mistyped huge weight is refused straight away (no hang)')
+  assert(kgL(2020)!.exact, 'plates: up to 1,000 a side still works')
+  console.log('plates self-check passed')
+}
+
 // The PB moment: what each PB says, and which look plays.
 {
   const { pbShow, pickStyle } = await import('../src/lib/pbMoment.ts')

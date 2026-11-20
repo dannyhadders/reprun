@@ -386,6 +386,26 @@ const CHECKS = {
     await t.shot('Planner with the routine')
   }],
 
+  'plates': ['Plate calculator: the line under the current barbell set, its sheet, and the bar remembered', async t => {
+    await begin(t, true)
+    await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
+    const first = t.page.locator('button[aria-expanded]').first()
+    const name = (await first.locator('h2').innerText()).trim()
+    await first.click()
+    await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).first().fill('100')
+    await t.expect(t.page.getByRole('button', { name: /^Plates for 100 kg: 25 \+ 15 each side, 20 kg bar/ }), `${name}: 100 kg is 25 + 15 a side on a 20 kg bar`)
+    await t.shot('Plate line')
+    await t.page.getByRole('button', { name: /^Plates for 100 kg/ }).click()
+    await t.expect(t.page.getByRole('dialog', { name: `Plates for ${name}` }), 'Tapping it opens the plate sheet')
+    await t.page.getByRole('button', { name: '15 kg', exact: true }).click()
+    await t.expect(t.page.getByText('25 + 2.5 + 15 each side').or(t.page.getByText('25 + 15 + 2.5 each side')).first(), 'On a 15 kg bar it works the plates out again')
+    await t.shot('Plate sheet, 15 kg bar')
+    await t.page.keyboard.press('Escape')
+    await t.expect(t.page.getByRole('button', { name: /^Plates for 100 kg: .*15 kg bar/ }), 'The 15 kg bar is remembered for this exercise')
+    await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).first().fill('101')
+    await t.expect(t.page.getByRole('button', { name: /can't be loaded exactly: 100 or 102\.5/ }), '101 kg on a 15 kg bar: nearest 100 or 102.5')
+  }],
+
   'plan-lb': ['A pasted plan in lb: "@ 220lb" comes in as 99.8 kg', async t => {
     await begin(t, false)
     await planner(t)

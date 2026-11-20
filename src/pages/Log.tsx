@@ -14,6 +14,8 @@ import { ago, clock, EFFORT, effort, kg, plural, setText, shown, workoutText } f
 import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sheet, Stepper, useShareCards } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
+import { PlateLine, PlateSheet } from '../components/Plates'
+import { barFor } from '../../shared/plates'
 import { pbShow } from '../lib/pbMoment'
 import { DONE_WORDS, workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
@@ -79,6 +81,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [peek, setPeek] = useState<string | null>(null) // exercise whose history sheet is open
   const [restFor, setRestFor] = useState<number | null>(null) // exercise whose rest picker is open
   const [swapFor, setSwapFor] = useState<number | null>(null) // exercise being swapped
+  const [plates, setPlates] = useState<{ total: number; name: string; u: 'kg' | 'lb' } | null>(null) // plate calculator sheet
   // Drag the ☰ to reorder: a lifted copy of the card (the ghost) follows the finger, and the card's real place shows as a
   // dashed outline. Each time the ghost's middle passes the middle of the card above or below, they swap places.
   // Only the finger that started it counts. Cards are keyed by their own id, so the ☰ under the finger stays in the DOM.
@@ -381,6 +384,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                   </SwipeRow>,
                   // Last time's note for this set, so "wide bar, upstairs machine" is there when you need it.
                   prev[j]?.notes && <p key={`l${j}`} className="col-span-4 -mt-1 truncate px-1 text-xs text-muted">Last time: {prev[j].notes}</p>,
+                  // Barbell lifts: the plates for the set you're on, from the typed weight or the grey one.
+                  j === cur && !ex.timed && barFor(ex.name) && <PlateLine key={`p${j}`} total={+(s.weight || hint.weight)} name={ex.name} u={u} open={() => setPlates({ total: +(s.weight || hint.weight), name: ex.name, u })} />,
                   s.note !== undefined ? (
                     <input key={`t${j}`} className="input col-span-4 py-2" placeholder={`Note for set ${j + 1}, e.g. wide bar, felt easy`} aria-label={`Set ${j + 1} note`}
                       autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))}
@@ -458,6 +463,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       <button className="w-full py-3 text-sm text-bad" onClick={() => void ask('Discard this workout? Nothing will be saved.', 'Discard', true).then(ok => ok && set(null))}>Discard workout</button>
 
       {peek && <History name={peek} close={closePeek} />}
+      {plates && <PlateSheet {...plates} close={() => setPlates(null)} />}
       {restFor !== null && a.exercises[restFor] && <RestPicker ex={a.exercises[restFor]} close={() => setRestFor(null)}
         pick={sec => (rememberRest(a.exercises[restFor].name, sec), update(x => void (x.exercises[restFor] && (x.exercises[restFor].restS = sec))), setRestFor(null))} />}
       {swapFor !== null && a.exercises[swapFor] && <SwapPicker current={a.exercises[swapFor]} close={() => setSwapFor(null)}

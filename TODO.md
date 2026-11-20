@@ -83,7 +83,7 @@ UX ideas from 2026-11-17, after the pressed-states / confirms / celebrations pas
 - [x] **PB badge on the set** the moment it's ticked, not only on the finish screen.
 - [x] **PB moment on the finish screen**: today it's a small "🏆 2 PBs" line with a little burst. Make it a proper pop-up: a big trophy, full-screen confetti, and which lifts were PBs ("Squat 105 kg × 5, +5 kg"). Tap to carry on to the summary. Also the website's demo of the finish screen. Asked for 2026-11-18.
 - [ ] **`enterKeyHint="next"`** on kg/reps so Return moves kg → reps → next set.
-- [ ] **Plate calculator**: tap the kg for "20 kg bar + 15 + 2.5 each side".
+- [x] **Plate calculator**: a line under the current set of a barbell lift ("25 + 15 each side · 20 kg bar"); tap it for the bar drawn and a choice of bar (20, 15, EZ 10, trap 25 kg; lb too), remembered per exercise. Standard plates only: add a "plates at my gym" setting if a gym is missing some.
 - [x] **More menu slides up**, and swipes down to close.
 - [x] **Next up on Home**: the routine due next, one tap to start it.
 - [x] **Choose what's next**: Change on the Next up card picks any routine; lapses once it's done.

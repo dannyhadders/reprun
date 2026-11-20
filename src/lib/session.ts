@@ -3,6 +3,7 @@ import { applyAlias, matchExercise, type Aliases } from '../../shared/exercises.
 export { matchExercise }
 import { resolveExercise } from '../../shared/catalogue.ts'
 import { formatLine, parseLine, parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
+import { barFor } from '../../shared/plates.ts'
 import type { Exercise, ImportPayload, ImportWorkout, Muscle, Profile, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
 import { useEffect, useState } from 'react'
 import { api } from './data'
@@ -26,7 +27,7 @@ export type Active = { clientId: string; startedAt: number; title: string; notes
 /** A timed set's countdown: exercise i, set j, ends at endsAt; it ticks the set when it runs out. */
 export type Hold = { i: number; j: number; endsAt: number; from: number }
 
-const KEY = { active: 'reprun.active', outbox: 'reprun.outbox', rest: 'reprun.rest' }
+const KEY = { active: 'reprun.active', outbox: 'reprun.outbox', rest: 'reprun.rest', bars: 'reprun.bars' }
 const DEFAULT_REST = 90
 
 // localStorage can throw (private mode, quota); losing a convenience is fine, crashing mid-workout isn't.
@@ -151,6 +152,10 @@ export function sendUnits(profile: Profile): Promise<boolean> {
   sending = next
   return next
 }
+
+/** The bar an exercise is on, for the plate calculator: your pick (per phone, like rest), else the usual one for that lift. */
+export const barOf = (name: string) => read<Record<string, string>>(KEY.bars, {})[name] ?? barFor(name)
+export const rememberBar = (name: string, id: string) => write(KEY.bars, { ...read<Record<string, string>>(KEY.bars, {}), [name]: id })
 
 export const rememberRest =(name: string, s: number) => write(KEY.rest, { ...read<Record<string, number>>(KEY.rest, {}), [name]: s })
 
