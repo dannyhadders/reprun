@@ -506,10 +506,12 @@
     /* The three demos */
     .dgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 44px; }
     @media (max-width: 960px) { .dgrid { grid-template-columns: 1fr; justify-items: center; gap: 48px; } }
-    .dcell { display: grid; justify-items: center; gap: 18px; text-align: center; }
+    .dcell { display: grid; grid-template-rows: auto 1fr; justify-items: center; gap: 18px; text-align: center; } /* titles line up across the three */
+    .dcell > div:last-child { display: flex; flex-direction: column; align-items: center; }
     .dcell h3 { font-size: 19px; letter-spacing: -0.02em; margin-bottom: 4px; }
     .dcell p { color: var(--muted); font-size: 15px; max-width: 34ch; }
-    .dcell .btn { margin-top: 12px; }
+    .dcell .btn { margin-top: auto; padding: 0 24px; } /* buttons line up too */
+    .dcell > div:last-child > p { margin-bottom: 12px; }
     .vs td:nth-child(3) { color: var(--muted); }
     .vs tr.price td { font-size: 17px; font-weight: 800; color: var(--ink); }
 
@@ -547,6 +549,7 @@
     <symbol id="wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01" /><path d="M8.5 16.429a5 5 0 0 1 7 0" /><path d="M5 12.859a10 10 0 0 1 5.17-2.69" /><path d="M19 12.859a10 10 0 0 0-2.007-1.523" /><path d="M2 8.82a15 15 0 0 1 4.177-2.643" /><path d="M22 8.82a15 15 0 0 0-11.288-3.764" /><path d="m2 2 20 20" /></symbol>
     <symbol id="timer" viewBox="0 0 24 24"><path d="M10 2h4" /><path d="m12 14 3-3" /><circle cx="12" cy="14" r="8" /></symbol>
     <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></symbol>
+    <symbol id="rotate-ccw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></symbol>
     <symbol id="play" viewBox="0 0 24 24"><path d="M6 3v18l14-9z" /></symbol>
     <symbol id="pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></symbol>
     <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></symbol>
@@ -621,22 +624,21 @@
     <section id="try">
       <div class="wrap">
         <div class="head reveal">
-          <span class="lab">Have a go</span>
-          <h2>See it <span class="g">in action.</span></h2>
-          <p class="lead">The real screens with made-up numbers. Tap in and try them.</p>
+          <h2>Try the demo <span class="g">right here.</span></h2>
+          <p class="lead">These phones are a working demo: the real screens with made-up numbers. Tap one and have a go.</p>
         </div>
         <div class="dgrid">
           <div class="dcell reveal">
             <div class="dbox"><div class="dphone" id="d1"></div></div>
-            <div><h3>A workout, live</h3><p>Tick a set and rest starts. − and + change the weight. Tap the phone and it's yours.</p><button class="btn btn-ghost btn-sm" type="button" id="d1again">Start again</button></div>
+            <div><h3>A workout, live</h3><p>Tick a set and rest starts. − and + change the weight. Tap the phone and it's yours.</p><button class="btn btn-ghost" type="button" id="d1again"><svg class="i" aria-hidden="true"><use href="#rotate-ccw" /></svg>Start again</button></div>
           </div>
           <div class="dcell reveal">
             <div class="dbox"><div class="dphone" id="d2"></div></div>
-            <div><h3>Make a routine</h3><p>Build it yourself from tap-to-add lifts, or paste a plan from your PT or ChatGPT: each day becomes a routine. Tap the phone and it's yours.</p><button class="btn btn-ghost btn-sm" type="button" id="d2again">Start again</button></div>
+            <div><h3>Make a routine</h3><p>Build it yourself from tap-to-add lifts, or paste a plan from your PT or ChatGPT: each day becomes a routine. Tap the phone and it's yours.</p><button class="btn btn-ghost" type="button" id="d2again"><svg class="i" aria-hidden="true"><use href="#rotate-ccw" /></svg>Start again</button></div>
           </div>
           <div class="dcell reveal">
             <div class="dbox"><div class="dphone" id="d3"></div></div>
-            <div><h3>Workout done</h3><p>PBs get a trophy and confetti. Your share picture is right there: swipe through four styles and send one.</p><button class="btn btn-ghost btn-sm" type="button" id="d3again">Play again</button></div>
+            <div><h3>Workout done</h3><p>PBs get a trophy and confetti. Your share picture is right there: swipe through four styles and send one.</p><button class="btn btn-ghost" type="button" id="d3again"><svg class="i" aria-hidden="true"><use href="#rotate-ccw" /></svg>Play again</button></div>
           </div>
         </div>
       </div>
@@ -645,7 +647,6 @@
     <section id="features">
       <div class="wrap">
         <div class="head reveal">
-          <span class="lab">What it does</span>
           <h2>Lifting and running, <span class="g">one app.</span></h2>
           <p class="lead">Built for the gym floor: big buttons, a rest timer that beeps, and nothing to load when the signal drops.</p>
         </div>
@@ -683,7 +684,6 @@
     <section id="tour">
       <div class="wrap">
         <div class="head reveal">
-          <span class="lab">In the gym</span>
           <h2>Built for <span class="g">the gym floor.</span></h2>
           <p class="lead">One screen does the work between sets. Here's what's on it.</p>
         </div>
@@ -706,7 +706,6 @@
     <section id="vs">
       <div class="wrap">
         <div class="head reveal">
-          <span class="lab">Compared</span>
           <h2>The good bits, <span class="g">without the bill.</span></h2>
           <p class="lead">What you'd want from a gym app, next to what the paid ones charge for it.</p>
         </div>
@@ -744,7 +743,6 @@
     <section id="start">
       <div class="wrap">
         <div class="head reveal">
-          <span class="lab">Get started</span>
           <h2>Pick how you <span class="g">use it.</span></h2>
           <p class="lead">Start on your phone in ten seconds. Switch to hosting your own whenever you like: your backup file comes with you.</p>
         </div>
@@ -790,7 +788,6 @@
     <section>
       <div class="wrap">
         <div class="head reveal">
-          <span class="lab">On an iPhone</span>
           <h2>Make it an app <span class="g">in three taps.</span></h2>
         </div>
         <div class="steps">
@@ -804,7 +801,6 @@
     <section id="faq">
       <div class="wrap">
         <div class="head reveal">
-          <span class="lab">Questions</span>
           <h2>Before you <span class="g">ask.</span></h2>
         </div>
         <div class="faq reveal">
@@ -822,7 +818,6 @@
     </section>
 
     <div class="wrap final reveal">
-      <span class="lab">Free · open source</span>
       <h2>Your gym app, <span class="g" style="white-space: nowrap">for £0.</span></h2>
       <div class="ctas">
         <a class="btn btn-primary" href="https://app.reprun.co.uk"><svg class="i" aria-hidden="true"><use href="#smartphone" /></svg>Open the app</a>
