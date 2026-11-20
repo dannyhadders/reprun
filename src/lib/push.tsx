@@ -1,5 +1,5 @@
 // Rest alerts: a buzz on the lock screen (and Watch) when rest is over, even with the app closed. Plus, unless switched
-// off, a streak nudge and a Sunday recap (lib/reminders.ts). The push Worker (push/, push.reprun.co.uk) gets only this
+// off, a streak nudge, a Sunday recap and a monthly report (lib/reminders.ts). The push Worker (push/, push.reprun.co.uk) gets only this
 // phone's push address and when each is due, never workout data; it sends an empty push and public/sw.js shows
 // "Rest over", or the reminder whose words this phone saved for that time. Every copy of RepRun uses it, opt-in.
 import { useEffect, useState } from 'react'
@@ -51,7 +51,7 @@ export async function scheduleReminders(notes: Note[]) {
   if (!pushSupported()) return
   const keep = notes.filter(n => reminderOn(n.kind))
   try { await (await caches.open(NOTES)).put('/notes', new Response(JSON.stringify(keep))) } catch { return }
-  for (const kind of ['nudge', 'recap'] as const) post(kind, keep.find(n => n.kind === kind)?.at ?? null)
+  for (const kind of ['nudge', 'recap', 'month'] as const) post(kind, keep.find(n => n.kind === kind)?.at ?? null)
 }
 /** A workout's started: no "time for a session?" in the middle of it. Worked out again once it's saved. */
 export const pauseReminders = () => void scheduleReminders([])
@@ -84,7 +84,7 @@ export function useRestAlerts() {
   const off = async () => {
     // Cancel what's waiting first, while there's still an address to cancel it for.
     const sub = await subscription()
-    if (sub) await Promise.all((['rest', 'nudge', 'recap'] as const).map(kind => fetch(PUSH_URL, { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint, at: null, kind }) }).catch(() => {})))
+    if (sub) await Promise.all((['rest', 'nudge', 'recap', 'month'] as const).map(kind => fetch(PUSH_URL, { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint, at: null, kind }) }).catch(() => {})))
     sent.clear()
     await sub?.unsubscribe()
     setState('off')
@@ -117,14 +117,14 @@ export function WhatsSent() {
       <p>* Your workouts never leave your phone, only the time of each alert.{' '}
         <button className="font-medium text-accent underline" aria-expanded={open} onClick={() => setOpen(!open)}>What's sent?</button>
       </p>
-      {open && <p className="mt-2">To buzz your phone later, RepRun's server holds your phone's notification address (a random code from Apple or Google, not your name or email) and the time each alert is due: when your rest ends, and the times of your streak nudge and Sunday recap. That's all it ever sees: no exercises, weights or history. The words in a nudge or recap are worked out and kept on your phone. Everything is deleted as soon as the alert is sent or cancelled. Turn it off any time in Settings.</p>}
+      {open && <p className="mt-2">To buzz your phone later, RepRun's server holds your phone's notification address (a random code from Apple or Google, not your name or email) and the time each alert is due: when your rest ends, and the times of your streak nudge, Sunday recap and monthly report. That's all it ever sees: no exercises, weights or history. The words in a nudge, recap or report are worked out and kept on your phone. Everything is deleted as soon as the alert is sent or cancelled. Turn it off any time in Settings.</p>}
     </div>
   )
 }
 
-/** The streak nudge and Sunday recap, a switch each: in the intro (folded away under "Choose") and in Settings. */
+/** The streak nudge, Sunday recap and monthly report, a switch each: in the intro (folded away under "Choose") and in Settings. */
 export function ReminderSwitches() {
-  const [on, setOn] = useState({ nudge: reminderOn('nudge'), recap: reminderOn('recap') })
+  const [on, setOn] = useState({ nudge: reminderOn('nudge'), recap: reminderOn('recap'), month: reminderOn('month') })
   const row = (kind: Note['kind'], title: string, sub: string) => (
     // The whole row is the switch: a big target, and its words are the switch's name.
     <button role="switch" aria-checked={on[kind]} className="relative flex w-full items-center gap-3 px-3.5 py-3 text-left"
@@ -140,6 +140,7 @@ export function ReminderSwitches() {
     <div className="w-full divide-y divide-line rounded-2xl border border-line bg-surface">
       {row('nudge', 'Streak nudge', '11am, only when your week still needs a session')}
       {row('recap', 'Sunday recap', 'Your week in numbers, 7pm')}
+      {row('month', 'Monthly report', 'Your month in numbers, the 1st at 10am')}
     </div>
   )
 }
@@ -149,7 +150,7 @@ export function RemindersChoice() {
   const [open, setOpen] = useState(false)
   return open ? <div className="mt-4 w-full"><ReminderSwitches /></div> : (
     <p className="mt-4 text-sm leading-relaxed text-muted">
-      Also a streak nudge when your week needs a session, and a Sunday recap.{' '}
+      Also a streak nudge when your week needs a session, a Sunday recap and a monthly report.{' '}
       <button className="font-medium text-accent" onClick={() => setOpen(true)}>Choose</button>
     </p>
   )

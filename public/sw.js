@@ -46,7 +46,7 @@ self.addEventListener('fetch', e => {
     : fetch(e.request).then(save).catch(() => caches.match(key, { ignoreVary: true }).then(hit => hit ?? Response.error())))
 })
 
-// Alerts (src/lib/push.tsx): every push arrives empty. A streak nudge or Sunday recap due about now has its words saved
+// Alerts (src/lib/push.tsx): every push arrives empty. A streak nudge, Sunday recap or monthly report due about now has its words saved
 // by the app in NOTES; anything else is a rest alert. Each reminder shows once, then it's taken out.
 const NOTES = 'reprun-notes'
 self.addEventListener('push', e => e.waitUntil((async () => {

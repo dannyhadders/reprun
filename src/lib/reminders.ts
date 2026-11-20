@@ -1,13 +1,14 @@
-// Streak nudges and the Sunday recap. Worked out on the phone from your data: the push server only gets the time, and
+// Streak nudges, the Sunday recap and the monthly report. Worked out on the phone from your data: the push server only gets the time, and
 // public/sw.js shows the words saved here (lib/push.tsx). Recomputed every time the data changes, so they stay true.
 import { overallLine } from './motivation.ts'
 import { weekCounts, weeklyTarget, weekStreak, type Model } from './stats.ts'
 import { localISO, num, plural } from './format.ts'
 
-export type Note = { kind: 'nudge' | 'recap'; at: number; title: string; body: string }
+export type Note = { kind: 'nudge' | 'recap' | 'month'; at: number; title: string; body: string }
 
 const NUDGE_HOUR = 11 // late morning: a day left for the session (say a Sunday morning one), and time for one today
 const RECAP_HOUR = 19 // Sunday evening
+const MONTH_HOUR = 10 // the 1st, mid-morning
 
 // One per week, in turn. Facts kept to things that are well established; the rest is plain encouragement.
 export const LINES = [
@@ -90,5 +91,33 @@ export function reminders(m: Model, next: string | null, now = new Date()): Note
           body: `Nothing logged this week. Monday's a fresh start.${nextUp} ${line}`,
         })
   }
+  out.push(monthly(m, now))
   return out
+}
+
+/** The 1st of next month at 10am (today's, if it's the 1st before 10): the month just gone in numbers, against the one before. */
+function monthly(m: Model, now: Date): Note {
+  const at = new Date(now.getFullYear(), now.getMonth(), 1, MONTH_HOUR)
+  if (at.getTime() <= now.getTime()) at.setMonth(at.getMonth() + 1)
+  const start = new Date(at.getFullYear(), at.getMonth() - 1, 1), before = new Date(at.getFullYear(), at.getMonth() - 2, 1)
+  const name = start.toLocaleDateString('en-GB', { month: 'long' })
+  const count = (from: Date, to: Date) => {
+    const inMonth = (d: string) => d >= localISO(from) && d < localISO(to)
+    const gym = m.sessions.filter(s => inMonth(s.date)), runs = m.runs.filter(r => inMonth(r.date))
+    return {
+      gym: gym.length, runs: runs.length,
+      km: runs.reduce((a, r) => a + (r.distance_m ?? 0), 0) / 1000,
+      pbs: gym.reduce((a, s) => a + (s.workout?.sets.filter(x => m.pbs.has(x.id)).length ?? 0), 0),
+    }
+  }
+  const now_ = count(start, at), was = count(before, start)
+  const total = now_.gym + now_.runs, prev = was.gym + was.runs
+  if (!total) return { kind: 'month', at: at.getTime(), title: `A quiet ${name}`, body: `Nothing logged in ${name}. New month, fresh start.` }
+  const parts = [
+    now_.gym && plural(now_.gym, 'gym session'),
+    now_.runs && `${plural(now_.runs, 'run')}${now_.km >= 0.1 ? ` (${num(now_.km, 1)} km)` : ''}`,
+    now_.pbs && `${plural(now_.pbs, 'PB')} 🏆`,
+  ].filter(Boolean)
+  const versus = !prev ? '' : total > prev ? ` Up from ${prev} the month before.` : total < prev ? ` ${prev} the month before.` : ' Same as the month before.'
+  return { kind: 'month', at: at.getTime(), title: `Your ${name}: ${plural(total, 'session')}`, body: `${parts.join(' · ')}.${versus}` }
 }

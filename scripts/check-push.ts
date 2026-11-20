@@ -13,6 +13,7 @@ assert.deepEqual(parse({ endpoint: apple, at: now - 1000 }, now), { endpoint: ap
 assert.deepEqual(parse({ endpoint: apple, at: now + 3 * 86_400_000, kind: 'recap' }, now), { endpoint: apple, at: now + 3 * 86_400_000, kind: 'recap' })
 assert.ok(parse({ endpoint: apple, at: now + KINDS.nudge, kind: 'nudge' }, now))
 assert.equal(parse({ endpoint: apple, at: now + KINDS.nudge + 1, kind: 'nudge' }, now), null)
+assert.ok(parse({ endpoint: apple, at: now + 31 * 86_400_000, kind: 'month' }, now), 'monthly report: a month ahead')
 assert.equal(parse({ endpoint: apple, at: now + 3 * 86_400_000 }, now), null)
 assert.equal(parse({ endpoint: apple, at: now, kind: 'spam' }, now), null)
 assert.equal(parse({ endpoint: apple, at: now, kind: 'toString' }, now), null)

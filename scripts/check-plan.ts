@@ -249,9 +249,11 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   console.log('save as routine self-check passed')
 }
 
-// Streak nudge and Sunday recap (src/lib/reminders.ts). Same data: weeks of 3, then 1 so far in the week of Mon 2026-11-16.
+// Streak nudge, Sunday recap and monthly report (src/lib/reminders.ts). Same data: weeks of 3, then 1 so far in the week of Mon 2026-11-16.
 {
-  const { reminders } = await import('../src/lib/reminders.ts')
+  const all = (await import('../src/lib/reminders.ts')).reminders
+  // The weekly ones; the monthly report is always there, checked on its own below.
+  const reminders = (...a: Parameters<typeof all>) => all(...a).filter(n => n.kind !== 'month')
   const withTarget = (weekly: number) => buildModel({ ...data, profile: { ...data.profile, weekly } })
   const at = (d: number, h: number) => new Date(2026, 10, d, h).getTime() // November 2026, local time
   const tue = new Date(2026, 10, 17, 10)
@@ -275,6 +277,14 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   eq([n0.title, n0.at], ['Time for a session?', at(21, 11)], 'nothing yet, target 1: Saturday 11am')
   assert(n0.body.startsWith('One more session this week hits your target of 1. Next up: Push day.'), n0.body)
   eq(r0.title, 'A quiet week', 'quiet week recap')
+
+  // Monthly report: October had 3 sessions, November 7 so far.
+  const month = (d: Date) => all(withTarget(3), null, d).find(n => n.kind === 'month')!
+  const nov = month(tue)
+  eq([nov.at, nov.title], [new Date(2026, 11, 1, 10).getTime(), 'Your November: 7 sessions'], 'monthly: 1st of next month, 10am')
+  assert(nov.body.startsWith('7 gym sessions') && nov.body.endsWith('Up from 3 the month before.'), nov.body)
+  eq(month(new Date(2026, 11, 1, 9)).title, 'Your November: 7 sessions', 'monthly: the 1st before 10am is still today\'s')
+  eq([month(new Date(2026, 11, 1, 11)).at, month(new Date(2026, 11, 1, 11)).title], [new Date(2027, 0, 1, 10).getTime(), 'A quiet December'], 'monthly: after 10am on the 1st, next month')
   console.log('reminders self-check passed')
 }
 

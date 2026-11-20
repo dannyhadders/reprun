@@ -1,8 +1,8 @@
 // The push Worker's pure parts, so scripts/check-push.ts can run them in Node.
 
 // What a push is for, and how far ahead it can be: rest alerts within minutes, streak nudges and the Sunday recap within
-// a week. Each phone has at most one waiting per kind. The push is empty either way: the phone knows what it's for.
-export const KINDS = { rest: 10 * 60_000, nudge: 8 * 86_400_000, recap: 8 * 86_400_000 }
+// a week, the monthly report within a month. Each phone has at most one waiting per kind. The push is empty either way: the phone knows what it's for.
+export const KINDS = { rest: 10 * 60_000, nudge: 8 * 86_400_000, recap: 8 * 86_400_000, month: 32 * 86_400_000 }
 export type Kind = keyof typeof KINDS
 export const MAX_AHEAD = KINDS.rest
 
