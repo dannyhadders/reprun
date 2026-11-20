@@ -75,7 +75,8 @@ const CHECKS = {
   'button-contrast': ['Main button: white text on the deeper indigo reads at 4.5:1 or better', async t => {
     await t.page.goto(BASE + '/')
     const [ratio, fg, bgc] = await t.page.getByRole('button', { name: 'Start fresh' }).evaluate(async el => {
-      await Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))) // mid-fade it reads 1.45:1
+      // mid-fade it reads 1.45:1. Only animations that end: the welcome screen's glow loops forever and would hang this.
+      await Promise.all(document.getAnimations().filter(a => a.effect?.getTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})))
       const s = getComputedStyle(el)
       const lum = c => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(v => v / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
       const [x, y] = [lum(s.color), lum(s.backgroundColor)].sort((a, b) => b - a)
