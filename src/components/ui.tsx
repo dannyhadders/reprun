@@ -323,3 +323,21 @@ export function Stepper({ value, placeholder, by, min, label, done = false, set 
     </div>
   )
 }
+
+/** Tap the ☰ of a list row: move it without dragging (VoiceOver can't drag, and a sweaty thumb would rather not).
+ *  Options that wouldn't move it are greyed out. */
+export function MoveSheet({ name, at, count, move, close }: { name: string; at: number; count: number; move: (to: number) => void; close: () => void }) {
+  const row = 'press relative flex h-12 w-full items-center rounded-xl border border-line bg-surface-2 px-4 text-left text-[15px] font-medium disabled:opacity-40'
+  const options: [string, number][] = [['Move up', at - 1], ['Move down', at + 1], ['Move to the top', 0], ['Move to the bottom', count - 1]]
+  return (
+    <Sheet close={close} label={`Move ${name}`}>
+      <h2 className="mb-3 truncate text-lg font-bold">Move {name}</h2>
+      <div className="grid gap-2">
+        {options.map(([label, to]) => {
+          const off = to === at || to < 0 || to >= count
+          return <button key={label} className={row} disabled={off} onClick={() => (move(to), close())}>{!off && <Tap />}{label}</button>
+        })}
+      </div>
+    </Sheet>
+  )
+}

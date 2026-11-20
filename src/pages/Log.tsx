@@ -11,7 +11,7 @@ import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
 import { ago, clock, date as fmtDate, EFFORT, effort, kg, plural, setText, shown, workoutText } from '../lib/format'
-import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sheet, Stepper, useShareCards } from '../components/ui'
+import { ask, Burst, COPY, Empty, Icon, LookStrip, MoveSheet, PbBadge, SHARE, shareCard, Sheet, Stepper, useShareCards } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
 import { PlateLine, PlateSheet } from '../components/Plates'
@@ -94,30 +94,39 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [dragging, setDragging] = useState<number | null>(null)
   const stopDrag = useRef<() => void>(null)
   useEffect(() => () => stopDrag.current?.(), []) // left the logger mid-drag: no listeners left behind
+  // A tap on the ☰ (no drag) opens Move up / down instead: the card only lifts once the finger has moved.
+  const lifted = useRef(false)
+  const [moveFor, setMoveFor] = useState<number | null>(null)
   const startDrag = (e: React.PointerEvent, from: number) => {
     e.stopPropagation()
     stopDrag.current?.()
     const id = e.pointerId
     let i = from
+    lifted.current = false
     // The ghost: a copy of the card as it looks now, fixed to the screen, moved with the finger. Hidden from screen
-    // readers and taps; the real card stays in the list as the drop spot.
+    // readers and taps; the real card stays in the list as the drop spot. Made on the first real move, so a tap doesn't flash it.
     const card = e.currentTarget.closest('section')!
     const box = card.getBoundingClientRect()
     const grab = e.clientY - box.top
-    const ghost = card.cloneNode(true) as HTMLElement
-    ghost.removeAttribute('data-ex')
-    ghost.dataset.ghost = ''
-    ghost.setAttribute('aria-hidden', 'true')
-    ghost.inert = true
-    ghost.classList.replace('border-line', 'border-accent')
-    ghost.className += ' pointer-events-none fixed z-50 m-0 scale-[1.03] shadow-2xl shadow-black/50'
-    Object.assign(ghost.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px` })
-    document.body.append(ghost)
-    setDragging(i)
-    setFx(null) // a finish burst is kept by position: it would replay on whichever card lands there
+    let ghost: HTMLElement | null = null
+    const lift = () => {
+      ghost = card.cloneNode(true) as HTMLElement
+      ghost.removeAttribute('data-ex')
+      ghost.dataset.ghost = ''
+      ghost.setAttribute('aria-hidden', 'true')
+      ghost.inert = true
+      ghost.classList.replace('border-line', 'border-accent')
+      ghost.className += ' pointer-events-none fixed z-50 m-0 scale-[1.03] shadow-2xl shadow-black/50'
+      Object.assign(ghost.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px` })
+      document.body.append(ghost)
+      lifted.current = true
+      setDragging(i)
+      setFx(null) // a finish burst is kept by position: it would replay on whichever card lands there
+    }
     const move = (ev: PointerEvent) => {
       if (ev.pointerId !== id) return
-      ghost.style.top = `${ev.clientY - grab}px`
+      if (!ghost) { if (Math.abs(ev.clientY - e.clientY) < 6) return; lift() }
+      ghost!.style.top = `${ev.clientY - grab}px`
       const mid = ev.clientY - grab + box.height / 2
       const cards = [...document.querySelectorAll('[data-ex]')].map(c => c.getBoundingClientRect())
       const prev = cards[i - 1], next = cards[i + 1]
@@ -133,7 +142,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       removeEventListener('pointermove', move)
       removeEventListener('pointerup', end)
       removeEventListener('pointercancel', end)
-      ghost.remove()
+      ghost?.remove()
+      if (lifted.current) setTimeout(() => (lifted.current = false)) // the click that ends a drag is swallowed; a later Enter isn't
       stopDrag.current = null
       setDragging(null)
     }
@@ -283,8 +293,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               {/* Folded and not finished: a ☰ to drag it up or down (arrow keys too). Finished ones stay put with their tick. */}
               {ex.collapsed && done < ex.sets.length && a.exercises.length > 1 && (
                 <button type="button" data-move={i} className="grid size-11 shrink-0 cursor-grab touch-none select-none place-items-center rounded-full text-muted active:cursor-grabbing active:text-ink"
-                  aria-label={`Move ${ex.name}: drag, or use the arrow keys`}
-                  onClick={e => e.stopPropagation()} onPointerDown={e => startDrag(e, i)}
+                  aria-label={`Move ${ex.name}: tap for options, drag, or use the arrow keys`}
+                  onClick={e => (e.stopPropagation(), lifted.current ? (lifted.current = false) : setMoveFor(i))} onPointerDown={e => startDrag(e, i)}
                   onKeyDown={e => {
                     const to = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : null
                     if (to === null || !a.exercises[to]) return
@@ -518,6 +528,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           </Sheet>
         )
       })()}
+      {moveFor !== null && a.exercises[moveFor] && <MoveSheet name={a.exercises[moveFor].name} at={moveFor} count={a.exercises.length} close={() => setMoveFor(null)}
+        move={to => (setFx(null), update(x => moveExercise(x, moveFor, to)), requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-move="${to}"]`)?.focus()))} />}
       {restFor !== null && a.exercises[restFor] && <RestPicker ex={a.exercises[restFor]} close={() => setRestFor(null)}
         pick={sec => (rememberRest(a.exercises[restFor].name, sec), update(x => void (x.exercises[restFor] && (x.exercises[restFor].restS = sec))), setRestFor(null))} />}
       {swapFor !== null && a.exercises[swapFor] && <SwapPicker current={a.exercises[swapFor]} close={() => setSwapFor(null)}

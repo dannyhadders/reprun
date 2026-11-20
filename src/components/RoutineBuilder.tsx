@@ -12,7 +12,7 @@ import { Tap } from '../lib/haptic'
 import { matchExercise } from '../lib/session'
 import { MUSCLE_ICON } from '../lib/muscleIcons'
 import { lastSets, MUSCLES } from '../lib/stats'
-import { Icon, Sheet, Stepper } from './ui'
+import { Icon, MoveSheet, Sheet, Stepper } from './ui'
 
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
 const restText = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`)
@@ -85,28 +85,36 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
   const [dragging, setDragging] = useState<number | null>(null)
   const stopDrag = useRef<() => void>(null)
   useEffect(() => () => stopDrag.current?.(), [])
+  const lifted = useRef(false) // a tap (no drag) opens Move up / down instead
+  const [moveFor, setMoveFor] = useState<number | null>(null)
   const startDrag = (e: React.PointerEvent, from: number) => {
     e.stopPropagation()
     stopDrag.current?.()
     const id = e.pointerId
     let i = from
+    lifted.current = false
     const card = e.currentTarget.closest('[data-sort]') as HTMLElement
     const box = card.getBoundingClientRect()
     const grab = e.clientY - box.top
-    const ghost = card.cloneNode(true) as HTMLElement
-    ghost.querySelectorAll('select').forEach((x, k) => (x.value = card.querySelectorAll('select')[k].value)) // copies attributes, not choices
-    ghost.removeAttribute('data-sort')
-    ghost.dataset.ghost = ''
-    ghost.setAttribute('aria-hidden', 'true')
-    ghost.inert = true
-    ghost.classList.remove('border-t', 'border-line', 'first:border-t-0')
-    ghost.className += ' pointer-events-none fixed z-50 m-0 scale-[1.03] rounded-xl border border-accent bg-surface shadow-2xl shadow-black/50'
-    Object.assign(ghost.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px` })
-    document.body.append(ghost)
-    setDragging(i)
+    let ghost: HTMLElement | null = null
+    const lift = () => { // on the first real move, so a tap doesn't flash it
+      ghost = card.cloneNode(true) as HTMLElement
+      ghost.querySelectorAll('select').forEach((x, k) => (x.value = card.querySelectorAll('select')[k].value)) // copies attributes, not choices
+      ghost.removeAttribute('data-sort')
+      ghost.dataset.ghost = ''
+      ghost.setAttribute('aria-hidden', 'true')
+      ghost.inert = true
+      ghost.classList.remove('border-t', 'border-line', 'first:border-t-0')
+      ghost.className += ' pointer-events-none fixed z-50 m-0 scale-[1.03] rounded-xl border border-accent bg-surface shadow-2xl shadow-black/50'
+      Object.assign(ghost.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px` })
+      document.body.append(ghost)
+      lifted.current = true
+      setDragging(i)
+    }
     const onMove = (ev: PointerEvent) => {
       if (ev.pointerId !== id) return
-      ghost.style.top = `${ev.clientY - grab}px`
+      if (!ghost) { if (Math.abs(ev.clientY - e.clientY) < 6) return; lift() }
+      ghost!.style.top = `${ev.clientY - grab}px`
       const mid = ev.clientY - grab + box.height / 2
       const cards = [...(list.current?.querySelectorAll('[data-sort]') ?? [])].map(c => c.getBoundingClientRect())
       const prev = cards[i - 1], next = cards[i + 1]
@@ -121,7 +129,8 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
       removeEventListener('pointermove', onMove)
       removeEventListener('pointerup', end)
       removeEventListener('pointercancel', end)
-      ghost.remove()
+      ghost?.remove()
+      if (lifted.current) setTimeout(() => (lifted.current = false)) // the click that ends a drag is swallowed; a later Enter isn't
       stopDrag.current = null
       setDragging(null)
     }
@@ -186,7 +195,8 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                     <div className={`${COLS} px-1 py-1`}>
                       {rows.length > 1 ? (
                         <button type="button" className="grid size-11 cursor-grab touch-none select-none place-items-center rounded-full text-muted active:cursor-grabbing active:text-ink"
-                          aria-label={`Move ${label}: drag, or use the arrow keys`} onPointerDown={e => startDrag(e, i)}
+                          aria-label={`Move ${label}: tap for options, drag, or use the arrow keys`} onPointerDown={e => startDrag(e, i)}
+                          onClick={() => (lifted.current ? (lifted.current = false) : setMoveFor(i))}
                           onKeyDown={e => {
                             const to = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : null
                             if (to === null || !rows[to]) return
@@ -311,6 +321,8 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
         </button>
       </div>
 
+      {moveFor !== null && rows[moveFor] && <MoveSheet name={(rows.filter(x => x.name === rows[moveFor].name).length > 1 ? `${rows[moveFor].name} (${moveFor + 1})` : rows[moveFor].name) || 'this exercise'} at={moveFor} count={rows.length} close={() => setMoveFor(null)}
+        move={to => (move(moveFor, to), requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-sort="${to}"] button`)?.focus()))} />}
       {naming && (
         <Sheet close={() => setNaming(false)} label="Name this routine">
           <h2 className="text-lg font-bold">{routine ? 'Save changes' : 'Name this routine'}</h2>
