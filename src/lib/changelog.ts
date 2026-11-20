@@ -5,6 +5,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
     date: '2026-11-20',
     changes: [
       'The website has a Questions section: is it free, where your workouts are kept, no signal, the App Store, Apple Watch and more, each a tap to open.',
+      'Buttons are a slightly deeper indigo, so their white writing is easier to read, especially outdoors. The same goes for the + button, selected tabs and the red bin when you swipe a set.',
       'A monthly report: on the 1st at 10am, a notification with last month in numbers (gym sessions, runs, km, PBs) and how it compares with the month before. It comes with rest alerts; switch it off in Settings → Notifications.',
       'A tidier Settings: one short list, like the iPhone\'s own Settings. Each row says where things stand (Backup "2 days ago", Strava "Connected") and opens its own page. Check for updates is right in the list.',
       'Settings → About has a Check for updates button: it says you\'re on the latest, or fetches the new version and updates there and then.',

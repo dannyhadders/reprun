@@ -115,7 +115,7 @@ What else a home-screen web app can do on iPhone, picked 2026-11-17.
 
 From running the Blueprint checklist (danielhadaway.dev/blueprint) against RepRun. Phone comes first; these wait.
 
-- [ ] **Button text contrast**: `.btn` is white on indigo, 2.98:1 (needs 4.5:1). Use `text-bg` (dark), as the website does (6.56:1). Found building the brand book.
+- [x] **Button text contrast**: `.btn` was white on indigo, 2.98:1 (needs 4.5:1). Kept white text on a deeper indigo (`accent-deep`, 4.88:1), with the same for the gradient and delete fills. Found building the brand book.
 - [ ] **Keyboard focus rings**: `.input` sets `outline-none`; give buttons, tabs and inputs a `focus-visible` ring that shows on every surface.
 - [ ] **Hover states**: cards and list rows that open something get a hover border/background so they read as clickable on a laptop.
 

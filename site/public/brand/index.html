@@ -20,6 +20,7 @@
     :root {
       --bg: #0a0c11; --surface: #12151d; --surface-2: #1a1f2b; --line: #242a38; --line-strong: #323a4d;
       --ink: #e8eaf0; --muted: #8b93a7; --faint: #5d657a; --accent: #818cf8; --accent-2: #22d3ee;
+      --accent-deep: #5b5ef0; --accent-2-deep: #0e7490; --bad-deep: #dc2626;
       --good: #34d399; --bad: #f87171; --pb: #fbbf24; --strava: #fc4c02;
       --grad: linear-gradient(90deg, var(--accent), var(--accent-2));
       --ease: cubic-bezier(0.2, 0.9, 0.3, 1);
@@ -98,8 +99,7 @@
     /* 04 buttons: the app's (src/index.css) and the website's (site/public/index.html), rebuilt in plain CSS. */
     .row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
     .a-btn, .a-ghost, .a-danger { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; padding: 8px 16px; font: 600 14px "Inter", sans-serif; cursor: pointer; transition: transform 0.15s, filter 0.15s, background 0.15s; }
-    .a-btn { background: var(--accent); color: #fff; border: 0; }
-    .a-btn.fixed { color: var(--bg); }
+    .a-btn { background: var(--accent-deep); color: #fff; border: 0; }
     .a-btn:hover { filter: brightness(1.1); }
     .a-ghost { background: none; color: var(--ink); border: 1px solid var(--line); font-weight: 500; padding: 8px 12px; }
     .a-ghost:hover { background: var(--surface-2); }
@@ -235,7 +235,7 @@
         <h2>Near-black, two blues, and a <span class="g">gradient</span>.</h2>
         <p>One dark theme, always on. Indigo to cyan is the brand; green, red and gold only ever mean done, wrong and personal best. Tap a swatch to copy it.</p>
         <p class="rule">Every colour is a token. No raw hex in a component.</p>
-        <p class="rule">Text on indigo or cyan is <code>bg</code> (#0a0c11), not white: white on indigo is 2.98:1 and fails. The app's main button still uses white; it's on the TODO.</p>
+        <p class="rule">White text never sits on <code>accent</code>, <code>accent-2</code> or <code>bad</code> (2.98, 1.81 and 2.77:1: all fail). A filled button or badge with white on it uses the <code>-deep</code> shade instead: <code>accent-deep</code> 4.88:1, <code>accent-2-deep</code> 5.36:1 (the gradient end, as on the Start workout button), <code>bad-deep</code> 4.83:1. Indigo text, rings, borders and charts stay on <code>accent</code>, which reads better on the page.</p>
         <p class="rule"><code>faint</code> is for large or throwaway text only (3.36:1).</p>
       </div>
       <div class="grid" id="swatches" style="grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));"></div>
@@ -306,7 +306,6 @@
         <div class="demo"><div class="cap"><b>app</b><span>src/index.css</span></div>
           <div class="row">
             <button class="a-btn">Finish</button>
-            <button class="a-btn fixed">Finish (fixed)</button>
             <button class="a-ghost">Try again</button>
             <button class="a-danger">Delete</button>
           </div>
@@ -503,8 +502,9 @@
       ['bg', '#0a0c11', 'page'], ['surface', '#12151d', 'cards'], ['surface-2', '#1a1f2b', 'inputs, pressed rows, tabs'],
       ['line', '#242a38', 'hairline borders'], ['line-strong', '#323a4d', 'dividers (website)'],
       ['ink', '#e8eaf0', 'text', 1], ['muted', '#8b93a7', 'secondary text', 1], ['faint', '#5d657a', 'large captions only (website)', 1],
-      ['accent', '#818cf8', 'indigo: brand, buttons, links', 1], ['accent-2', '#22d3ee', 'cyan: gradient end, labels', 1],
-      ['good', '#34d399', 'done, ticked, going up', 1], ['bad', '#f87171', 'delete, errors, going down', 1],
+      ['accent', '#818cf8', 'indigo: brand, links, rings', 1], ['accent-2', '#22d3ee', 'cyan: gradient end, labels', 1],
+      ['accent-deep', '#5b5ef0', 'fills behind white text: buttons, selected tab (4.88:1)'], ['accent-2-deep', '#0e7490', 'gradient end behind white (5.36:1)'],
+      ['good', '#34d399', 'done, ticked, going up', 1], ['bad', '#f87171', 'delete, errors, going down', 1], ['bad-deep', '#dc2626', 'delete fills behind white (4.83:1)'],
       ['pb', '#fbbf24', 'personal bests only', 1], ['strava', '#fc4c02', 'Strava data only', 1],
     ]
     document.getElementById('swatches').innerHTML = PALETTE.map(([t, v, use, text]) => {

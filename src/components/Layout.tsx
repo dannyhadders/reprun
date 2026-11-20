@@ -145,7 +145,7 @@ export function Layout() {
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
         {tab(NAV[0])}
         {tab(NAV[1])}
-        <button onClick={() => go('/log')} aria-label="Start workout" className="press relative -mt-5 grid h-14 w-14 place-self-center place-items-center rounded-full border-4 border-bg text-white shadow-lg shadow-accent/40 grad-bg">
+        <button onClick={() => go('/log')} aria-label="Start workout" className="press relative -mt-5 grid h-14 w-14 place-self-center place-items-center rounded-full border-4 border-bg text-white shadow-lg shadow-accent/40 bg-linear-135 from-accent-deep to-accent-2-deep">
           <Tap />
           <Icon d={I.plus} className="h-6 w-6" />
         </button>

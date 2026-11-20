@@ -9,9 +9,12 @@
   --color-muted: #8b93a7;
   --color-accent: #818cf8;
   --color-accent-2: #22d3ee;
+  --color-accent-deep: #5b5ef0; /* fills behind white text: white on accent is 2.98:1, on this 4.88:1 */
+  --color-accent-2-deep: #0e7490; /* gradient end behind white: 5.36:1 */
   --color-strava: #fc4c02;
   --color-good: #34d399;
   --color-bad: #f87171;
+  --color-bad-deep: #dc2626; /* fills behind white: 4.83:1 */
   --color-pb: #fbbf24;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --animate-page-in: page-in 0.18s ease-out;
@@ -106,7 +109,7 @@ body { @apply bg-bg text-ink antialiased; }
 @utility press { @apply transition active:scale-[0.96] disabled:active:scale-100; }
 
 @layer components {
-  .btn { @apply press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-50; }
+  .btn { @apply press inline-flex items-center justify-center gap-2 rounded-xl bg-accent-deep px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-50; }
   .btn-ghost { @apply press inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-medium text-ink hover:bg-surface-2 active:bg-surface-2 disabled:opacity-50; }
   .btn-danger { @apply press inline-flex items-center justify-center gap-2 rounded-xl border border-bad/40 px-3 py-2 text-sm font-medium text-bad hover:bg-bad/10 active:bg-bad/10 disabled:opacity-50; }
   .input { @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-accent; }

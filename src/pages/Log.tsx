@@ -636,7 +636,7 @@ function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: Rea
     // Clipped on the left only (where the row slides out), so the ✓'s pop and 🏆 aren't cut off.
     <div ref={wrap} className={`relative [clip-path:inset(-8px_-8px_-8px_0)] ${cells}`}>
       <button type="button" aria-label="Delete set" tabIndex={open ? 0 : -1} aria-hidden={!open}
-        className="press absolute inset-y-0 right-0 grid place-items-center rounded-xl bg-bad text-white" style={{ width: BIN_W }}
+        className="press absolute inset-y-0 right-0 grid place-items-center rounded-xl bg-bad-deep text-white" style={{ width: BIN_W }}
         onClick={() => {
           setOpen(false)
           onDelete()

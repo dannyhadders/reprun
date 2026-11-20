@@ -72,6 +72,18 @@ const CHECKS = {
     await t.shot('Empty Home')
   }],
 
+  'button-contrast': ['Main button: white text on the deeper indigo reads at 4.5:1 or better', async t => {
+    await t.page.goto(BASE + '/')
+    const [ratio, fg, bgc] = await t.page.getByRole('button', { name: 'Start fresh' }).evaluate(async el => {
+      await Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))) // mid-fade it reads 1.45:1
+      const s = getComputedStyle(el)
+      const lum = c => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(v => v / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+      const [x, y] = [lum(s.color), lum(s.backgroundColor)].sort((a, b) => b - a)
+      return [(x + 0.05) / (y + 0.05), s.color, s.backgroundColor]
+    })
+    await t.expect(null, `Start fresh contrast is ${ratio.toFixed(2)}:1 (${fg} on ${bgc})`, ratio >= 4.5)
+  }],
+
   'update-check': ['Self-update: index.html carries the build for the open app to compare, and a plain open shows no update pop-up', async t => {
     await begin(t, false)
     await t.expect(null, 'index.html says which build it is', await t.page.locator('meta[name="reprun-build"]').count() === 1)

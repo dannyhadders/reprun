@@ -177,7 +177,7 @@ export function Onboarding({ mode, stravaConfigured, install, onData, prompt, on
                   <Tap />
                   <span className="text-2xl">{g.emoji}</span>
                   <span className="font-semibold leading-tight">{g.label}</span>
-                  {on && <span className="absolute right-3 top-3 grid size-6 place-items-center rounded-full bg-accent text-white"><Icon d="M20 6 9 17l-5-5" className="h-4 w-4" /></span>}
+                  {on && <span className="absolute right-3 top-3 grid size-6 place-items-center rounded-full bg-accent-deep text-white"><Icon d="M20 6 9 17l-5-5" className="h-4 w-4" /></span>}
                 </button>
               )
             })}
@@ -306,7 +306,7 @@ function InstallGuide({ clip, active }: { clip: keyof typeof GUIDE; active: bool
         </div>
         {started
           ? <button className="press absolute bottom-2 right-2 flex items-center gap-1 rounded-full border border-white/15 bg-bg/75 px-2.5 py-1 text-[11px] font-semibold backdrop-blur" onClick={replay}><Icon d={REPLAY} className="h-3 w-3" />Replay</button>
-          : <button className="press absolute inset-0 grid place-items-center bg-black/30" onClick={replay} aria-label="Play the how-to"><span className="grid size-12 place-items-center rounded-full bg-accent text-white"><Icon d={PLAY} className="h-5 w-5" /></span></button>}
+          : <button className="press absolute inset-0 grid place-items-center bg-black/30" onClick={replay} aria-label="Play the how-to"><span className="grid size-12 place-items-center rounded-full bg-accent-deep text-white"><Icon d={PLAY} className="h-5 w-5" /></span></button>}
       </div>
       <ol className="flex flex-1 flex-col justify-center gap-2">
         {GUIDE_STEPS[clip].map(([icon, text], i) => {
@@ -359,7 +359,7 @@ function Clip({ name, active, label, className = '' }: { name: string; active: b
   return (
     <div className={`relative aspect-[540/1168] shrink-0 overflow-hidden rounded-[1.4rem] border border-line bg-bg shadow-[0_0_50px_-12px_rgba(129,140,248,0.5)] ${className}`}>
       <video ref={video} src={`/guide/intro-${name}.mp4`} poster={`/guide/intro-${name}.jpg`} muted loop playsInline preload="none" className="size-full object-cover" aria-label={label} />
-      {!started && <button className="press absolute inset-0 grid place-items-center bg-black/30" onClick={() => setStarted(true)} aria-label={`Play: ${label}`}><span className="grid size-11 place-items-center rounded-full bg-accent text-white"><Icon d={PLAY} className="h-5 w-5" /></span></button>}
+      {!started && <button className="press absolute inset-0 grid place-items-center bg-black/30" onClick={() => setStarted(true)} aria-label={`Play: ${label}`}><span className="grid size-11 place-items-center rounded-full bg-accent-deep text-white"><Icon d={PLAY} className="h-5 w-5" /></span></button>}
     </div>
   )
 }

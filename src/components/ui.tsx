@@ -67,7 +67,7 @@ export function Tabs<T extends string>({ value, options, onChange, size = 'md', 
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
-          className={`press whitespace-nowrap rounded-lg font-medium ${full ? 'flex-1' : ''} ${size === 'sm' ? 'min-h-9 px-3 text-xs' : 'min-h-11 px-3.5 text-sm'} ${o.value === value ? 'bg-accent text-white shadow' : 'text-muted hover:text-ink'}`}
+          className={`press whitespace-nowrap rounded-lg font-medium ${full ? 'flex-1' : ''} ${size === 'sm' ? 'min-h-9 px-3 text-xs' : 'min-h-11 px-3.5 text-sm'} ${o.value === value ? 'bg-accent-deep text-white shadow' : 'text-muted hover:text-ink'}`}
         >
           {o.label}
         </button>
