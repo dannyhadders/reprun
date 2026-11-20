@@ -10,7 +10,7 @@ import { pauseReminders, scheduleRest } from '../lib/push'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { ago, clock, EFFORT, effort, kg, plural, setText, shown, workoutText } from '../lib/format'
+import { ago, clock, date as fmtDate, EFFORT, effort, kg, plural, setText, shown, workoutText } from '../lib/format'
 import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sheet, Stepper, useShareCards } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
@@ -19,7 +19,7 @@ import { barFor } from '../../shared/plates'
 import { pbShow } from '../lib/pbMoment'
 import { DONE_WORDS, workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, rememberUnit, sendUnits, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { beep, isTimed, lastNote, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, rememberUnit, sendUnits, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -57,6 +57,7 @@ export default function Log() {
 function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => void; finish: () => void }) {
   const { data, model, reload } = useData()
   const now = useNow()
+  const note = useMemo(() => lastNote(data.workouts, a.title), [data.workouts, a.title])
   const [name, setName] = useState('')
   const [muscle, setMuscle] = useState<Muscle>('other')
   const update = (f: (x: Active) => void) => {
@@ -213,6 +214,18 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         </button>
         <button className="relative btn" onClick={finish}><Tap />Finish</button>
       </header>
+
+      {/* What you wrote at the end of this routine last time ("go lighter on incline"), until you hide it. */}
+      {!a.hideLastNote && note && (
+        <div className="flex items-start gap-3 rounded-2xl border border-line bg-surface-2 py-3 pl-3.5 pr-1">
+          <Icon d={PENCIL} className="mt-0.5 size-[18px] shrink-0 text-accent" />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-muted">Last time you wrote · {fmtDate(note.date, { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+            <p className="mt-0.5 whitespace-pre-line break-words text-[15px] leading-snug">{note.notes}</p>
+          </div>
+          <button className="icon-btn relative -mt-2.5" aria-label="Hide last time's note" onClick={() => update(x => void (x.hideLastNote = true))}><Tap />✕</button>
+        </div>
+      )}
 
       {a.exercises.map((ex, i) => {
         const prev = lastSets(model, ex.name)
@@ -530,6 +543,7 @@ const HISTORY = 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v
 const SHUFFLE = 'M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22M18 2l4 4-4 4M2 6h1.9c1.5 0 2.9.9 3.6 2.2M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8M18 14l4 4-4 4' // Lucide shuffle
 const TIMER = 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z' // Lucide timer
 const PLUS = 'M12 5v14M5 12h14'
+const PENCIL = 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z' // Lucide pencil-line
 const GRIP = 'M4 6h16M4 12h16M4 18h16' // Lucide menu: the ☰ to drag an exercise
 const SEARCH = 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5'
 

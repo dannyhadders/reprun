@@ -406,6 +406,25 @@ const CHECKS = {
     await t.expect(t.page.getByRole('button', { name: /can't be loaded exactly: 100 or 102\.5/ }), '101 kg on a 15 kg bar: nearest 100 or 102.5')
   }],
 
+  'last-note': ['"Last time you wrote": a workout note shows at the top next time, and hides with ✕', async t => {
+    await begin(t, true)
+    const routine = await t.page.locator('main h2').first().innerText()
+    await t.page.getByRole('button', { name: 'Start', exact: true }).click()
+    await t.page.locator('button[aria-expanded]').first().click()
+    await t.page.getByRole('button', { name: 'Set 1 done' }).first().click()
+    await t.page.getByRole('textbox', { name: 'Workout notes' }).fill('Go lighter on incline')
+    await finish(t)
+    await pbThrough(t)
+    await t.page.getByRole('button', { name: 'Done' }).click()
+    await t.page.goto(BASE + '/')
+    await planner(t)
+    await t.page.getByRole('button', { name: /^Start an empty workout/ }).click()
+    await t.page.getByRole('textbox', { name: 'Workout name' }).fill(routine)
+    await t.expect(t.page.getByText('Go lighter on incline'), `Starting ${routine} again shows last time's note`)
+    await t.shot('Last time you wrote')
+    await t.page.getByRole('button', { name: "Hide last time's note" }).click()
+    await t.expect(t.page.getByText('Go lighter on incline'), '✕ hides it', 0)
+  }],
   'plan-lb': ['A pasted plan in lb: "@ 220lb" comes in as 99.8 kg', async t => {
     await begin(t, false)
     await planner(t)

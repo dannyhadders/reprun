@@ -23,7 +23,7 @@ export type LogExercise = {
   rpe?: number // how hard it felt, rated once it's done; saved on each of its sets
   lb?: boolean // its weights are typed in lb (converted to kg when saved); set from your choice when it's added
 }
-export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null; hold?: Hold | null } // restFrom: when the rest began, for the timer bar
+export type Active = { clientId: string; startedAt: number; title: string; notes?: string; hideLastNote?: true; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null; hold?: Hold | null } // restFrom: when the rest began, for the timer bar
 /** A timed set's countdown: exercise i, set j, ends at endsAt; it ticks the set when it runs out. */
 export type Hold = { i: number; j: number; endsAt: number; from: number }
 
@@ -156,6 +156,15 @@ export function sendUnits(profile: Profile): Promise<boolean> {
 /** The bar an exercise is on, for the plate calculator: your pick (per phone, like rest), else the usual one for that lift. */
 export const barOf = (name: string) => read<Record<string, string>>(KEY.bars, {})[name] ?? barFor(name)
 export const rememberBar = (name: string, id: string) => write(KEY.bars, { ...read<Record<string, string>>(KEY.bars, {}), [name]: id })
+
+/** The note you wrote the last time you did a workout with this name (a routine's), for the top of the logger. */
+export function lastNote(workouts: Pick<Workout, 'id' | 'date' | 'title' | 'notes'>[], title: string) {
+  const t = title.trim().toLowerCase()
+  if (!t) return null
+  const same = workouts.filter(w => w.title?.trim().toLowerCase() === t)
+  const last = same.reduce<(typeof same)[number] | null>((b, w) => (!b || w.date > b.date || (w.date === b.date && w.id > b.id) ? w : b), null)
+  return last?.notes?.trim() ? { date: last.date, notes: last.notes.trim() } : null // last time wrote nothing: nothing, not an older one
+}
 
 export const rememberRest =(name: string, s: number) => write(KEY.rest, { ...read<Record<string, number>>(KEY.rest, {}), [name]: s })
 

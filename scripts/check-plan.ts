@@ -337,6 +337,15 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   console.log('units self-check passed')
 }
 
+// "Last time you wrote" (session.ts lastNote): the note from the last workout with this routine's name.
+{
+  const { lastNote } = await import(sessionPath)
+  const ws = [{ id: 1, date: '2026-11-10', title: 'Push day', notes: 'old' }, { id: 2, date: '2026-11-17', title: 'push day ', notes: ' Shoulder tight ' }, { id: 3, date: '2026-11-18', title: 'Legs', notes: 'x' }]
+  eq(lastNote(ws, 'Push day'), { date: '2026-11-17', notes: 'Shoulder tight' }, 'last note: newest same-name workout, trimmed, any case')
+  eq([lastNote([...ws, { id: 4, date: '2026-11-19', title: 'Push day', notes: null }], 'Push day'), lastNote(ws, ''), lastNote(ws, 'Arms')], [null, null, null], 'last note: last time wrote nothing, no name, or never done: none')
+  console.log('last note self-check passed')
+}
+
 // Plate calculator (shared/plates.ts): fewest plates per side for a total that includes the bar.
 {
   const { load, barFor, PLATES } = await import('../shared/plates.ts')
