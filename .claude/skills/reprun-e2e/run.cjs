@@ -530,6 +530,35 @@ const CHECKS = {
     await t.expect(t.page.getByText('77.4 kg').first(), 'Home shows 77.4 kg')
   }],
 
+  'lb-everywhere': ['lb as the default: body weight on Home and in Settings, and a past workout added in lb', async t => {
+    await begin(t, true)
+    await settings(t, 'Profile')
+    const kgVal = +(await t.page.getByRole('spinbutton', { name: 'Body weight (kg)' }).inputValue())
+    await t.page.getByRole('group', { name: 'Weights in' }).getByRole('button', { name: 'lb' }).click()
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(t.page.getByText('Saved', { exact: true }), 'lb saved as the default')
+    const lbBox = t.page.getByRole('spinbutton', { name: 'Body weight (lb)' })
+    const want = String(Math.round(kgVal * 2.20462 * 10) / 10)
+    await t.expect(null, `Profile's body weight converts: ${kgVal} kg shows as ${want} lb`, (await lbBox.inputValue()) === want)
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click() // saving again must not shrink it
+    await t.page.reload()
+    await t.expect(null, 'Saved twice, it is still the same weight', (await t.page.getByRole('spinbutton', { name: 'Body weight (lb)' }).inputValue()) === want)
+    await t.page.goto(BASE + '/')
+    await t.page.getByRole('spinbutton', { name: 'Body weight in lb' }).fill('180')
+    await t.page.getByRole('button', { name: 'Log', exact: true }).click()
+    await t.expect(t.page.getByText('180 lb').first(), 'Home shows 180 lb')
+    if (t.device === 'iphone') await t.page.getByRole('button', { name: 'More', exact: true }).click() // on a phone it's in the More sheet
+    await t.page.getByRole('button', { name: 'Log a workout' }).filter({ visible: true }).first().click()
+    const form = t.page.locator('dialog[open]') // the sidebar has its own copy for desktop
+    await form.getByRole('combobox', { name: 'Exercise' }).or(form.getByRole('textbox', { name: 'Exercise' })).first().fill('Squat')
+    await form.getByRole('spinbutton', { name: 'Reps' }).fill('5')
+    await form.getByRole('spinbutton', { name: 'Weight in lb' }).fill('225')
+    await t.shot('Add past workout in lb')
+    await form.getByRole('button', { name: 'Save', exact: true }).click()
+    await tab(t, '/workouts')
+    await t.expect(t.page.getByText(/225 lb/).first(), 'Workouts shows 225 lb, not 225 kg')
+  }],
+
   'backup-restore': ['Save a backup, start over, restore it: everything comes back', async t => {
     await begin(t, true)
     await tab(t, '/workouts')

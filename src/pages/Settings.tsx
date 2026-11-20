@@ -15,7 +15,7 @@ import { pushSupported, ReminderSwitches, RestAlertsButton, useRestAlerts, Whats
 import { CHANGELOG } from '../lib/changelog'
 import { checkForUpdate } from '../components/Update'
 import { Tap } from '../lib/haptic'
-import { ago, date as fmtDate, dropPendingUnit, kg, localISO, plural, shortDate } from '../lib/format'
+import { ago, date as fmtDate, dropPendingUnit, kg, localISO, plural, shortDate, shown, toKg, unitOf } from '../lib/format'
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 
@@ -183,9 +183,15 @@ function ProfileCard() {
   const { data, reload } = useData()
   const [p, setP] = useState<Profile>(data.profile)
   const [saved, setSaved] = useState(false)
+  // Body weight typed as text in the unit it was shown in (converting on every key would eat a half-typed "80."), and
+  // that unit kept with it: switching Weights in and saving mustn't relabel "80" (kg) as 80 lb. Shown again after a save.
+  const [bw, setBw] = useState(() => ({ u: unitOf(), v: shown(data.profile.weight_kg, unitOf()) }))
   const save = async () => {
-    await api('PUT', 'profile', p)
+    const weight_kg = bw.v.trim() && +bw.v > 0 ? toKg(+bw.v, bw.u) : null
+    await api('PUT', 'profile', { ...p, weight_kg })
     await reload()
+    const u = p.unit ?? 'kg'
+    setBw({ u, v: shown(weight_kg, u) }) // in the unit just saved
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -206,7 +212,7 @@ function ProfileCard() {
           </div>
         </div>
         <label className="text-sm text-muted">Age<input className="input mt-1" type="number" min="10" max="100" value={p.age ?? ''} onChange={e => setP({ ...p, age: e.target.value ? +e.target.value : null })} /></label>
-        <label className="text-sm text-muted">Body weight (kg)<input className="input mt-1" type="number" step="0.1" min="20" max="300" value={p.weight_kg ?? ''} onChange={e => setP({ ...p, weight_kg: e.target.value ? +e.target.value : null })} /></label>
+        <label className="text-sm text-muted">Body weight ({bw.u})<input className="input mt-1" type="number" step="0.1" min="0" inputMode="decimal" value={bw.v} onChange={e => setBw({ ...bw, v: e.target.value })} /></label>
         <label className="text-sm text-muted">Compare with
           <select className="input mt-1" value={p.sex} onChange={e => setP({ ...p, sex: e.target.value as Profile['sex'] })}>
             <option value="male">Men</option>

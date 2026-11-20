@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
 import { Tap } from '../lib/haptic'
 import { resolveExercise } from '../../shared/catalogue.ts'
+import { matchExercise } from '../../shared/exercises.ts'
 import type { ImportPayload } from '../../shared/types.ts'
 import { api, useData } from '../lib/data'
-import { today } from '../lib/format'
+import { today, toKg, unitOf } from '../lib/format'
 import { Tabs } from './ui'
 
 type Row = { exercise: string; reps: string; weight: string }
@@ -13,6 +14,8 @@ const toSeconds = (t: string) => (t.includes(':') ? t.split(':').reduce((a, b) =
 
 export function AddWorkout({ className = '' }: { className?: string }) {
   const { data, reload } = useData()
+  // A row's unit, found the way the logger finds the exercise: your own names and renames first, then the catalogue.
+  const unitFor = (name: string) => unitOf(matchExercise(name, data.exercises, data.aliases)?.name ?? resolveExercise(name, null).name)
   const dlg = useRef<HTMLDialogElement>(null)
   const [kind, setKind] = useState<'strength' | 'run'>('strength')
   const [date, setDate] = useState(today())
@@ -45,7 +48,8 @@ export function AddWorkout({ className = '' }: { className?: string }) {
       p.workouts.push({
         date, title: title || null, notes: null, source: 'manual',
         sets: sets.map((r, i) => {
-          const weight = r.weight === '' ? null : +r.weight
+          // Typed in the exercise's unit (lb for one in lb), stored in kg.
+          const weight = r.weight === '' ? null : toKg(+r.weight, unitFor(r.exercise))
           const e = resolveExercise(r.exercise, weight)
           return { exercise: e.name, muscle: e.muscle, lift: e.lift ?? null, position: i, weight_kg: weight, reps: +r.reps, seconds: null, notes: null }
         }),
@@ -84,12 +88,21 @@ export function AddWorkout({ className = '' }: { className?: string }) {
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_4rem_5rem_2.75rem] gap-2 text-xs text-muted"><span>Exercise</span><span>Reps</span><span>Weight kg</span></div>
+              <div className="grid grid-cols-[1fr_4rem_5rem_2.75rem] gap-2 text-xs text-muted"><span>Exercise</span><span>Reps</span><span>Weight {unitOf()}</span></div>
               {rows.map((r, i) => (
                 <div key={i} className="grid grid-cols-[1fr_4rem_5rem_2.75rem] gap-2">
                   <input className="input" list="exercise-names" aria-label="Exercise" value={r.exercise} onChange={e => setRow(i, { exercise: e.target.value })} />
                   <input className="input" type="number" min="1" inputMode="numeric" aria-label="Reps" value={r.reps} onChange={e => setRow(i, { reps: e.target.value })} />
-                  <input className="input" type="number" min="0" step="0.5" inputMode="decimal" aria-label="Weight in kg" placeholder="BW" value={r.weight} onChange={e => setRow(i, { weight: e.target.value })} />
+                  {(() => {
+                    // An exercise switched to the other unit says so in its box; blank is still bodyweight.
+                    const u = r.exercise.trim() ? unitFor(r.exercise) : unitOf()
+                    return (
+                      <div className="relative">
+                        <input className={`input ${u === unitOf() ? '' : 'pr-7'}`} type="number" min="0" step="0.5" inputMode="decimal" aria-label={`Weight in ${u}`} placeholder="BW" value={r.weight} onChange={e => setRow(i, { weight: e.target.value })} />
+                        {u !== unitOf() && <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted" aria-hidden>{u}</span>}
+                      </div>
+                    )
+                  })()}
                   <button type="button" className="icon-btn" aria-label="Remove set" onClick={() => setRows(rows.length > 1 ? rows.filter((_, j) => j !== i) : [blank])}>✕</button>
                 </div>
               ))}

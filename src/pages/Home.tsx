@@ -9,7 +9,7 @@ import { C, Chart, sparkConfig } from '../components/Chart'
 import { BodyMap } from '../components/BodyMap'
 import { Card, Empty, Line, Sheet, SourceBadge, Stat, Tabs, useCountUp } from '../components/ui'
 import { api, useData } from '../lib/data'
-import { ago, daysAgo, duration, greeting, kg, km, num, pace, plural, shortDate, today, weekStart } from '../lib/format'
+import { ago, daysAgo, duration, fromKg, greeting, kg, km, pace, plural, shortDate, shown, today, toKg, unitOf, weekStart } from '../lib/format'
 import { overallLine } from '../lib/motivation'
 import { lastSets, mainExercises, MUSCLES, muscleSets, runPace, weekly, weekStreak } from '../lib/stats'
 import { milestones, type Milestone } from '../lib/milestones'
@@ -199,16 +199,17 @@ function BodyWeight() {
   const [busy, setBusy] = useState(false)
   const pts = data.bodyWeight
   const latest = pts.at(-1)
+  const u = unitOf() // your default (Settings → Profile); stored in kg either way
   const config = useMemo<ChartConfiguration>(() => ({
     type: 'line',
-    data: { labels: pts.map(p => shortDate(p.date)), datasets: [{ data: pts.map(p => p.kg), borderColor: C().accent2, pointBackgroundColor: C().accent2, tension: 0.3, borderWidth: 2 }] },
-    options: { scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => `${v} kg` } } } },
-  }), [pts])
+    data: { labels: pts.map(p => shortDate(p.date)), datasets: [{ data: pts.map(p => Math.round(fromKg(p.kg, u) * 10) / 10), borderColor: C().accent2, pointBackgroundColor: C().accent2, tension: 0.3, borderWidth: 2 }] },
+    options: { scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => `${v} ${u}` } } } },
+  }), [pts, u])
 
   const add = async () => {
     setBusy(true)
     try {
-      await api('POST', 'body-weight', { date: today(), kg: +value })
+      await api('POST', 'body-weight', { date: today(), kg: toKg(+value, u) })
       setValue('')
       await reload()
     } finally {
@@ -221,7 +222,7 @@ function BodyWeight() {
         <p className="mb-3 text-sm text-muted">{latest ? `${kg(latest.kg)} on ${shortDate(latest.date)}. Log it weekly to see a trend line here.` : 'Log your weight to start a trend line.'}</p>
       )}
       <form className="mt-3 flex gap-2" onSubmit={e => (e.preventDefault(), value && add())}>
-        <input className="input" type="number" step="0.1" min="20" max="300" inputMode="decimal" placeholder={`Today's weight (kg)${latest ? `, last ${num(latest.kg, 1)}` : ''}`} value={value} onChange={e => setValue(e.target.value)} aria-label="Body weight in kg" />
+        <input className="input" type="number" step="0.1" min={u === 'lb' ? 44 : 20} max={u === 'lb' ? 660 : 300} inputMode="decimal" placeholder={`Today's weight (${u})${latest ? `, last ${shown(latest.kg, u)}` : ''}`} value={value} onChange={e => setValue(e.target.value)} aria-label={`Body weight in ${u}`} />
         <button className="btn" disabled={busy || !value}>Log</button>
       </form>
     </Card>
