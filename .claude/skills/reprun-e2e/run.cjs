@@ -9,7 +9,9 @@ let pw
 try { pw = require(path.join(os.homedir(), '.cache/reprun-e2e/node_modules/playwright-core')) } catch { console.error('playwright-core missing, install once (SKILL.md): npm i --prefix ~/.cache/reprun-e2e playwright-core && (cd ~/.cache/reprun-e2e && npx playwright-core install webkit chromium)'); process.exit(2) }
 
 const REPO = path.resolve(__dirname, '../../..')
-const PORT = 4317
+// E2E_PORT=4327 (any free port) for a second run alongside another session's: its own port and build folder, so they can't clash.
+const PORT = +process.env.E2E_PORT || 4317
+const BUILD = PORT === 4317 ? 'node_modules/.reprun-e2e' : `node_modules/.reprun-e2e-${PORT}`
 const BASE = (process.env.BASE || `http://localhost:${PORT}`).replace(/\/$/, '')
 const DEVICES = (process.env.DEVICE || 'iphone').split(',')
 const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null
@@ -749,8 +751,8 @@ async function run(id, device, browser) {
   let server
   if (!process.env.BASE) {
     const env = { ...process.env, CLOUDFLARE_ENV: 'local' }
-    execSync('npx vite build --outDir node_modules/.reprun-e2e', { cwd: REPO, env, stdio: 'ignore' })
-    server = spawn('npx', ['vite', 'preview', '--outDir', 'node_modules/.reprun-e2e', '--port', String(PORT), '--strictPort'], { cwd: REPO, env, stdio: 'ignore', detached: true })
+    execSync(`npx vite build --outDir ${BUILD}`, { cwd: REPO, env, stdio: 'ignore' })
+    server = spawn('npx', ['vite', 'preview', '--outDir', BUILD, '--port', String(PORT), '--strictPort'], { cwd: REPO, env, stdio: 'ignore', detached: true })
     process.on('exit', () => { try { process.kill(-server.pid) } catch {} })
     for (let i = 0; i < 60 && !(await fetch(BASE + '/').then(r => r.ok, () => false)); i++) await new Promise(r => setTimeout(r, 500))
   }
