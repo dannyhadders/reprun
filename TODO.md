@@ -137,7 +137,7 @@ Not planned, just what Hevy has that we don't (compared 2026-11-18). Keep RepRun
 
 - [ ] **Supersets**: pair two exercises back to back, rest only after the pair.
 - [x] **Warm-up sets**: saved with a warm-up mark (sets.warmup) and left out of PBs, 1RM, volume, counts, charts and suggestions; labelled in the text export. + Warm-up on barbell lifts (bar × 10, 50/70/85%), 60 s rest after one, and tap a set's number to make it a warm-up. (Hevy also has drop and failure sets; probably skip those.)
-- [ ] **Muscle heat-map**: a body outline showing what you trained this week. Each exercise already has a muscle, so it's cheap.
+- [x] **Muscle heat-map**: already there (Home → Muscle distribution → Body, components/BodyMap.tsx).
 - [ ] **Body measurements** (waist, arms, weight…) next to Photos, behind the same toggle.
 - [ ] **How-to link per exercise**: a link out to a video, instead of a library of our own.
 - [ ] **Apple Watch app / Apple Health sync / lock-screen Live Activity**: not possible from a PWA, would need a native app. Web Push (Rest-over notification above) is the closest we can get.

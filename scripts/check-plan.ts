@@ -37,6 +37,17 @@ eq(parseLine('Warm up 5 min on the bike'), null, 'no sets = not an exercise')
 
 // Popular lifts in search: by name or another name, starts-with first, never one you've logged (or renamed away).
 assert(CATALOGUE.length >= 100, 'catalogue has 100 lifts')
+// Names ChatGPT writes that the catalogue doesn't list (a friend's import): kept as written, filed under the right muscle.
+{
+  const m = (n: string) => resolveExercise(n, 50).muscle
+  eq([resolveExercise('Leg Extensions', 50).name, m('Leg Extensions'), m('Pull-ups / Lat Pulldowns'), m('Single-Leg Press'), m('Chest-Supported Row'), m('Standing Calf Raises'), m('Hanging Knee Raises')],
+    ['Leg Extensions', 'legs', 'back', 'legs', 'back', 'legs', 'core'], 'catalogue: unlisted names get a muscle, name kept')
+  // The traps a keyword list falls into (review): brands, gym shorthand, cardio, plurals.
+  const cases: [string, string][] = [['Incline Walk', 'other'], ['Incline Treadmill Walking', 'other'], ['Hammer Strength Chest Press', 'chest'], ['Lat Raises', 'shoulders'],
+    ['Heel Raises', 'legs'], ['Weighted Pull-ups', 'back'], ['Wide Grip Chin-ups', 'back'], ['Straight-Leg Sit-ups', 'core'], ['Overhead Presses', 'shoulders'], ['Cable Flies', 'chest'],
+    ['Reverse Flyes', 'shoulders'], ['Walking Lunges with Dumbbells', 'legs'], ['Incline Smith Press', 'chest'], ['Rowing Machine', 'other'], ['Zottman Thing', 'other']]
+  eq(cases.map(([n]) => [n, m(n)]), cases, 'catalogue: keyword traps')
+}
 eq(fromCatalogue('hip', [])[0]?.name, 'Hip Thrust', 'catalogue: starts-with first')
 eq(fromCatalogue('ohp', []).map(c => c.name), ['Overhead Press'], 'catalogue: found by another name')
 assert(!fromCatalogue('bench', [{ id: 1, name: 'Bench Press', muscle: 'chest' } as never]).some(c => c.name === 'Bench Press'), 'catalogue: logged ones left out')

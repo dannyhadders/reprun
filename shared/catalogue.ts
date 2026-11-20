@@ -3,7 +3,7 @@ import type { Lift, Muscle } from './types.ts'
 type Entry = { name: string; muscle: Muscle; lift?: Lift }
 
 // Names as ChatGPT writes them (lower case) -> one canonical exercise.
-// Unknown names import as-is under "other"; add them here to tidy them up.
+// Unknown names import as written, with a muscle guessed from their words (guessMuscle); add them here to tidy them up.
 const ALIASES: Record<string, Entry> = {}
 const add = (names: string[], e: Entry) => names.forEach(n => (ALIASES[n] = e))
 
@@ -117,9 +117,33 @@ export const CATALOGUE = Object.values(Object.entries(ALIASES).reduce<Record<str
   return out
 }, {}))
 
+// A name as words: lower case, hyphens and slashes as spaces, plurals dropped ("Leg Extensions" = "leg extension",
+// "Pull-ups" = "pull up", "presses" = "press", "flies" = "fly").
+const one = (w: string) => /ies$/.test(w) && w.length > 4 ? w.slice(0, -3) + 'y' : /(ss|sh|ch|x)es$/.test(w) ? w.slice(0, -2) : /[^su]s$/.test(w) && w.length > 2 ? w.slice(0, -1) : w
+const words = (n: string) => n.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').map(one).join(' ')
+const BY_WORDS = new Map(Object.entries(ALIASES).map(([alias, e]) => [words(alias), e.muscle]))
+// ponytail: keyword guess on those words, first match wins, so the specific lines come before the broad ones
+// ("chest supported row" is back, "hammer strength chest press" chest). Add a word when one's missed.
+const KEYWORDS: [Muscle, RegExp][] = [
+  ['core', /\b(leg raise|knee raise|crunch|plank|sit up|ab|oblique|twist|woodchop|dead bug|hollow|pallof|mountain climber|farmer|carry)\b/],
+  ['shoulders', /\b(upright row|rear delt|reverse fly|reverse flye|rear fly|reverse pec|lat raise|lateral raise|front raise|y raise)\b/],
+  ['legs', /\b(lunge|romanian|rdl|stiff leg|good morning|swing|box jump|jump squat|heel raise|toe raise|calf|calve|tib|nordic)\b/],
+  ['other', /\b(walk|walking|treadmill|erg|rower|rowing|bike|cycling|elliptical|stair|stairmaster|skipping|jump rope|run|running|jog)\b/], // cardio: no muscle
+  ['back', /\b(row|pulldown|pull up|pullup|chin up|chinup|lat|deadlift|pullover|pull over|back extension|hyperextension|rack pull)\b/],
+  ['legs', /\b(leg|squat|glute|hip thrust|hamstring|quad|step up|abduction|adduction|abductor|adductor)\b/],
+  ['arms', /\b(curl|bicep|tricep|pushdown|skull crusher|kickback|hammer curl)\b/],
+  ['chest', /\b(bench|chest|pec|fly|flye|incline( \w+)? press|push up|press up|dip)\b/],
+  ['shoulders', /\b(shoulder|overhead press|military|delt|face pull|arnold|shrug)\b/],
+]
+/** The muscle for a name the catalogue doesn't list: its words without plurals, else keywords, else other. */
+export function guessMuscle(name: string): Muscle {
+  const w = words(name)
+  return BY_WORDS.get(w) ?? KEYWORDS.find(([, re]) => re.test(w))?.[0] ?? 'other'
+}
+
 export function resolveExercise(raw: string, weightKg: number | null): Entry {
   const key = raw.trim().toLowerCase()
-  const e = ALIASES[key] ?? { name: raw.trim(), muscle: 'other' as Muscle }
+  const e = ALIASES[key] ?? { name: raw.trim(), muscle: guessMuscle(raw) } // the name stays as written: no surprise merges
   // Two-arm preacher curls use the 9 kg bar; anything up to 10 kg is one arm.
   if (e.name === 'Preacher Curl' && weightKg !== null && weightKg <= 10) return ALIASES['single-arm preacher curl']
   return e

@@ -5,6 +5,7 @@ import { planPrompt } from '../../shared/plan.ts'
 import { startersFor } from '../../shared/starter.ts'
 import { Onboarding, Splash, type Answers } from '../components/Onboarding.tsx'
 import { setUnits, today } from './format.ts'
+import { guessMuscle } from '../../shared/catalogue.ts'
 import { installHint, introAgain, introDone, markIntroDone } from './intro.ts'
 import { local, LOCAL, startLocal, started } from './local.ts'
 import { sessionLines } from './motivation.ts'
@@ -122,8 +123,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => {
     if (!data) return null
     setUnits(data.profile) // before anything formats a weight
-    const model = buildModel(data)
-    return { data, model, lines: sessionLines(model), reload, pending, upload, sync, backToIntro }
+    // Exercises imported as "other" before the catalogue knew their name get its guess (shared/catalogue.ts).
+    // ponytail: so one picked as "other" on its page shows the guess; add a "chosen" flag if anyone minds.
+    const d = data.exercises.some(e => e.muscle === 'other' && guessMuscle(e.name) !== 'other')
+      ? { ...data, exercises: data.exercises.map(e => (e.muscle === 'other' ? { ...e, muscle: guessMuscle(e.name) } : e)) } : data
+    const model = buildModel(d)
+    return { data: d, model, lines: sessionLines(model), reload, pending, upload, sync, backToIntro }
   }, [data, reload, pending, upload, sync, backToIntro])
 
   // First-run intro, over the app. Phone-only: whenever the phone has no data yet (page 1 picks fresh or sample).
