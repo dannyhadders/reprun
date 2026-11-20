@@ -6,6 +6,7 @@ import type { Profile } from '../../shared/types'
 import { useData } from './data'
 
 export const FEATURES = [
+  { id: 'supersets', title: 'Supersets', about: 'Do two exercises back to back and rest after both: pair them in a workout, or link them as a superset when building a routine.', on: true },
   { id: 'runs', title: 'Runs and Strava', about: 'The Runs tab, runs on Home and Year, adding a past run, and connecting Strava. Runs already saved still count towards your streak.', on: true },
 ] as const
 

@@ -372,6 +372,61 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   console.log('last note self-check passed')
 }
 
+// Supersets: "A1."/"A2." in plan text, tidied into groups, resting once after the last; in the logger, whose turn it is.
+{
+  const { tidyGroups, estimateS: est, toRows: rowsOf, fromRows: bodyOf } = await import('../shared/plan.ts')
+  const { pairExercises, unpairExercises, supersetTurn, toImport: imp, start: begin, newExercise: ne } = await import(sessionPath)
+  const { workoutText } = await import('../src/lib/format.ts')
+  const p = parsePlan('Push + pull\nA1. Bench Press – 3x8 @ 80kg\nA2) Barbell Row – 3x10, rest 90s\nB1: Lonely – 3x8\nFace Pull 3x15')[0].items
+  eq(p.map(x => [x.name, x.superset ?? '']), [['Bench Press', 'A1'], ['Barbell Row', 'A2'], ['Lonely', ''], ['Face Pull', '']], 'superset: A1./A2) read as a pair, a lone B1 is not one')
+  eq(p.map(formatLine).slice(0, 2), ['A1. Bench Press – 3x8 @ 80kg', 'A2. Barbell Row – 3x10, rest 90s'], 'superset: written back with its label')
+  eq(bodyOf(rowsOf(p.map(formatLine).join('\n'))), { body: p.map(formatLine).join('\n') }, 'superset: builder rows round-trip')
+  eq(est(p) < est(p.map(x => ({ ...x, superset: undefined }))), true, 'superset: a pair rests once, so it is quicker')
+  eq(tidyGroups([{ superset: 'C1' }, { superset: 'C2' }, {}, { superset: 'C1' }, { superset: 'Z1' }, { superset: 'Z1' }, { superset: 'Z2' }]).map(x => x.superset ?? ''), ['A1', 'A2', '', '', '', 'B1', 'B2'], 'superset: tidy drops strays (a lone C1, then Z1 starts again) and relabels in order')
+  // The logger: pair Bench (0) with Row (2): Row moves under Bench. Tick Bench set 1: Row's turn. Tick Row set 1: nobody's (rest).
+  const a = begin('t', [ne('Bench Press', 'chest', 2, '8', '80'), ne('Face Pull', 'shoulders', 2), ne('Barbell Row', 'back', 2, '10', '70')])
+  pairExercises(a, 0, 2)
+  eq(a.exercises.map((e: { name: string; superset?: string }) => `${e.superset ?? ''}${e.name}`), ['A1Bench Press', 'A2Barbell Row', 'Face Pull'], 'superset: pairing moves the partner under it')
+  a.exercises[0].sets[0].done = true
+  eq(supersetTurn(a), { i: 1, j: 0 }, 'superset: after A1 set 1, it is A2 set 1')
+  a.exercises[1].sets[0].done = true
+  eq(supersetTurn(a), null, 'superset: round done, time to rest')
+  eq(imp(a).sets.map((x: { exercise: string; superset?: string }) => `${x.superset}:${x.exercise}`), ['A1:Bench Press', 'A2:Barbell Row'], 'superset: saved on each set')
+  eq(workoutText({ date: '2026-11-20', title: 'P', sets: imp(a).sets }).includes('A1 Bench Press: 80 kg × 8'), true, 'superset: the text export labels it')
+  unpairExercises(a, 1)
+  eq(a.exercises.some((e: { superset?: string }) => e.superset), false, 'superset: split clears the group')
+  // The review's traps: names that look like labels, chat formatting, two days, moves past a superset, the builder's link.
+  const { jumpTo, linkRows } = await import('../shared/plan.ts')
+  const { moveExercise: mv, restAfter } = await import(sessionPath)
+  const item = (t: string) => parsePlan(`Day\n${t}\nA2. Row – 3x8`)[0].items[0]
+  eq(['C2 Rower – 3x60s', '1. A1. Bench Press – 3x8', '**A1.** Bench Press – 3x8', '- **A1)** Bench Press – 3x8'].map(t => [item(t).name, item(t).superset ?? '']),
+    [['C2 Rower', ''], ['Bench Press', 'A1'], ['Bench Press', 'A1'], ['Bench Press', 'A1']], 'superset: "C2 Rower" stays a name; numbered and bold labels read')
+  eq(parsePlan('Mon:\nA1. Squat – 3x5\nA2. Row – 3x8\nTue:\nA1. Bench – 3x5\nA2. Pull-up – 3x8')[0].items.length, 2, 'superset: days stay apart')
+  eq(rowsOf('A1. Squat – 3x5\nA2. Row – 3x8\nA1. Bench – 3x5\nA2. Pull-up – 3x8').map(r => r.superset), ['A1', 'A2', 'B1', 'B2'], 'superset: two A1/A2 pairs are two supersets')
+  const L = (t: string) => t.split(' ').map(x => (x === '-' ? {} : { superset: x }))
+  eq([jumpTo(L('A1 A2 -'), 2, 1), jumpTo(L('- A1 A2'), 0, 1), jumpTo(L('A1 A2'), 0, 1)], [0, 2, 1], 'superset: one step past a superset jumps it whole; within it, a plain swap')
+  const lk = (t: string, i: number) => linkRows(L(t), i).map(x => x.superset ?? '-').join(' ')
+  eq([lk('- - -', 0), lk('A1 A2 -', 1), lk('A1 A2 A3', 1), lk('- A1 A2', 0), lk('A1 A2 B1 B2', 1)], ['A1 A2 -', 'A1 A2 A3', 'A1 A2 -', 'A1 A2 A3', 'A1 A2 A3 A4'], 'superset: the builder link joins, splits and merges')
+  const b = begin('t', [ne('X', 'chest', 2), ne('Y', 'back', 2), ne('W', 'legs', 2)])
+  pairExercises(b, 1, 0) // partner above: Y stays, X moves under it
+  b.exercises[1].restS = 120
+  eq([b.exercises.map((e: { name: string; superset?: string }) => `${e.superset ?? ''}${e.name}`).join(' '), restAfter(b, 0), restAfter(b, 2)], ['A1Y A2X W', 120, 90], 'superset: pairing with one above; the pair rests for its last')
+  eq([mv(b, 2, 1), b.exercises.map((e: { name: string }) => e.name).join(' '), b.exercises.filter((e: { superset?: string }) => e.superset).length], [0, 'W Y X', 2], 'superset: dragging W up jumps the pair, which stays a pair')
+  const c = begin('t', [ne('P', 'chest', 3), ne('Q', 'back', 2), ne('R', 'legs', 3)])
+  c.exercises.forEach((e: { superset?: string }, k: number) => (e.superset = `A${k + 1}`))
+  c.exercises[1].sets.unshift({ reps: '10', weight: '20', done: true, warmup: true }) // a warm-up doesn't count as Q's turn
+  const turns: string[] = []
+  for (let n = 0; n < 8; n++) {
+    const t = supersetTurn(c) ?? { i: c.exercises.findIndex((e: { sets: { done: boolean }[] }) => e.sets.some(x => !x.done)), j: -1 }
+    if (t.i < 0) break
+    const j = t.j >= 0 ? t.j : c.exercises[t.i].sets.findIndex((x: { done: boolean }) => !x.done)
+    c.exercises[t.i].sets[j].done = true
+    turns.push(c.exercises[t.i].name)
+  }
+  eq(turns.join(''), 'PQRPQRPR', 'superset: three in a group, Q with a set fewer: P Q R, P Q R, then P R')
+  console.log('superset self-check passed')
+}
+
 // Warm-up sets: saved, but out of PBs, 1RM, volume, set counts, history and suggestions; listed (labelled) in the text.
 {
   const { workoutText } = await import('../src/lib/format.ts')

@@ -94,7 +94,7 @@ export const EFFORT = [{ rpe: 6, emoji: '😌', label: 'Easy' }, { rpe: 8, emoji
 /** The nearest choice at or above a rating: 7 reads as Good, 5 as Easy. */
 export const effort = (rpe: number | null | undefined) => (rpe ? EFFORT.find(e => rpe <= e.rpe) ?? EFFORT[3] : null)
 
-type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null; rpe?: number | null; warmup?: number | boolean | null }
+type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null; rpe?: number | null; warmup?: number | boolean | null; superset?: string | null }
 /** A workout as plain text, one line per exercise, for pasting into ChatGPT or sending to a PT. */
 /** A run or other activity on one line, for the ChatGPT prompt: "Run · Tue 17 Nov 2026 · 10.2 km · 52 min · avg HR 151". */
 export const activityText = (a: { sport: string; date: string; distance_m: number | null; moving_s: number | null; elapsed_s: number | null; avg_hr: number | null }) =>
@@ -117,6 +117,8 @@ export function workoutText(w: { date: string; title: string | null; duration_s?
     `${plural(work.length, 'set')}${w.sets.length > work.length ? ` (plus ${plural(w.sets.length - work.length, 'warm-up set')})` : ''}, ${kg(Math.round(volume))} total volume`,
     ...(w.notes ? ['', w.notes] : []),
     '',
-    ...[...byEx].map(([name, sets]) => `${name}: ${line(sets)}${effort(sets[0].rpe) ? ` (felt ${effort(sets[0].rpe)!.label.toLowerCase()})` : ''}`),
+    ...(w.sets.some(s => s.superset) ? ['Supersets: same letter = done back to back, rest after the last.'] : []),
+    // A superset reads the way it was planned: "A1 Bench Press: …", "A2 Barbell Row: …" (done back to back).
+    ...[...byEx].map(([name, sets]) => `${sets.find(s => s.superset)?.superset ? `${sets.find(s => s.superset)!.superset} ` : ''}${name}: ${line(sets)}${effort(sets[0].rpe) ? ` (felt ${effort(sets[0].rpe)!.label.toLowerCase()})` : ''}`),
   ].join('\n')
 }

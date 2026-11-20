@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { WorkoutSet } from '../../shared/types'
 import { ask, CopyButton, Empty, Icon, Line, PageHeader, PbBadge, ShareButton, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
+import { useFeature } from '../lib/features'
 import { duration, kg, monthLabel, plural, setText, shown, toKg, unitOf, weekday, workoutText, date as fmtDate, type Unit } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
 
@@ -53,10 +54,11 @@ export default function Workouts() {
 
 function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggle: () => void }) {
   const { model, lines } = useData()
+  const supersets = useFeature('supersets') // off: no superset labels here or in the copied text (Settings → Features)
   const [editing, setEditing] = useState(false)
   const w = s.workout
   // The workout with exercise names filled in, for the picture and the copied text. Memoised: the picture redraws when it changes.
-  const named = useMemo(() => w && w.sets.length ? { ...w, duration_s: s.durationSource === 'estimate' ? null : s.durationS, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) } : null, [w, s, model])
+  const named = useMemo(() => w && w.sets.length ? { ...w, duration_s: s.durationSource === 'estimate' ? null : s.durationS, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?', superset: supersets ? x.superset : null })) } : null, [w, s, model, supersets])
   const pbNames = useMemo(() => [...new Set((w?.sets ?? []).filter(x => model.pbs.has(x.id)).map(x => model.exById.get(x.exercise_id)?.name ?? '?'))], [w, model])
   const groups = useMemo(() => {
     const g = new Map<number, WorkoutSet[]>()
@@ -105,8 +107,12 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
           {w?.notes && <p className="mb-4 rounded-xl bg-surface-2 p-3 text-sm text-muted">{w.notes}</p>}
           {groups.length ? (
             <div className="space-y-5">
-              {groups.map(([exId, sets]) => (
-                <div key={exId}>
+              {groups.map(([exId, sets]) => {
+                const ss = supersets ? sets.find(x => x.superset)?.superset : null // done back to back with the others sharing its letter
+                return (
+                <div key={exId} className={ss ? 'border-l-2 border-accent-2/50 pl-3' : ''}>
+                  {ss?.endsWith('1') && <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-accent-2">Superset</p>}
+                  {ss && <span className="mr-1.5 rounded-md bg-accent-2/15 px-1.5 py-0.5 text-[11px] font-extrabold text-accent-2">{ss}</span>}
                   <Link to={`/exercises/${exId}`} className="font-semibold text-accent hover:underline">{model.exById.get(exId)?.name}</Link>
                   <table className="mt-2 w-full text-sm">
                     <thead className="text-left text-xs text-muted">
@@ -115,7 +121,8 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
                     <tbody>{sets.map((x, i) => <SetRow key={x.id} set={x} n={x.warmup ? 0 : sets.slice(0, i + 1).filter(y => !y.warmup).length} />)}</tbody>
                   </table>
                 </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted">

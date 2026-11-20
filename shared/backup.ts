@@ -12,9 +12,9 @@ export function toBackup(d: Data, exported = new Date().toISOString()): Backup {
     exported,
     workouts: d.workouts.map(({ date, title, notes, source, duration_s, client_id, sets }) => ({
       date, title, notes, source, duration_s, client_id,
-      sets: sets.map(({ exercise_id, position, weight_kg, reps, seconds, notes, rpe, warmup }) => {
+      sets: sets.map(({ exercise_id, position, weight_kg, reps, seconds, notes, rpe, warmup, superset }) => {
         const e = ex.get(exercise_id)!
-        return { exercise: e.name, muscle: e.muscle, lift: e.lift, position, weight_kg, reps, seconds, notes, rpe: rpe ?? null, ...(warmup ? { warmup: 1 } : {}) }
+        return { exercise: e.name, muscle: e.muscle, lift: e.lift, position, weight_kg, reps, seconds, notes, rpe: rpe ?? null, ...(warmup ? { warmup: 1 } : {}), ...(superset ? { superset } : {}) }
       }),
     })),
     activities: d.activities.filter(a => !a.sample).map(noId), // sample runs are Strava placeholders

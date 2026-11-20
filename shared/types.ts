@@ -16,6 +16,7 @@ export type WorkoutSet = {
   notes: string | null
   rpe?: number | null // how hard the exercise felt, 1-10; older sets and imports have none
   warmup?: number | boolean | null // 1/true: a warm-up set, saved but left out of PBs, volume, counts and progression
+  superset?: string | null // "A1", "A2": done back to back with the other exercises sharing its letter (shared/plan.ts tidyGroups)
 }
 /** A working set, not a warm-up: what every stat counts. */
 export const working = <S extends { warmup?: number | boolean | null }>(s: S) => !s.warmup

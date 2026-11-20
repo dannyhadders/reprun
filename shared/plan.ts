@@ -10,8 +10,9 @@
 import { GOALS, type GoalId } from './rules.ts'
 import type { Profile } from './types.ts'
 
-// timed: repsMin/repsMax are seconds held ("Plank – 3x45s"), not reps.
-export type PlanItem = { name: string; sets: number; repsMin: number; repsMax: number; weight: number | null; restS: number | null; note: string | null; timed?: boolean }
+// timed: repsMin/repsMax are seconds held ("Plank – 3x45s"), not reps. superset: its label ("A1", "A2"), the way PTs and
+// ChatGPT write a superset: the ones sharing a letter are done back to back, resting after the last (tidyGroups).
+export type PlanItem = { name: string; sets: number; repsMin: number; repsMax: number; weight: number | null; restS: number | null; note: string | null; timed?: boolean; superset?: string }
 export type ParsedRoutine = { name: string; items: PlanItem[]; unparsed: string[] }
 
 const SETS = /(\d+)\s*(?:x|×|\*|sets?\s*(?:of|x)?)\s*(\d+)(?:\s*(?:-|–|to)\s*(\d+))?/i
@@ -41,8 +42,14 @@ const sentence = (t: string) => /[.?!]$/.test(t) && words(t) > 6
 // Bullets, numbering and markdown that chat apps add.
 const clean = (l: string) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/, '').replace(/[#*_`]/g, '').trim()
 
+// "A1. Bench Press – 3x8", "B2) Row …", "A1: …" (after bullets, numbering and bold are cleaned off): a superset label.
+// The . ) or : is required, so a name like "C2 Rower" stays a name.
+const LABEL = /^([A-H])([1-9])\s*[.):]\s*(?=\S)/
+
 export function parseLine(raw: string): PlanItem | null {
   let line = clean(raw)
+  const lab = line.match(LABEL)
+  if (lab) line = line.slice(lab[0].length)
   let note: string | null = null
   const n = line.match(/;\s*(.+)$|\(([^)]+)\)/)
   if (n) {
@@ -75,7 +82,54 @@ export function parseLine(raw: string): PlanItem | null {
     restS: restVal === null ? null : /^m/i.test(restUnit) || (!restUnit && restVal <= 5) ? Math.round(restVal * 60) : Math.round(restVal),
     note,
     ...(timed && { timed: true }),
+    ...(lab && { superset: lab[1] + lab[2] }),
   }
+}
+
+/**
+ * Supersets in a list (plan items, builder rows, the logger's exercises): the ones sharing a letter, next to each other,
+ * done back to back. Tidied in place: a letter on one item alone, or apart from the rest of its group, is dropped, and the
+ * groups are labelled again A1, A2, B1… in order, so moving, removing or adding never leaves a half-made superset.
+ */
+export function tidyGroups<T extends { superset?: string }>(list: T[]): T[] {
+  let next = 0
+  for (let k = 0; k < list.length;) {
+    const g = list[k].superset?.[0]
+    let end = k + 1
+    // A group runs while the letter's the same; a "…1" starts a new one (two days of A1/A2 are two supersets).
+    while (g && end < list.length && list[end].superset?.[0] === g && !list[end].superset!.endsWith('1')) end++
+    const keep = g && end - k >= 2 && next < 8 // A to H, as plan text reads them
+    const letter = keep ? String.fromCharCode(65 + next++) : ''
+    for (let x = k; x < end; x++) {
+      if (keep) list[x].superset = `${letter}${x - k + 1}`
+      else delete list[x].superset
+    }
+    k = end
+  }
+  return list
+}
+/** The rest of a superset's group after this one, or nothing when it's the last (or not in one): it rests after the last. */
+export const groupNext = (list: { superset?: string }[], k: number) =>
+  list[k]?.superset && list[k + 1]?.superset?.[0] === list[k].superset![0] && !list[k + 1].superset!.endsWith('1') ? k + 1 : null
+/** One step up or down (drag, arrow keys, Move up/down) past a superset you're not in jumps the whole superset, so it stays together. */
+export function jumpTo(list: { superset?: string }[], from: number, to: number) {
+  if (Math.abs(to - from) !== 1 || !list[to]?.superset) return to
+  const d = to - from, mine = list[from]?.superset
+  if (mine && (d > 0 ? groupNext(list, from) === to : groupNext(list, to) === from)) return to // moving within its own superset
+  while (d > 0 ? groupNext(list, to) !== null : list[to].superset && !list[to].superset!.endsWith('1')) to += d
+  return to
+}
+/** The builder's link between rows i and i+1: make them a superset (joining the group either is in), or split it there. */
+export function linkRows<T extends { superset?: string }>(rows: T[], i: number): T[] {
+  const c = rows.map(r => ({ ...r }))
+  if (!c[i + 1]) return c
+  if (groupNext(c, i) === i + 1) c[i + 1].superset = `${c[i + 1].superset![0]}1` // split: the rest start their own
+  else {
+    const g = c[i].superset?.[0] ?? c[i + 1].superset?.[0] ?? 'Z'
+    if (!c[i].superset) c[i].superset = `${g}1`
+    for (let k = i + 1; k < c.length && (k === i + 1 || groupNext(rows, k - 1) === k); k++) c[k].superset = `${g}2` // the next row and its group join
+  }
+  return tidyGroups(c)
 }
 
 export function parsePlan(text: string): ParsedRoutine[] {
@@ -101,20 +155,20 @@ export function parsePlan(text: string): ParsedRoutine[] {
     if (!sentence(line) && (marked || (next && parseLine(next) && titleish))) out.push({ name: line.replace(/:\s*$/, ''), items: [], unparsed: [] })
     else current().unparsed.push(line)
   }
-  return out.filter(r => r.items.length)
+  return out.filter(r => r.items.length).map(r => ({ ...r, items: tidyGroups(r.items) }))
 }
 
 export const formatLine = (p: PlanItem) =>
-  `${p.name} – ${p.sets}x${p.repsMin}${p.repsMax > p.repsMin ? `-${p.repsMax}` : ''}${p.timed ? 's' : ''}${p.weight !== null ? ` @ ${p.weight}kg` : ''}${p.restS ? `, rest ${p.restS}s` : ''}${p.note ? `; ${p.note}` : ''}`
+  `${p.superset ? `${p.superset}. ` : ''}${p.name} – ${p.sets}x${p.repsMin}${p.repsMax > p.repsMin ? `-${p.repsMax}` : ''}${p.timed ? 's' : ''}${p.weight !== null ? ` @ ${p.weight}kg` : ''}${p.restS ? `, rest ${p.restS}s` : ''}${p.note ? `; ${p.note}` : ''}`
 
 // ---------- the routine builder (src/components/RoutineBuilder.tsx) ----------
 /** One exercise card in the builder, its boxes as typed: sets, reps ("8", "8-12", "45s"), kg ('' or 0 = bodyweight). */
-export type BuilderRow = { name: string; sets: string; reps: string; weight: string; restS: number | null; note: string | null }
+export type BuilderRow = { name: string; sets: string; reps: string; weight: string; restS: number | null; note: string | null; superset?: string }
 
 /** A routine's lines as builder cards. */
 export const toRows = (body: string): BuilderRow[] => parsePlan(body).flatMap(d => d.items).map(p => ({
   name: p.name, sets: String(p.sets), reps: `${p.repsMin}${p.repsMax > p.repsMin ? `-${p.repsMax}` : ''}${p.timed ? 's' : ''}`,
-  weight: p.weight === null ? '' : String(p.weight), restS: p.restS, note: p.note,
+  weight: p.weight === null ? '' : String(p.weight), restS: p.restS, note: p.note, ...(p.superset && { superset: p.superset }),
 }))
 
 /**
@@ -126,6 +180,7 @@ export const nameError = (name: string) => `"${name}" can't go in a routine as i
 
 export function fromRows(rows: BuilderRow[]): { body: string } | { error: string } {
   if (!rows.length) return { error: 'Add at least one exercise.' }
+  rows = tidyGroups(rows.map(r => ({ ...r }))) // labels as saved: A1, A2…
   const lines: string[] = []
   for (const r of rows) {
     const name = r.name.trim()
@@ -137,7 +192,7 @@ export function fromRows(rows: BuilderRow[]): { body: string } | { error: string
     const kg = r.weight.trim() === '' ? 0 : +r.weight
     if (!(kg >= 0 && kg < 1000)) return { error: `${name}: the weight should be a number of kg.` }
     const weight = kg || null // 0 is bodyweight
-    const item: PlanItem = { name, sets, repsMin: lo, repsMax: hi, weight, restS: r.restS, note: r.note, ...(m[3] && { timed: true }) }
+    const item: PlanItem = { name, sets, repsMin: lo, repsMax: hi, weight, restS: r.restS, note: r.note, ...(m[3] && { timed: true }), ...(r.superset && { superset: r.superset }) }
     const line = formatLine(item)
     if (parseLine(line)?.name !== name) return { error: nameError(name) }
     lines.push(line)
@@ -149,8 +204,8 @@ export function fromRows(rows: BuilderRow[]): { body: string } | { error: string
  * Rough session length: ~40 s per set plus its rest, and a minute per exercise to set up.
  * Rest falls back to 90 s when the plan doesn't say.
  */
-export const estimateS = (items: Pick<PlanItem, 'sets' | 'restS'>[]) =>
-  items.reduce((t, p) => t + p.sets * (40 + (p.restS ?? 90)) + 60, 0)
+export const estimateS = (items: Pick<PlanItem, 'sets' | 'restS' | 'superset'>[]) =>
+  items.reduce((t, p, k) => t + p.sets * (40 + (groupNext(items, k) !== null ? 0 : p.restS ?? 90)) + 60, 0) // a superset rests once, after its last
 
 /** 2700 -> "45 min", 4500 -> "1 hr 15 min", rounded to 5 minutes. */
 export function roughTime(s: number) {
@@ -199,6 +254,7 @@ const planFormat = (names: string[]) => `Start each workout day with its name on
 Then one line per exercise, exactly like this:
 Bicep Curl – 3x8-10 @ 12kg, rest 60s; optional coaching note
 For exercises you hold, give the seconds with an s, like: Plank – 3x45s, rest 45s
+For a superset (two exercises back to back, resting after both), start their lines with A1. and A2. (B1. and B2. for the next one).
 Use kg. Leave out the "@ ...kg" part for bodyweight exercises, and when you don't know my weight: never write a placeholder like "@ choose a weight".
 Put it all inside one code block, with nothing but the workout lines in it, so I can copy it in one tap.${names.length ? `\nWhere they fit, use these exact exercise names: ${names.join(', ')}.` : ''}`
 

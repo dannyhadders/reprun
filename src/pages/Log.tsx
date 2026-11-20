@@ -21,7 +21,8 @@ import { barFor, BARS, PLATES, warmupRamp } from '../../shared/plates'
 import { pbShow } from '../lib/pbMoment'
 import { DONE_WORDS, workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { barOf, beep, isTimed, lastNote, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, rememberUnit, sendUnits, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { useFeature } from '../lib/features'
+import { barOf, beep, groupNext, restAfter, isTimed, lastNote, loadActive, matchExercise, moveExercise, newExercise, pairExercises, routineFromWorkout, supersetTurn, tidyGroups, unpairExercises, queue, rememberRest, rememberUnit, sendUnits, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -69,6 +70,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     if (cur?.clientId !== a.clientId) return
     const next = structuredClone(cur)
     f(next)
+    tidyGroups(next.exercises) // a move, remove or swap never leaves half a superset behind
     set(next)
   }
   // After a confirmed remove, Undo stays up for a few seconds in case it was the wrong one.
@@ -97,6 +99,20 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   // A tap on the ☰ (no drag) opens Move up / down instead: the card only lifts once the finger has moved.
   const lifted = useRef(false)
   const [moveFor, setMoveFor] = useState<number | null>(null)
+  const supersets = useFeature('supersets')
+  const [superFor, setSuperFor] = useState<number | null>(null) // the Superset sheet, for exercise i
+  // In a superset, a ticked set goes straight on to the partner whose turn it is (opened for you), no rest in between.
+  // Switched off (Settings → Features): a routine's supersets just run one exercise after another, and aren't saved.
+  useEffect(() => {
+    if (!supersets && a.exercises.some(e => e.superset)) update(x => x.exercises.forEach(e => delete e.superset))
+  })
+  const turn = supersets ? supersetTurn(a) : null // whose turn it is mid-superset, for the bar at the bottom
+  const straightOn = (x: Active, i: number) => {
+    const turn = supersetTurn(x, i)
+    if (!turn || turn.i === i) return false
+    x.exercises[turn.i].collapsed = false
+    return true
+  }
   const startDrag = (e: React.PointerEvent, from: number) => {
     e.stopPropagation()
     stopDrag.current?.()
@@ -133,9 +149,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       const to = prev && mid < prev.top + prev.height / 2 ? i - 1 : next && mid > next.top + next.height / 2 ? i + 1 : i
       if (to === i) return
       const at = i
-      update(x => moveExercise(x, at, to))
-      i = to
-      setDragging(to)
+      let landed = to
+      update(x => void (landed = moveExercise(x, at, to)))
+      i = landed
+      setDragging(landed)
     }
     const end = (ev?: PointerEvent) => {
       if (ev && ev.pointerId !== id) return
@@ -189,7 +206,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
     y.done = true
     const finished = x.exercises.every(e => e.sets.every(z => z.done))
     x.restFrom = Date.now()
-    x.restEndsAt = finished ? null : x.restFrom + x.exercises[h.i].restS * 1000
+    x.restEndsAt = finished || straightOn(x, h.i) ? null : x.restFrom + restAfter(x, h.i) * 1000
   })
   useEffect(() => {
     if (!a.hold) return
@@ -268,7 +285,14 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
         return (
           // Folded, the whole card opens it; open, the whole header row folds it. The rest picker and ✕ keep their own taps.
-          <section key={ex.key ?? i} data-ex={i} className={`rounded-2xl border p-4 ${dragging === i ? 'border-dashed border-accent/60 [&>*]:invisible' : 'border-line bg-surface'} ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
+          <section key={ex.key ?? i} data-ex={i} className={`rounded-2xl border p-4 ${dragging === i ? 'border-dashed border-accent/60 [&>*]:invisible' : ex.superset ? 'border-accent-2/40 bg-surface' : 'border-line bg-surface'} ${ex.collapsed ? 'row-press cursor-pointer' : ''}`} onClick={ex.collapsed ? toggle : undefined}>
+            {/* A superset: the first says so; the others say they follow straight on (shared/plan.ts tidyGroups). */}
+            {ex.superset && (
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-accent-2">
+                <Icon d={LINK} className="size-3.5" />
+                {ex.superset.endsWith('1') ? `Superset · rest after ${groupNext(a.exercises, i + 1) === null ? 'both' : 'the last'}` : `Straight on from ${a.exercises[i - 1]?.name}`}
+              </p>
+            )}
             {/* Press and hold the name for this exercise's history; a plain tap folds it. */}
             <div className="flex cursor-pointer items-center gap-2" onClick={e => {
               e.stopPropagation() // the card's own handler would undo it
@@ -278,6 +302,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               <button className="relative flex min-w-0 flex-1 select-none items-center gap-2 text-left [-webkit-touch-callout:none]" aria-expanded={!ex.collapsed} {...hold(() => setPeek(ex.name))}>
                 <Tap />
                 <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
+                {ex.superset && <span className="grid h-5 shrink-0 place-items-center rounded-md bg-accent-2/15 px-1.5 text-[11px] font-extrabold text-accent-2">{ex.superset}</span>}
                 <h2 className="min-w-0 break-words font-semibold leading-tight [overflow-wrap:anywhere] line-clamp-2">{ex.name}</h2>
                 <span key={done} className={`relative inline-block shrink-0 animate-bump text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>
                   {shownDone}/{working.length}
@@ -300,8 +325,9 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     if (to === null || !a.exercises[to]) return
                     e.preventDefault()
                     setFx(null)
-                    update(x => moveExercise(x, i, to))
-                    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-move="${to}"]`)?.focus())
+                    let landed = to
+                    update(x => void (landed = moveExercise(x, i, to)))
+                    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-move="${landed}"]`)?.focus())
                   }}>
                   <Icon d={GRIP} />
                 </button>
@@ -336,6 +362,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                   <Tap /><Icon d={TIMER} className="size-4 text-accent-2" />{clock(ex.restS)}
                 </button>
                 <span className="flex-1" />
+                {supersets && a.exercises.length > 1 && (
+                  <button className={`${TOOL} ${ex.superset ? '!border-accent-2/50 !text-accent-2' : ''}`} onClick={() => setSuperFor(i)}
+                    aria-label={ex.superset ? `${ex.name} is in a superset. Change` : `Superset ${ex.name} with another exercise`}><Tap /><Icon d={LINK} /></button>
+                )}
                 <button className={TOOL} aria-label={`${ex.name} history`} onClick={() => setPeek(ex.name)}><Tap /><Icon d={HISTORY} /></button>
                 {/* Swap for another exercise, today only (the machine's taken). */}
                 <button className={TOOL} aria-label={`Swap ${ex.name} for another exercise`} onClick={() => setSwapFor(i)}><Tap /><Icon d={SHUFFLE} /></button>
@@ -417,7 +447,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         y.done = !y.done
                         // Last set of the whole workout: nothing left to rest for.
                         const finished = x.exercises.every(e => e.sets.every(z => z.done))
-                        x.restEndsAt = finished ? null : y.done ? Date.now() + (y.warmup ? 60 : ex.restS) * 1000 : x.restEndsAt // a warm-up rests 60 s
+                        // A warm-up rests 60 s. In a superset, no rest until the last of the group has done this round.
+                        x.restEndsAt = finished || (y.done && !y.warmup && straightOn(x, i)) ? null : y.done ? Date.now() + (y.warmup ? 60 : restAfter(x, i)) * 1000 : x.restEndsAt
                         if (y.done) x.restFrom = Date.now()
                       })
                     }}><Tap />✓{j === pbAt && <span className="absolute right-0.5 top-0 animate-pop text-xs" role="img" aria-label="PB">🏆</span>}</button>
@@ -528,8 +559,10 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           </Sheet>
         )
       })()}
+      {superFor !== null && a.exercises[superFor] && <SupersetSheet a={a} i={superFor} close={() => setSuperFor(null)}
+        pair={k => (setFx(null), update(x => pairExercises(x, superFor, k)))} split={() => update(x => unpairExercises(x, superFor))} />}
       {moveFor !== null && a.exercises[moveFor] && <MoveSheet name={a.exercises[moveFor].name} at={moveFor} count={a.exercises.length} close={() => setMoveFor(null)}
-        move={to => (setFx(null), update(x => moveExercise(x, moveFor, to)), requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-move="${to}"]`)?.focus()))} />}
+        move={to => { let landed = to; setFx(null); update(x => void (landed = moveExercise(x, moveFor, to))); requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-move="${landed}"]`)?.focus()) }} />}
       {restFor !== null && a.exercises[restFor] && <RestPicker ex={a.exercises[restFor]} close={() => setRestFor(null)}
         pick={sec => (rememberRest(a.exercises[restFor].name, sec), update(x => void (x.exercises[restFor] && (x.exercises[restFor].restS = sec))), setRestFor(null))} />}
       {swapFor !== null && a.exercises[swapFor] && <SwapPicker current={a.exercises[swapFor]} close={() => setSwapFor(null)}
@@ -543,12 +576,29 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
       {/* One dock at the bottom: Undo stacks on top of the rest timer, so neither can cover the other. */}
       <div className="fixed inset-x-0 bottom-0 z-20">
       {undo && (
-        <div className={`mx-4 mb-3 flex animate-toast-in items-center gap-3 rounded-2xl border border-line bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg sm:mx-auto sm:max-w-md ${a.restEndsAt || a.hold ? '' : 'mb-[max(1rem,env(safe-area-inset-bottom))]'}`} role="status">
+        <div className={`mx-4 mb-3 flex animate-toast-in items-center gap-3 rounded-2xl border border-line bg-surface-2 py-1.5 pl-4 pr-1.5 shadow-lg sm:mx-auto sm:max-w-md ${a.restEndsAt || a.hold || turn ? '' : 'mb-[max(1rem,env(safe-area-inset-bottom))]'}`} role="status">
           <span className="min-w-0 flex-1 truncate text-sm">{undo.msg}</span>
           <button className="press relative min-h-11 rounded-xl px-4 text-sm font-semibold text-accent" onClick={() => (update(undo.put), setUndo(null), setFx(null))}><Tap />Undo</button>
         </div>
       )}
 
+      {turn && !a.restEndsAt && !a.hold && (() => {
+        // Mid-superset: whose set is next, and the rest that comes after the group's last.
+        const ex = a.exercises[turn.i]
+        let last = turn.i
+        for (let n = groupNext(a.exercises, last); n !== null; n = groupNext(a.exercises, n)) last = n
+        return (
+          <div className="border-t border-accent-2/40 bg-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3" role="status">
+            <div className="mx-auto flex max-w-xl items-center gap-3">
+              <Icon d={LINK} className="size-5 shrink-0 text-accent-2" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs text-muted">Superset · straight on, then rest {clock(a.exercises[last].restS)}</span>
+                <span className="block truncate font-semibold">Set {ex.sets.slice(0, turn.j + 1).filter(s => !s.warmup).length} · {ex.name}</span>
+              </span>
+            </div>
+          </div>
+        )
+      })()}
       {a.hold && (
         <div className="relative border-t border-line bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur" role="timer" aria-label="Hold">
           {/* Fills as the hold goes on: the opposite of rest, which drains. */}
@@ -596,11 +646,46 @@ const HISTORY = 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v
 const SHUFFLE = 'M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22M18 2l4 4-4 4M2 6h1.9c1.5 0 2.9.9 3.6 2.2M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8M18 14l4 4-4 4' // Lucide shuffle
 const TIMER = 'M10 2h4M12 14l3-3M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z' // Lucide timer
 const PLUS = 'M12 5v14M5 12h14'
+const LINK = 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8' // Lucide link-2: a superset
 const PENCIL = 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z' // Lucide pencil-line
 const GRIP = 'M4 6h16M4 12h16M4 18h16' // Lucide menu: the ☰ to drag an exercise
 const SEARCH = 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5'
 
 /** Rest between sets as big buttons; the current one filled. Remembered per exercise (rememberRest). */
+/** Superset an exercise with another, for this workout: back to back, resting after both. In one already: split it. */
+function SupersetSheet({ a, i, pair, split, close }: { a: Active; i: number; pair: (k: number) => void; split: () => void; close: () => void }) {
+  const ex = a.exercises[i]
+  const g = ex.superset?.[0]
+  const row = 'press relative flex min-h-12 w-full items-center gap-3 rounded-xl border border-line bg-surface-2 px-4 py-2 text-left text-[15px] font-medium'
+  if (g) {
+    const others = a.exercises.filter((e, k) => k !== i && e.superset?.[0] === g).map(e => e.name)
+    return (
+      <Sheet close={close} label={`Superset · ${ex.name}`}>
+        <h2 className="truncate text-lg font-bold">Superset · {ex.name}</h2>
+        <p className="mb-4 text-sm text-muted">With {others.join(' and ')}: back to back, resting after the last.</p>
+        <button className={row} onClick={() => (split(), close())}><Tap />Split the superset</button>
+        <p className="mt-3 text-xs text-muted">Each goes back to resting after every set. Sets you've done stay as they are.</p>
+      </Sheet>
+    )
+  }
+  const choices = a.exercises.map((e, k) => ({ e, k })).filter(({ e, k }) => k !== i && !e.superset && e.sets.some(s => !s.done))
+  return (
+    <Sheet close={close} label={`Superset ${ex.name} with`}>
+      <h2 className="truncate text-lg font-bold">Superset {ex.name} with…</h2>
+      <p className="mb-4 text-sm text-muted">Back to back, then rest after both. For this workout.</p>
+      <div className="grid gap-2">
+        {choices.map(({ e, k }) => (
+          <button key={e.key ?? k} className={row} onClick={() => (pair(k), close())}>
+            <Tap /><span className="min-w-0 flex-1 truncate">{e.name}</span>
+            <span className="shrink-0 text-xs text-muted">{k === i + 1 ? 'next on the list' : `moves under ${ex.name}`}</span>
+          </button>
+        ))}
+      </div>
+      {!choices.length && <p className="text-sm text-muted">Every other exercise is done or already in a superset. Add one below the list first.</p>}
+    </Sheet>
+  )
+}
+
 function RestPicker({ ex, pick, close }: { ex: { name: string; restS: number }; pick: (s: number) => void; close: () => void }) {
   return (
     <Sheet close={close} label="Rest between sets">

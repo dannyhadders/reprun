@@ -2,7 +2,8 @@
 import { applyAlias, matchExercise, type Aliases } from '../../shared/exercises.ts'
 export { matchExercise }
 import { resolveExercise } from '../../shared/catalogue.ts'
-import { formatLine, parseLine, parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
+import { formatLine, groupNext, jumpTo, parseLine, parsePlan, suggest, tidyGroups, type PlanItem } from '../../shared/plan.ts'
+export { groupNext, tidyGroups }
 import { barFor } from '../../shared/plates.ts'
 import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
 import { useEffect, useState } from 'react'
@@ -22,6 +23,7 @@ export type LogExercise = {
   collapsed?: boolean // folded away in the logger; ticked count still shows
   rpe?: number // how hard it felt, rated once it's done; saved on each of its sets
   lb?: boolean // its weights are typed in lb (converted to kg when saved); set from your choice when it's added
+  superset?: string // "A1", "A2": done back to back with its neighbours sharing the letter, resting after the last (tidyGroups)
 }
 export type Active = { clientId: string; startedAt: number; title: string; notes?: string; hideLastNote?: true; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null; hold?: Hold | null } // restFrom: when the rest began, for the timer bar
 /** A timed set's countdown: exercise i, set j, ends at endsAt; it ticks the set when it runs out. */
@@ -78,6 +80,7 @@ export function fromRoutine(r: Routine, known: Exercise[], last: Last, aliases: 
       ...e,
       restS: p.restS ?? e.restS,
       ...(p.timed && { timed: true }),
+      ...(p.superset && { superset: p.superset }),
       target: { sets: p.sets, repsMin: p.repsMin, repsMax: p.repsMax, note: p.note, ...(p.timed && { timed: true }) },
       // A hold with no weight is just bodyweight: nothing to ask the first time.
       suggest: { weight: shown(s.weight, e.lb ? 'lb' : 'kg'), reps: String(s.reps), fresh: !p.timed && s.weight === null && !last(e.name).length, held: s.held },
@@ -89,11 +92,12 @@ export function fromRoutine(r: Routine, known: Exercise[], last: Last, aliases: 
 export function fromWorkout(w: Workout, exById: Map<number, Exercise>): Active {
   const order: number[] = []
   for (const s of w.sets) if (!order.includes(s.exercise_id)) order.push(s.exercise_id)
-  return start(w.title ?? '', order.flatMap(id => {
+  return start(w.title ?? '', tidyGroups(order.flatMap(id => {
     const ex = exById.get(id)
     const sets = w.sets.filter(s => s.exercise_id === id && !s.warmup) // Repeat: the working sets (add warm-ups again with + Warm-up)
-    return ex ? [{ ...newExercise(ex.name, ex.muscle, sets.length), ...(isTimed(sets) && { timed: true }) }] : []
-  }))
+    const ss = w.sets.find(s => s.exercise_id === id && s.superset)?.superset
+    return ex ? [{ ...newExercise(ex.name, ex.muscle, sets.length), ...(isTimed(sets) && { timed: true }), ...(ss && { superset: ss }) }] : []
+  })))
 }
 
 /**
@@ -106,19 +110,71 @@ export function swapExercise(ex: LogExercise, name: string, muscle: Muscle, last
   const lb = unitOf(name) === 'lb'
   const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last, lb)
   return {
-    key: ex.key, name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }), ...(lb && { lb: true }),
+    key: ex.key, name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }), ...(lb && { lb: true }), ...(ex.superset && { superset: ex.superset }),
     // Unticked warm-ups were for the old exercise's weight: they go (+ Warm-up can add the new one's).
     sets: ex.sets.filter(x => x.done || !x.warmup).map(x => (x.done ? { ...x, weight: convert(x.weight, !!ex.lb, lb) } : { ...x, weight: '', reps: '' })),
     suggest: s && { weight: shown(s.weight, lb ? 'lb' : 'kg'), reps: String(s.reps), fresh: s.weight === null && !last.length, held: s.held },
   }
 }
 
-/** Move the exercise at `from` to `to` (drag to reorder). A running hold keeps pointing at its own exercise. */
-export function moveExercise(a: Active, from: number, to: number) {
-  if (from === to || !a.exercises[from] || !a.exercises[to]) return
+/**
+ * Move the exercise at `from` to `to` (drag to reorder). A running hold keeps pointing at its own exercise. One step past
+ * a superset it isn't in jumps the whole superset (shared/plan.ts jumpTo). Returns where it landed.
+ */
+export function moveExercise(a: Active, from: number, to: number): number {
+  to = jumpTo(a.exercises, from, to)
+  if (from === to || !a.exercises[from] || !a.exercises[to]) return from
   a.exercises.splice(to, 0, ...a.exercises.splice(from, 1))
   const h = a.hold
   if (h) h.i = h.i === from ? to : h.i > from && h.i <= to ? h.i - 1 : h.i < from && h.i >= to ? h.i + 1 : h.i
+  return to
+}
+
+// ---------- supersets ----------
+/** Make exercises i and k a superset: k moves to just under i (keeping i's own place) and both get a fresh letter. */
+export function pairExercises(a: Active, i: number, k: number) {
+  if (i === k || !a.exercises[i] || !a.exercises[k] || a.exercises[i].superset || a.exercises[k].superset) return
+  const to = k > i ? i + 1 : i
+  moveExercise(a, k, to)
+  const top = k > i ? i : i - 1
+  a.exercises[top].superset = 'Z1' // tidyGroups gives the real letters, in order
+  a.exercises[top + 1].superset = 'Z2'
+  tidyGroups(a.exercises)
+}
+/** Split exercise i's superset: every exercise in it goes back to resting after each set. */
+export function unpairExercises(a: Active, i: number) {
+  let k = i
+  while (k > 0 && groupNext(a.exercises, k - 1) === k) k-- // the group's first
+  if (!a.exercises[k]?.superset) return
+  for (let n: number | null = k; n !== null;) {
+    const next: number | null = groupNext(a.exercises, n)
+    delete a.exercises[n].superset
+    n = next
+  }
+}
+/** The rest after exercise i's set: a superset rests once, for its last exercise's rest time. */
+export function restAfter(a: Active, i: number) {
+  let last = i
+  for (let n = groupNext(a.exercises, last); n !== null; n = groupNext(a.exercises, n)) last = n
+  return a.exercises[last].restS
+}
+/**
+ * Whose turn it is in a superset: the first exercise of the group (exercise i's, or any) that's a set behind the one
+ * ahead of it, counting working sets (warm-ups go in their own time). Nothing when the round is done: time to rest.
+ */
+export function supersetTurn(a: Active, i?: number): { i: number; j: number } | null {
+  const ex = a.exercises
+  for (let k = 0; k < ex.length; k++) {
+    if (!ex[k].superset || (i !== undefined && ex[k].superset![0] !== ex[i]?.superset?.[0])) continue
+    if (k > 0 && ex[k - 1].superset?.[0] === ex[k].superset![0]) continue // not the group's first
+    const group: number[] = [k]
+    for (let n = groupNext(ex, k); n !== null; n = groupNext(ex, n)) group.push(n)
+    const done = (n: number) => ex[n].sets.filter(s => s.done && !s.warmup).length
+    const most = Math.max(...group.map(done))
+    const behind = group.find(n => done(n) < most && ex[n].sets.some(s => !s.done && !s.warmup))
+    if (behind !== undefined) return { i: behind, j: ex[behind].sets.findIndex(s => !s.done && !s.warmup) }
+  }
+  return null
 }
 
 /** A typed weight in kg, from a box in kg or lb. */
@@ -203,14 +259,15 @@ export function routineFromWorkout(w: ImportWorkout, routines: Routine[], known:
   const mine = same(names)
   if (routines.some(r => (title && r.name.trim().toLowerCase() === title.toLowerCase()) || same(parsePlan(r.body).flatMap(x => x.items).map(p => p.name)) === mine)) return null
   const rests = read<Record<string, number>>(KEY.rest, {})
-  const lines = names.map(n => {
+  const items = names.map(n => {
     const all = w.sets.filter(s => s.exercise === n && !s.warmup) // the routine is the working sets
     const timed = all.some(s => s.seconds !== null)
     const top = Math.max(0, ...all.map(s => s.weight_kg ?? 0))
     const work = top ? all.filter(s => (s.weight_kg ?? 0) === top) : all
     const counts = work.map(s => (timed ? s.seconds : s.reps) ?? 0)
-    return formatLine({ name: n, sets: work.length, repsMin: Math.min(...counts), repsMax: Math.max(...counts), weight: top || null, restS: rests[n] ?? null, note: null, ...(timed && { timed: true }) })
+    return { name: n, sets: work.length, repsMin: Math.min(...counts), repsMax: Math.max(...counts), weight: top || null, restS: rests[n] ?? null, note: null, ...(timed && { timed: true }), ...(all.find(s => s.superset) && { superset: all.find(s => s.superset)!.superset! }) } as PlanItem
   })
+  const lines = tidyGroups(items).map(formatLine)
   if (lines.some((l, k) => parseLine(l)?.name !== names[k])) return null
   return { name, body: lines.join('\n') }
 }
@@ -229,7 +286,7 @@ export function toImport(a: Active, endedAt = Date.now()): ImportWorkout {
       const lift = resolveExercise(e.name, null).lift ?? null
       return e.sets.filter(validSet).map(s => ({
         exercise: e.name, muscle: e.muscle, lift, position: position++,
-        weight_kg: s.weight === '' ? null : setKg(s.weight, e.lb), reps: e.timed ? null : +s.reps, seconds: e.timed ? +s.reps : null, notes: s.note?.trim() || null, rpe: e.rpe ?? null, ...(s.warmup && { warmup: true }),
+        weight_kg: s.weight === '' ? null : setKg(s.weight, e.lb), reps: e.timed ? null : +s.reps, seconds: e.timed ? +s.reps : null, notes: s.note?.trim() || null, rpe: e.rpe ?? null, ...(s.warmup && { warmup: true }), ...(e.superset && { superset: e.superset }),
       }))
     }),
   }

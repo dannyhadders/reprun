@@ -136,7 +136,7 @@ Picked 2026-11-17 from the ideas list (plus Marchon Training's hybrid ideas, sti
 
 Not planned, just what Hevy has that we don't (compared 2026-11-18). Keep RepRun simple: anything optional goes behind Feature toggles.
 
-- [ ] **Supersets**: pair two exercises back to back, rest only after the pair.
+- [x] **Supersets**: ⛓ in the logger (Superset with…) and between rows in the routine builder; A1/A2 in plan text, so ChatGPT plans come in paired. Straight on from A1 to A2, rest after the last. Saved per set (sets.superset). Switch: Settings → Features, on.
 - [x] **Warm-up sets**: saved with a warm-up mark (sets.warmup) and left out of PBs, 1RM, volume, counts, charts and suggestions; labelled in the text export. + Warm-up on barbell lifts (bar × 10, 50/70/85%), 60 s rest after one, and tap a set's number to make it a warm-up. (Hevy also has drop and failure sets; probably skip those.)
 - [x] **Muscle heat-map**: already there (Home → Muscle distribution → Body, components/BodyMap.tsx).
 - [ ] **Body measurements** (waist, arms, weight…) next to Photos, behind the same toggle.

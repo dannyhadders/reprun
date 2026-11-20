@@ -5,6 +5,7 @@ import { estimateS, focusChoices, formatLine, parsePlan, planPrompt, roughTime, 
 import { startersFor } from '../../shared/starter'
 import type { Data, Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
+import { featureOn } from '../lib/features'
 import { activityText, ago, date as fmtDate, kg, plural, shown, unitOf, workoutText } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets, type Model } from '../lib/stats'
@@ -218,7 +219,7 @@ function AskChatGPT() {
   // The buttons weigh this week; the prompt gets the last 5 workouts however old, so a week off still shows your weights.
   const choices = focusChoices(workouts.filter(w => w.date >= from).flatMap(w => w.sets.filter(working).map(x => model.exById.get(x.exercise_id)?.muscle ?? 'other')))
   const copy = async (label: string) => {
-    const recent = workouts.slice(0, 5).map(w => workoutText({ ...w, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) }))
+    const recent = workouts.slice(0, 5).map(w => workoutText({ ...w, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?', superset: featureOn(data.profile, 'supersets') ? x.superset : null })) }))
     // Runs and rides count too: a long run yesterday means no heavy legs today.
     const runs = [...model.runs, ...model.otherActivities].filter(a => a.date >= from).sort((a, b) => b.date.localeCompare(a.date)).map(activityText)
     await navigator.clipboard.writeText(workoutPrompt(label, today, recent, data.exercises.map(e => e.name), me, runs))

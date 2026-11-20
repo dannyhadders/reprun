@@ -4,7 +4,8 @@
 // sheet. Saves the same plan text Import does (shared/plan.ts fromRows).
 import { useEffect, useRef, useState } from 'react'
 import { fromCatalogue } from '../../shared/exercises'
-import { estimateS, fromRows, nameError, parsePlan, roughTime, toRows, type BuilderRow } from '../../shared/plan'
+import { estimateS, fromRows, groupNext, jumpTo, linkRows, nameError, parsePlan, roughTime, tidyGroups, toRows, type BuilderRow } from '../../shared/plan'
+import { useFeature } from '../lib/features'
 import type { Muscle, Routine } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { ago, plural, setText, shown, toKg, unitOf, type Unit } from '../lib/format'
@@ -17,6 +18,7 @@ import { Icon, MoveSheet, Sheet, Stepper } from './ui'
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
 const restText = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : `${s}s`)
 const GRIP = 'M4 6h16M4 12h16M4 18h16' // Lucide menu, as the logger's ☰
+const LINK = 'M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 1 1 0 10h-2M8 12h8' // Lucide link-2: a superset, as in the logger
 const X = 'M18 6 6 18M6 6l12 12'
 const SEARCH = 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5'
 // Popular when no muscle is picked: the big lifts most routines are built around.
@@ -41,15 +43,23 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
   const [error, setError] = useState<string | null>(null)
   // Any edit clears the last error: it was about what's just been changed.
   const set = (i: number, patch: Partial<BuilderRow>) => (setError(null), setRows(rs => rs.map((r, k) => (k === i ? { ...r, ...patch } : r))))
-  const move = (from: number, to: number) => setRows(rs => {
-    if (to < 0 || to >= rs.length || from === to) return rs
-    const c = [...rs]
-    c.splice(to, 0, ...c.splice(from, 1))
-    return c
-  })
+  // One step past a superset jumps it whole (jumpTo); returns where the row lands. Moved out of a superset: it leaves it.
+  const rowsNow = useRef(rows)
+  useEffect(() => void (rowsNow.current = rows))
+  const move = (from: number, to: number) => {
+    const at = jumpTo(rowsNow.current, from, to)
+    if (at < 0 || at >= rowsNow.current.length || from === at) return from
+    const c = rowsNow.current.map(r => ({ ...r }))
+    c.splice(at, 0, ...c.splice(from, 1))
+    setRows(rowsNow.current = tidyGroups(c))
+    return at
+  }
+  // ⛓ between rows i and i+1: make them a superset (joining the group either is in), or split the superset there.
+  const supersets = useFeature('supersets')
+  const link = (i: number) => (setError(null), setRows(rs => linkRows(rs, i)))
 
   // Totals for the header: sets and the rough time Next up shows, from the rows that read (a half-typed one doesn't count).
-  const items = rows.flatMap(r => { const o = fromRows(inKg([r])); return 'body' in o ? parsePlan(o.body).flatMap(d => d.items) : [] })
+  const items = rows.flatMap(r => { const o = fromRows(inKg([{ ...r, superset: undefined }])); return 'body' in o ? parsePlan(o.body).flatMap(d => d.items).map(p => ({ ...p, superset: r.superset })) : [] })
   const sets = items.reduce((n, p) => n + p.sets, 0)
 
   // Adding: your own name for it if you've logged it, starting from your last top weight; holds start at 30 seconds.
@@ -120,9 +130,9 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
       const prev = cards[i - 1], next = cards[i + 1]
       const to = prev && mid < prev.top + prev.height / 2 ? i - 1 : next && mid > next.top + next.height / 2 ? i + 1 : i
       if (to === i) return
-      move(i, to)
-      i = to
-      setDragging(to)
+      const landed = move(i, to)
+      i = landed
+      setDragging(landed)
     }
     const end = (ev?: PointerEvent) => {
       if (ev && ev.pointerId !== id) return
@@ -191,7 +201,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                 const label = rows.filter(x => x.name === r.name).length > 1 ? `${r.name} (${i + 1})` : r.name
                 const isOpen = open === r.key
                 return (
-                  <div key={r.key} data-sort={i} className={`border-t border-line first:border-t-0 ${dragging === i ? 'rounded-xl !border border-dashed !border-accent/60 [&>*]:invisible' : isOpen ? 'bg-surface-2/60' : ''}`}>
+                  <div key={r.key} data-sort={i} className={`relative border-t border-line first:border-t-0 ${supersets && r.superset ? 'shadow-[inset_3px_0_0_var(--color-accent-2)]' : ''} ${dragging === i ? 'rounded-xl !border border-dashed !border-accent/60 [&>*]:invisible' : isOpen ? 'bg-surface-2/60' : ''}`}>
                     <div className={`${COLS} px-1 py-1`}>
                       {rows.length > 1 ? (
                         <button type="button" className="grid size-11 cursor-grab touch-none select-none place-items-center rounded-full text-muted active:cursor-grabbing active:text-ink"
@@ -201,8 +211,8 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                             const to = e.key === 'ArrowUp' ? i - 1 : e.key === 'ArrowDown' ? i + 1 : null
                             if (to === null || !rows[to]) return
                             e.preventDefault()
-                            move(i, to)
-                            requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-sort="${to}"] button`)?.focus())
+                            const landed = move(i, to)
+                            requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-sort="${landed}"] button`)?.focus())
                           }}>
                           <Icon d={GRIP} className="size-[18px]" />
                         </button>
@@ -211,12 +221,30 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                       <button type="button" className="relative col-span-4 grid min-h-11 grid-cols-subgrid items-center text-left" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.key)}
                         aria-label={`${label}, ${r.sets || '?'} sets of ${r.reps || '?'}, ${+r.weight ? `${r.weight} ${r.u}` : 'bodyweight'}`}>
                         <Tap />
-                        <span className="truncate text-sm font-semibold" data-name>{r.name}</span>
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          {supersets && r.superset && <span className="grid h-5 shrink-0 place-items-center rounded-md bg-accent-2/15 px-1.5 text-[11px] font-extrabold text-accent-2">{r.superset}</span>}
+                          <span className="truncate text-sm font-semibold" data-name>{r.name}</span>
+                        </span>
                         <span className={cell}>{r.sets || '–'}</span>
                         <span className={cell}>{r.reps || '–'}</span>
                         <span className={`${cell} ${+r.weight ? '' : 'text-muted'}`}>{+r.weight ? `${r.weight}${r.u !== unitOf() ? ` ${r.u}` : ''}` : 'BW'}</span>
                       </button>
                     </div>
+                    {/* ⛓ on the line between this row and the next: make them a superset, or split it. */}
+                    {supersets && i < rows.length - 1 && (() => {
+                      const on = !!r.superset && groupNext(rows, i) === i + 1, next = rows[i + 1].name
+                      return (
+                        // A 44px tap target, centred on the line; the pill drawn inside it.
+                        <button type="button" onClick={() => link(i)} aria-pressed={on}
+                          aria-label={on ? `Split the superset of ${label} and ${next}` : `Make ${label} and ${next} a superset`}
+                          className="absolute -bottom-[22px] left-10 z-10 flex h-11 min-w-11 items-center justify-center px-1">
+                          <Tap />
+                          <span className={`flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-bold ${on ? 'border-accent-2/50 bg-surface text-accent-2' : 'border-dashed border-line bg-surface text-muted'}`}>
+                            <Icon d={LINK} className="size-3.5" />{on ? 'Superset' : ''}
+                          </span>
+                        </button>
+                      )
+                    })()}
                     {isOpen && (
                       <div className="px-3 pb-3">
                         <div className="grid grid-cols-3 gap-2 text-[11px] text-muted">
@@ -233,7 +261,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                               {[...new Set([...RESTS, ...(r.restS ? [r.restS] : [])])].sort((a, b) => a - b).map(s => <option key={s} value={s}>{restText(s)}</option>)}
                             </select>
                           </label>
-                          <button type="button" className="relative flex min-h-11 items-center gap-1 rounded-lg px-3 text-sm font-medium text-bad" aria-label={`Remove ${label}`} onClick={() => (setError(null), setOpen(null), setRows(rs => rs.filter((_, k) => k !== i)))}>
+                          <button type="button" className="relative flex min-h-11 items-center gap-1 rounded-lg px-3 text-sm font-medium text-bad" aria-label={`Remove ${label}`} onClick={() => (setError(null), setOpen(null), setRows(rs => tidyGroups(rs.filter((_, k) => k !== i).map(r => ({ ...r })))))}>
                             <Tap /><Icon d={X} className="size-3.5" />Remove
                           </button>
                         </div>
@@ -322,7 +350,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
       </div>
 
       {moveFor !== null && rows[moveFor] && <MoveSheet name={(rows.filter(x => x.name === rows[moveFor].name).length > 1 ? `${rows[moveFor].name} (${moveFor + 1})` : rows[moveFor].name) || 'this exercise'} at={moveFor} count={rows.length} close={() => setMoveFor(null)}
-        move={to => (move(moveFor, to), requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-sort="${to}"] button`)?.focus()))} />}
+        move={to => { const landed = move(moveFor, to); requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`[data-sort="${landed}"] button`)?.focus()) }} />}
       {naming && (
         <Sheet close={() => setNaming(false)} label="Name this routine">
           <h2 className="text-lg font-bold">{routine ? 'Save changes' : 'Name this routine'}</h2>

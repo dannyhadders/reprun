@@ -78,3 +78,6 @@ const cleanUnits = (v: unknown): Pick<Profile, 'units'> => {
   const units = Object.fromEntries(Object.entries(v).filter(([k, u]) => k.length <= 100 && (u === 'kg' || u === 'lb')).slice(0, 300)) as Record<string, 'kg' | 'lb'>
   return Object.keys(units).length ? { units } : {}
 }
+
+/** A set's superset label as saved: "A1"…"H9", else nothing (an import can say anything). */
+export const superset = (v: unknown) => (typeof v === 'string' && /^[A-H][1-9]$/.test(v) ? v : null)

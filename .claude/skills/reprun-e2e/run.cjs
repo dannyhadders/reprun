@@ -326,6 +326,10 @@ const CHECKS = {
     await squat.click()
     await t.expect(null, 'The builder\'s ☰ opens the Move menu too, and Move down moved Squat last', await t.page.getByRole('button', { name: 'Move down' }).isDisabled())
     await t.page.getByRole('button', { name: 'Move up' }).click() // Squat first again
+    // ⛓ on the line between the two rows makes them a superset: A1 / A2, saved in the routine.
+    await t.page.getByRole('button', { name: `Make Squat and ${first} a superset` }).click()
+    await t.expect(t.page.getByRole('button', { name: `Split the superset of Squat and ${first}`, pressed: true }), 'The ⛓ between the rows says Superset')
+    await t.expect(t.page.locator('[data-sort]').first().getByText('A1', { exact: true }), 'Squat is A1')
     await t.shot('DIY routine, Squat open', true)
     await t.page.getByRole('button', { name: /^Done · / }).click()
     await t.page.getByRole('textbox', { name: 'Routine name' }).fill('Garage legs')
@@ -337,6 +341,7 @@ const CHECKS = {
     await t.page.getByRole('button', { name: 'Finish' }).waitFor()
     const names = await t.page.locator('section[data-ex] h2').allInnerTexts()
     if (names.join() !== `Squat,${first}`) throw new Error(`Starts in the built order, got: ${names}`)
+    await t.expect(t.page.getByText('Superset · rest after both'), 'and starts as a superset')
     await t.page.getByRole('button', { name: 'Discard workout' }).click()
     await t.page.getByRole('button', { name: 'Discard', exact: true }).click()
     // Edit it again (Discard lands back on Start a workout): the rows come back as saved.
@@ -797,6 +802,36 @@ const CHECKS = {
     await t.expect(t.page.getByRole('switch', { name: /^Runs and Strava/, checked: true }), 'Back on')
     await tab(t, '/')
     await t.expect(t.page.getByText(/^\d+ runs? this week$/), 'and the runs tile is back')
+  }],
+
+  'superset': ['Supersets: pair two exercises mid-workout, A1 goes straight on to A2 with no rest, A2 starts the rest, saved and shown on Workouts', async t => {
+    await begin(t, true)
+    await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
+    await t.page.getByRole('button', { name: 'Finish' }).waitFor()
+    const names = await t.page.locator('section[data-ex] h2').allInnerTexts()
+    const card = n => t.page.locator('section[data-ex]').filter({ has: t.page.getByRole('heading', { name: n, exact: true }) })
+    await card(names[0]).locator('button[aria-expanded]').first().click()
+    await t.page.getByRole('button', { name: `Superset ${names[0]} with another exercise` }).click()
+    await t.expect(t.page.getByRole('heading', { name: `Superset ${names[0]} with…` }), 'The Superset sheet lists the others')
+    await t.shot('Superset with…')
+    await t.page.getByRole('dialog').getByRole('button', { name: new RegExp(`^${names[2]}`) }).click()
+    const now = await t.page.locator('section[data-ex] h2').allInnerTexts()
+    if (now[1] !== names[2]) throw new Error(`${names[2]} moves under ${names[0]}, got: ${now}`)
+    await t.expect(card(names[0]).getByText('A1', { exact: true }), `${names[0]} is A1`)
+    await t.expect(card(names[2]).getByText('A2', { exact: true }), `${names[2]} is A2`)
+    await card(names[0]).getByRole('button', { name: 'Set 1 done' }).click()
+    await t.expect(t.page.getByRole('button', { name: 'Skip', exact: true }), 'A1 set 1: no rest', 0)
+    await t.expect(t.page.getByRole('status').filter({ hasText: 'Superset · straight on' }).filter({ hasText: `Set 1 · ${names[2]}` }), `The bar says ${names[2]} · set 1 is next`)
+    await t.shot('Mid-superset: straight on to A2')
+    await card(names[2]).getByRole('button', { name: 'Set 1 done' }).click()
+    await t.expect(t.page.getByRole('button', { name: 'Skip', exact: true }), 'A2 set 1: the rest starts')
+    await t.page.getByRole('button', { name: 'Skip', exact: true }).click()
+    await finish(t)
+    await pbThrough(t)
+    await t.page.getByRole('button', { name: 'Done' }).click()
+    await topWorkout(t).click()
+    await t.expect(topWorkout(t).getByText('Superset', { exact: true }), 'Workouts shows the superset')
+    await t.shot('Workout with a superset')
   }],
 
   'units-pending': ['kg / lb: a switch still waiting on the phone (no signal) is listed in Settings, and Back to kg clears it', async t => {

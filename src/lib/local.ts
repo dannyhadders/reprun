@@ -2,7 +2,7 @@
 // over one Data object in localStorage. The import and restore rules come from shared/, so they match the Worker's.
 // ponytail: the whole dataset is read and written per call; a year of training is ~0.5 MB, well inside localStorage.
 import { isBackup, planRestore, workoutSeen } from '../../shared/backup.ts'
-import { cleanProfile, isDate, keepMaps, num, patchProfile, renameInProfile, routineOk, rpe, setNumbers, type ProfilePatch } from '../../shared/rules.ts'
+import { cleanProfile, isDate, keepMaps, num, patchProfile, renameInProfile, routineOk, rpe, setNumbers, superset, type ProfilePatch } from '../../shared/rules.ts'
 import { addAlias, exerciseNameOk, mergeAliases, MUSCLE_LIST, nameFiler, rewriteRoutine } from '../../shared/exercises.ts'
 import type { Backup, BodyWeight, Data, ImportPayload, ImportResult, Muscle, Profile, Routine } from '../../shared/types.ts'
 import { localISO } from './format.ts'
@@ -167,7 +167,7 @@ function importLocal(d: Data, p: ImportPayload | Backup): ImportResult {
     const wid = nextId(d.workouts)
     d.workouts.push({
       id: wid, date: w.date, title: w.title ?? null, notes: w.notes ?? null, source: w.source, duration_s: w.duration_s ?? null, client_id: w.client_id ?? null,
-      sets: w.sets.map(s => ({ id: setId++, workout_id: wid, exercise_id: ids.get(s.exercise)!, position: s.position ?? 0, weight_kg: s.weight_kg ?? null, reps: s.reps ?? null, seconds: s.seconds ?? null, notes: s.notes ?? null, rpe: rpe(s.rpe), warmup: s.warmup ? 1 : null })),
+      sets: w.sets.map(s => ({ id: setId++, workout_id: wid, exercise_id: ids.get(s.exercise)!, position: s.position ?? 0, weight_kg: s.weight_kg ?? null, reps: s.reps ?? null, seconds: s.seconds ?? null, notes: s.notes ?? null, rpe: rpe(s.rpe), warmup: s.warmup ? 1 : null, superset: superset(s.superset) })),
     })
     result.workouts++
     result.sets += w.sets.length
