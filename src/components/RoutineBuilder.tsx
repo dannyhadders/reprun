@@ -7,7 +7,7 @@ import { fromCatalogue } from '../../shared/exercises'
 import { estimateS, fromRows, nameError, parsePlan, roughTime, toRows, type BuilderRow } from '../../shared/plan'
 import type { Muscle, Routine } from '../../shared/types'
 import { api, useData } from '../lib/data'
-import { ago, plural, setText } from '../lib/format'
+import { ago, plural, setText, shown, toKg, unitOf, type Unit } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { matchExercise } from '../lib/session'
 import { MUSCLE_ICON } from '../lib/muscleIcons'
@@ -21,7 +21,7 @@ const X = 'M18 6 6 18M6 6l12 12'
 const SEARCH = 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5'
 // Popular when no muscle is picked: the big lifts most routines are built around.
 const STAPLES = ['Squat', 'Bench Press', 'Deadlift', 'Overhead Press', 'Barbell Row', 'Pull-up', 'Romanian Deadlift', 'Hip Thrust', 'Lat Pulldown', 'Plank']
-type Card = BuilderRow & { key: string }
+type Card = BuilderRow & { key: string; u: Unit } // u: the unit its weight box was filled in, kept even if it changes meanwhile
 // The table's columns: ☰, exercise, sets, reps, kg. Shared by the header and every row so they line up.
 const COLS = 'grid grid-cols-[2.75rem_minmax(0,1fr)_2.5rem_3.5rem_3.25rem] items-center gap-1.5'
 
@@ -29,7 +29,9 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
   const { data, model, reload } = useData()
   const start = routine ?? seed ?? null
   const [name, setName] = useState(start?.name ?? '')
-  const [rows, setRows] = useState<Card[]>(() => (start ? toRows(start.body).map(r => ({ ...r, key: crypto.randomUUID() })) : []))
+  // Weights on the cards are in each exercise's unit (lb for one in lb); the routine's text keeps kg.
+  const [rows, setRows] = useState<Card[]>(() => (start ? toRows(start.body).map(r => { const u = unitOf(r.name); return { ...r, weight: r.weight && shown(+r.weight, u), key: crypto.randomUUID(), u } }) : []))
+  const inKg = (rs: Card[]) => rs.map(r => ({ ...r, weight: r.weight.trim() === '' || isNaN(+r.weight) ? r.weight : String(toKg(+r.weight, r.u)) }))
   const [open, setOpen] = useState<string | null>(null) // the row unfolded into its card, by key
   useEffect(() => onCount?.(rows.length), [rows.length, onCount]) // so "Tweak before saving" can ask before replacing them
   const [q, setQ] = useState('')
@@ -47,7 +49,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
   })
 
   // Totals for the header: sets and the rough time Next up shows, from the rows that read (a half-typed one doesn't count).
-  const items = rows.flatMap(r => { const o = fromRows([r]); return 'body' in o ? parsePlan(o.body).flatMap(d => d.items) : [] })
+  const items = rows.flatMap(r => { const o = fromRows(inKg([r])); return 'body' in o ? parsePlan(o.body).flatMap(d => d.items) : [] })
   const sets = items.reduce((n, p) => n + p.sets, 0)
 
   // Adding: your own name for it if you've logged it, starting from your last top weight; holds start at 30 seconds.
@@ -57,9 +59,10 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
     const last = lastSets(model, n)
     const top = Math.max(0, ...last.map(s => s.weight_kg ?? 0))
     const timed = last.some(s => s.seconds) || /plank|hold|hang|wall sit/i.test(n)
-    const card = { key: crypto.randomUUID(), name: n, sets: '3', reps: timed ? '30s' : '8-12', weight: top ? String(top) : '', restS: null, note: null }
+    const u = unitOf(n)
+    const card = { key: crypto.randomUUID(), name: n, sets: '3', reps: timed ? '30s' : '8-12', weight: top ? shown(top, u) : '', restS: null, note: null, u }
     // A name the plan text would misread can't be fixed on the card (it's the exercise's name): say so now, not at Save.
-    if ('error' in fromRows([card])) return setError(nameError(n))
+    if ('error' in fromRows(inKg([card]))) return setError(nameError(n))
     setRows(rs => [...rs, card])
     setQ('')
     setError(null)
@@ -130,7 +133,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
 
   // Done: check the rows first (so a bad one can be fixed in place), then name it in the sheet.
   const done = () => {
-    const out = fromRows(rows)
+    const out = fromRows(inKg(rows))
     if ('error' in out) return setError(out.error)
     setError(null)
     setNaming(true)
@@ -139,7 +142,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
     if (busy) return // Return twice, or a key repeat: one routine, not two
     const n = name.trim()
     if (!n) return setError('Give it a name, like "Push day".')
-    const out = fromRows(rows)
+    const out = fromRows(inKg(rows))
     if ('error' in out) return setError(out.error)
     setBusy(true)
     setError(null)
@@ -171,7 +174,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
           </p>
           <div className="overflow-hidden rounded-2xl border border-line bg-surface">
             <div className={`${COLS} border-b border-line px-1 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted`} aria-hidden>
-              <span /><span>Exercise</span><span className="text-center">Sets</span><span className="text-center">Reps</span><span className="text-center">kg</span>
+              <span /><span>Exercise</span><span className="text-center">Sets</span><span className="text-center">Reps</span><span className="text-center">{unitOf()}</span>
             </div>
             <div ref={list} aria-label="Exercises in this routine">
               {rows.map((r, i) => {
@@ -196,12 +199,12 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                       ) : <span />}
                       {/* Tap the row to open its card; again to fold it. The cells show what's set. */}
                       <button type="button" className="relative col-span-4 grid min-h-11 grid-cols-subgrid items-center text-left" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : r.key)}
-                        aria-label={`${label}, ${r.sets || '?'} sets of ${r.reps || '?'}, ${+r.weight ? `${r.weight} kg` : 'bodyweight'}`}>
+                        aria-label={`${label}, ${r.sets || '?'} sets of ${r.reps || '?'}, ${+r.weight ? `${r.weight} ${r.u}` : 'bodyweight'}`}>
                         <Tap />
                         <span className="truncate text-sm font-semibold" data-name>{r.name}</span>
                         <span className={cell}>{r.sets || '–'}</span>
                         <span className={cell}>{r.reps || '–'}</span>
-                        <span className={`${cell} ${+r.weight ? '' : 'text-muted'}`}>{+r.weight ? r.weight : 'BW'}</span>
+                        <span className={`${cell} ${+r.weight ? '' : 'text-muted'}`}>{+r.weight ? `${r.weight}${r.u !== unitOf() ? ` ${r.u}` : ''}` : 'BW'}</span>
                       </button>
                     </div>
                     {isOpen && (
@@ -211,7 +214,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                           <div><span className="mb-1 block">Reps</span>
                             <input className="h-11 w-full rounded-xl border border-line bg-surface text-center text-sm text-ink outline-none placeholder:text-muted focus:border-accent" value={r.reps} placeholder="8-12" onChange={e => set(i, { reps: e.target.value })} aria-label={`${label} reps`} enterKeyHint="done" />
                           </div>
-                          <div><span className="mb-1 block">kg</span><Stepper value={r.weight} placeholder="BW" by={2.5} min={0} label={`${label} kg`} set={v => set(i, { weight: v })} /></div>
+                          <div><span className="mb-1 block">{r.u}</span><Stepper value={r.weight} placeholder="BW" by={r.u === 'lb' ? 5 : 2.5} min={0} label={`${label} ${r.u}`} set={v => set(i, { weight: v })} /></div>
                         </div>
                         <div className="mt-2 flex items-center gap-2">
                           <label className="flex flex-1 items-center gap-2 text-xs text-muted">Rest
@@ -253,7 +256,7 @@ export function RoutineBuilder({ routine, seed, close, onCount }: { routine: Rou
                 <li key={e.id}>
                   <button type="button" className="relative w-full px-3 py-2.5 text-left" onClick={() => add(e.name)}>
                     <Tap /><span className="block font-medium">{e.name}</span>
-                    <span className="block text-xs text-muted">{last && top ? <>Last {ago(last.date).toLowerCase()}: {setText(top)}</> : 'Not done yet'}</span>
+                    <span className="block text-xs text-muted">{last && top ? <>Last {ago(last.date).toLowerCase()}: {setText(top, e.name)}</> : 'Not done yet'}</span>
                   </button>
                 </li>
               )

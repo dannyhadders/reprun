@@ -4,6 +4,8 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'kg and lb fixes: weights like 33.75 kg stay exactly 33.75 (they were rounded to 33.8, which could show a PB you didn\'t lift), lb weights read back exactly as typed (285 lb no longer shows as 284.9), and progress in lb goes up 5 lb at a time. Switching a machine to lb with no signal is remembered too.',
+      'Plans and routines know about lb too: a pasted plan can say "@ 135lb" as well as "@ 60kg", and building or editing a routine shows each exercise\'s weight in its own unit.',
       'A light theme: Settings → Appearance → Light. Same colours, deeper shades, so it\'s easy to read in daylight. Dark is still the default.',
       'If something ever goes wrong on screen, RepRun now says so with a Reload button, instead of leaving a blank page.',
       'Fixed: on wifi that wants you to sign in first (some gyms and hotels), a finished workout could look uploaded when it wasn\'t. It now stays on your phone and goes up once you\'re properly online.',

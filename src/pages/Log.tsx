@@ -17,14 +17,14 @@ import { PbMoment } from '../components/PbMoment'
 import { pbShow } from '../lib/pbMoment'
 import { DONE_WORDS, workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, rememberUnit, sendUnits, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
 
 export default function Log() {
-  const { sync } = useData()
+  const { sync, data } = useData()
   const [active, setActiveRaw] = useState(loadActive)
   const [finished, setFinished] = useState<ImportWorkout | null>(null)
   // Finished or discarded: no rest alert still to come.
@@ -40,6 +40,7 @@ export default function Log() {
     setActive(null)
     setFinished(w)
     void sync()
+    void sendUnits(data.profile) // a unit switch made with no signal
   }
 
   return (
@@ -320,10 +321,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               <button className="relative -my-3 justify-self-start py-3 pr-3 text-left text-xs font-semibold text-accent" aria-label={`Weights in ${u} for ${ex.name}. Switch to ${ex.lb ? 'kg' : 'lb'}`}
                 onClick={() => {
                   update(x => switchUnit(x.exercises[i]))
-                  const to = ex.lb ? 'kg' : 'lb', units = { ...data.profile.units }
-                  if (to === (data.profile.unit ?? 'kg')) delete units[ex.name.toLowerCase()]
-                  else units[ex.name.toLowerCase()] = to
-                  void api('PUT', 'profile', { ...data.profile, units }).then(reload, () => {}) // offline: today's switch still holds
+                  void rememberUnit(data.profile, ex.name, ex.lb ? 'kg' : 'lb').then(ok => { if (ok) void reload() }) // no signal: kept, sent at Finish
                 }}><Tap />{u} ⇄</button>
               <span className="text-xs text-muted">{ex.timed ? 'Secs' : 'Reps'}</span><span />
               {ex.sets.map((s, j) => {

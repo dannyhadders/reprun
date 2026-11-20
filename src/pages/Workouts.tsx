@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { WorkoutSet } from '../../shared/types'
 import { ask, CopyButton, Empty, Icon, Line, PageHeader, PbBadge, ShareButton, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
-import { duration, kg, monthLabel, plural, setText, shown, toKg, unitOf, weekday, workoutText, date as fmtDate } from '../lib/format'
+import { duration, kg, monthLabel, plural, setText, shown, toKg, unitOf, weekday, workoutText, date as fmtDate, type Unit } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
 
 const PENCIL = 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
@@ -153,7 +153,7 @@ function SetRow({ set, n }: { set: WorkoutSet; n: number }) {
 }
 
 const timed = (set: WorkoutSet) => set.seconds !== null && set.reps === null
-type Draft = { weight: string; reps: string; removed: boolean }
+type Draft = { weight: string; reps: string; removed: boolean; u: Unit } // u: the unit the weight box was filled in, kept even if it changes meanwhile
 
 /** The whole workout editable at once: title, notes, every set. Delete lives here, out of the way. */
 function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, WorkoutSet[]][]; close: () => void }) {
@@ -161,11 +161,11 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
   const w = s.workout
   const [title, setTitle] = useState(w?.title ?? '')
   const [notes, setNotes] = useState(w?.notes ?? '')
-  // Weights in each exercise's own unit (lb for one in lb), back to kg when saved.
-  const unit = (x: WorkoutSet) => unitOf(model.exById.get(x.exercise_id)?.name)
-  const [sets, setSets] = useState(() => new Map<number, Draft>((w?.sets ?? []).map(x => [x.id, {
-    weight: shown(x.weight_kg, unit(x)), reps: (timed(x) ? x.seconds : x.reps)?.toString() ?? '', removed: false,
-  }])))
+  // Weights in each exercise's own unit (lb for one in lb), back to kg when saved: in the unit the box was filled in.
+  const [sets, setSets] = useState(() => new Map<number, Draft>((w?.sets ?? []).map(x => {
+    const u = unitOf(model.exById.get(x.exercise_id)?.name)
+    return [x.id, { weight: shown(x.weight_kg, u), reps: (timed(x) ? x.seconds : x.reps)?.toString() ?? '', removed: false, u }]
+  })))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const edit = (id: number, d: Partial<Draft>) => setSets(new Map(sets).set(id, { ...sets.get(id)!, ...d }))
@@ -189,8 +189,10 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
     for (const x of w.sets) {
       const d = sets.get(x.id)!
       if (d.removed) await api('DELETE', `sets/${x.id}`)
-      else if (d.weight !== shown(x.weight_kg, unit(x)) || d.reps !== ((timed(x) ? x.seconds : x.reps)?.toString() ?? '')) {
-        await api('PATCH', `sets/${x.id}`, { weight_kg: d.weight === '' ? '' : toKg(+d.weight, unit(x)), reps: timed(x) ? null : d.reps, seconds: timed(x) ? d.reps : null, notes: x.notes })
+      else if (d.weight !== shown(x.weight_kg, d.u) || d.reps !== ((timed(x) ? x.seconds : x.reps)?.toString() ?? '')) {
+        // Weight untouched (only the reps changed): send it back exactly as stored, not via the box's rounding.
+        const weight_kg = d.weight === shown(x.weight_kg, d.u) ? x.weight_kg ?? '' : d.weight === '' ? '' : toKg(+d.weight, d.u)
+        await api('PATCH', `sets/${x.id}`, { weight_kg, reps: timed(x) ? null : d.reps, seconds: timed(x) ? d.reps : null, notes: x.notes })
       }
     }
   })
@@ -213,7 +215,7 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
               const d = sets.get(x.id)!
               return [
                 <span key={`n${x.id}`} className={`text-center text-muted ${d.removed ? 'line-through' : ''}`}>{i + 1}</span>,
-                <input key={`w${x.id}`} className="input px-2 text-center" type="number" step="0.5" min="0" inputMode="decimal" disabled={d.removed} value={d.weight} onChange={e => edit(x.id, { weight: e.target.value })} aria-label={`Set ${i + 1} ${unit(x)}`} placeholder={unit(x)} />,
+                <input key={`w${x.id}`} className="input px-2 text-center" type="number" step="0.5" min="0" inputMode="decimal" disabled={d.removed} value={d.weight} onChange={e => edit(x.id, { weight: e.target.value })} aria-label={`Set ${i + 1} ${d.u}`} placeholder={d.u} />,
                 <span key={`x${x.id}`} className="text-muted">×</span>,
                 <input key={`r${x.id}`} className="input px-2 text-center" type="number" step="1" min="0" inputMode="numeric" disabled={d.removed} value={d.reps} onChange={e => edit(x.id, { reps: e.target.value })} aria-label={`Set ${i + 1} ${timed(x) ? 'seconds' : 'reps'}`} placeholder={timed(x) ? 'sec' : 'reps'} />,
                 <button key={`d${x.id}`} className="icon-btn" onClick={() => edit(x.id, { removed: !d.removed })} aria-label={d.removed ? `Keep set ${i + 1}` : `Remove set ${i + 1}`}>{d.removed ? '↺' : '✕'}</button>,

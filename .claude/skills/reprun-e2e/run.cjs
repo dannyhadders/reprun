@@ -377,6 +377,17 @@ const CHECKS = {
     await t.shot('Planner with the routine')
   }],
 
+  'plan-lb': ['A pasted plan in lb: "@ 220lb" comes in as 99.8 kg', async t => {
+    await begin(t, false)
+    await planner(t)
+    await t.page.getByRole('button', { name: /^\+ Import/ }).click()
+    await t.page.getByRole('button', { name: 'AI or paste', exact: true }).click()
+    await t.page.getByRole('button', { name: 'Type it yourself' }).click()
+    await t.page.getByRole('textbox', { name: 'Plan text' }).fill('Leg day:\nHack Squat – 3x10 @ 220lb, rest 90s')
+    await t.expect(t.page.getByText(/99\.8 kg/).first(), 'Preview shows 220 lb as 99.8 kg (default unit)')
+    await t.shot('Plan in lb, previewed in kg')
+  }],
+
   'plan-chatty': ['Paste a whole chatty ChatGPT reply: only the workout comes in', async t => {
     await begin(t, false)
     await planner(t)

@@ -1,3 +1,4 @@
+import { lbToKg } from '../../shared/plan.ts'
 export const localISO = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 export const today = () => localISO()
@@ -21,20 +22,27 @@ export const num = (n: number, dp = 0) => n.toLocaleString('en-GB', { maximumFra
 export type Unit = 'kg' | 'lb'
 const LB = 2.20462
 let units: { unit: Unit; each: Record<string, Unit> } = { unit: 'kg', each: {} }
+// Switches the server hasn't confirmed yet (no signal, or still on their way): laid over the profile so every screen
+// and the next workout use them at once, and dropped one by one once a loaded profile shows them (lib/session.ts sends them).
+const PENDING = 'reprun.units'
+export const pendingUnits = (): Record<string, Unit> => { try { return JSON.parse(localStorage.getItem(PENDING) || '{}') } catch { return {} } }
+const savePending = (p: Record<string, Unit>) => { try { if (Object.keys(p).length) localStorage.setItem(PENDING, JSON.stringify(p)); else localStorage.removeItem(PENDING) } catch { /* kept in memory only */ } }
+/** An exercise switched to `u` (lower-case name): applies now, and waits on the phone until the server has it. */
+export const addPendingUnit = (key: string, u: Unit) => (savePending({ ...pendingUnits(), [key]: u }), void (units.each = { ...units.each, [key]: u }))
+export const dropPendingUnit = (key: string) => { const p = pendingUnits(); delete p[key]; savePending(p) }
 /** Called by DataProvider whenever the data loads, so every page formats with the current choice. */
-export const setUnits = (p: { unit?: Unit; units?: Record<string, Unit> }) => void (units = { unit: p.unit ?? 'kg', each: p.units ?? {} })
-/** An exercise's unit (your switch for it, else your default); no name = your default, for totals. */
-export const unitOf = (name?: string): Unit => (name && units.each[name.toLowerCase()]) || units.unit
-export const fromKg = (v: number, u: Unit) => (u === 'lb' ? v * LB : v)
-// A kg weight shown in lb (57.5 → "126.8") comes back as 57.52, a false PB over 57.5. So within 0.03 kg of a ¼-kg step it
-// snaps back to that step; a real lb weight (220 lb = 99.79 kg, 225 = 102.06) is never that close and keeps its value.
-export const toKg = (v: number, u: Unit) => {
-  if (u === 'kg') return v
-  const k = v / LB, step = Math.round(k * 4) / 4
-  return Math.abs(k - step) < 0.03 ? step : Math.round(k * 100) / 100
+export const setUnits = (p: { unit?: Unit; units?: Record<string, Unit> }) => {
+  const unit = p.unit ?? 'kg', each = { ...p.units }, left: Record<string, Unit> = {}
+  for (const [k, u] of Object.entries(pendingUnits())) if ((Object.hasOwn(each, k) ? each[k] : unit) !== u) (left[k] = u), (each[k] = u)
+  savePending(left)
+  units = { unit, each }
 }
+/** An exercise's unit (your switch for it, else your default); no name = your default, for totals. */
+export const unitOf = (name?: string): Unit => (name && Object.hasOwn(units.each, name.toLowerCase()) && units.each[name.toLowerCase()]) || units.unit
+export const fromKg = (v: number, u: Unit) => (u === 'lb' ? v * LB : v)
+export const toKg = (v: number, u: Unit) => (u === 'lb' ? lbToKg(v) : v) // snaps a kg weight shown in lb back: no false PB
 /** A kg value as the box shows it: "220.5" in lb, "100" in kg. */
-export const shown = (v: number | null | undefined, u: Unit) => (v === null || v === undefined ? '' : String(Math.round(fromKg(v, u) * 10) / 10))
+export const shown = (v: number | null | undefined, u: Unit) => (v === null || v === undefined ? '' : String(u === 'lb' ? Math.round(v * LB * 10) / 10 : Math.round(v * 100) / 100)) // kg exact (31.25 stays 31.25)
 /** "100 kg", or "220.5 lb" for an exercise in lb. The name picks the unit; without one it's your default. */
 export const kg = (n: number | null | undefined, name?: string) => {
   const u = unitOf(name)

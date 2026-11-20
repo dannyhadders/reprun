@@ -15,7 +15,23 @@ export type PlanItem = { name: string; sets: number; repsMin: number; repsMax: n
 export type ParsedRoutine = { name: string; items: PlanItem[]; unparsed: string[] }
 
 const SETS = /(\d+)\s*(?:x|×|\*|sets?\s*(?:of|x)?)\s*(\d+)(?:\s*(?:-|–|to)\s*(\d+))?/i
-const WEIGHT = /@?\s*(\d+(?:\.\d+)?)\s*kgs?\b/i
+const WEIGHT = /@?\s*(\d+(?:\.\d+)?)\s*(kgs?|lbs?)\b/i
+
+/**
+ * Pounds to kg, as stored. A kg weight shown in lb (57.5 → "126.8", 13.6 → "30") would come back a little heavier (57.52,
+ * 13.61): a false PB. So it snaps to the nearest 0.05 kg when within 0.02268 kg, half of the 0.1 lb the app shows. Swept:
+ * every 0.05 kg step to 400 kg goes kg → lb → kg exactly, and every 0.5 lb step to 900 lb reads back as typed.
+ */
+export function lbToKg(lb: number) {
+  const k = lb / 2.20462, step = Math.round(k * 20) / 20
+  return Math.round((Math.abs(k - step) < 0.02268 ? step : k) * 100) / 100
+}
+/** The next weight up for double progression: +2.5 kg (+1 under 20), or for an exercise in lb +5 lb (+2.5 under 45 lb). */
+export const stepUp = (kg: number, lb = false) => {
+  if (!lb) return kg + (kg >= 20 ? 2.5 : 1)
+  const now = Math.round(kg * 2.20462 * 2) / 2
+  return lbToKg(now + (now >= 45 ? 5 : 2.5))
+}
 const REST = /rest\s*:?\s*(\d+(?:\.\d+)?)\s*(m|min|mins|minutes|s|sec|secs|seconds)?\b|(\d+(?:\.\d+)?)\s*(m|min|mins|minutes|s|sec|secs|seconds)\s*rest/i
 
 const words = (t: string) => t.split(/\s+/).filter(Boolean).length
@@ -54,7 +70,7 @@ export function parseLine(raw: string): PlanItem | null {
     sets: Number(s[1]),
     repsMin,
     repsMax: s[3] ? Math.max(repsMin, Number(s[3])) : repsMin,
-    weight: w ? Number(w[1]) : null,
+    weight: w ? (/^lb/i.test(w[2]) ? lbToKg(Number(w[1])) : Number(w[1])) : null, // "@ 135lb" is kept in kg
     // "rest 2" with no unit means minutes; "rest 90" means seconds.
     restS: restVal === null ? null : /^m/i.test(restUnit) || (!restUnit && restVal <= 5) ? Math.round(restVal * 60) : Math.round(restVal),
     note,
@@ -149,7 +165,7 @@ export const targetText = (p: Pick<PlanItem, 'sets' | 'repsMin' | 'repsMax' | 't
  * weight goes up (+2.5 kg, or +1 kg under 20 kg); otherwise same weight, one more rep. Rated 9-10 for effort last
  * time (hard or all-out): the weight holds even at the top of the range, and `held` says why.
  */
-export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight' | 'timed'>, last: { weight_kg: number | null; reps: number | null; seconds?: number | null; rpe?: number | null }[]): { weight: number | null; reps: number; held?: true } {
+export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight' | 'timed'>, last: { weight_kg: number | null; reps: number | null; seconds?: number | null; rpe?: number | null }[], lb = false): { weight: number | null; reps: number; held?: true } {
   // Timed (a plank): 5 seconds longer than your best hold last time, or the plan's shortest the first time.
   if (p.timed) {
     const best = Math.max(0, ...last.map(s => s.seconds ?? 0))
@@ -163,7 +179,7 @@ export function suggest(p: Pick<PlanItem, 'repsMin' | 'repsMax' | 'weight' | 'ti
   if (!top) return { weight: null, reps: best + 1 } // bodyweight: just beat last time
   if (atTop.every(s => s.reps! >= p.repsMax)) {
     if (done.some(s => (s.rpe ?? 0) >= 9)) return { weight: top, reps: p.repsMax, held: true }
-    return { weight: top + (top >= 20 ? 2.5 : 1), reps: p.repsMin }
+    return { weight: stepUp(top, lb), reps: p.repsMin }
   }
   return { weight: top, reps: Math.min(best + 1, p.repsMax) }
 }

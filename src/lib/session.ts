@@ -3,10 +3,10 @@ import { applyAlias, matchExercise, type Aliases } from '../../shared/exercises.
 export { matchExercise }
 import { resolveExercise } from '../../shared/catalogue.ts'
 import { formatLine, parseLine, parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
-import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
+import type { Exercise, ImportPayload, ImportWorkout, Muscle, Profile, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
 import { useEffect, useState } from 'react'
 import { api } from './data'
-import { localISO, shown, toKg, unitOf } from './format'
+import { addPendingUnit, localISO, pendingUnits, shown, toKg, unitOf } from './format'
 
 export type LogSet = { reps: string; weight: string; done: boolean; note?: string } // strings: they're straight from inputs; note undefined = no note box
 export type LogExercise = {
@@ -72,7 +72,7 @@ export function fromRoutine(r: Routine, known: Exercise[], last: Last, aliases: 
   return start(r.name, items.map(p => {
     const ex = matchExercise(p.name, known, aliases)
     const e = newExercise(ex?.name ?? p.name, ex?.muscle, p.sets)
-    const s = suggest(p, last(e.name))
+    const s = suggest(p, last(e.name), e.lb)
     return {
       ...e,
       restS: p.restS ?? e.restS,
@@ -102,8 +102,8 @@ export function fromWorkout(w: Workout, exById: Map<number, Exercise>): Active {
  */
 export function swapExercise(ex: LogExercise, name: string, muscle: Muscle, last: WorkoutSet[]): LogExercise {
   const target = ex.target && { ...ex.target, note: null }
-  const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last)
   const lb = unitOf(name) === 'lb'
+  const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last, lb)
   return {
     key: ex.key, name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }), ...(lb && { lb: true }),
     sets: ex.sets.map(x => (x.done ? { ...x, weight: convert(x.weight, !!ex.lb, lb) } : { ...x, weight: '', reps: '' })),
@@ -130,6 +130,26 @@ export function switchUnit(ex: LogExercise) {
   if (ex.suggest) ex.suggest.weight = convert(ex.suggest.weight, !!ex.lb, lb)
   if (lb) ex.lb = true
   else delete ex.lb
+}
+
+// ---------- an exercise's unit, remembered on the profile ----------
+// The switch applies at once and waits on the phone (lib/format.ts pending units) until a loaded profile shows it, so two
+// quick switches, or one with no signal, can't be lost. Sent one at a time; again at Finish and on the next switch.
+let sending: Promise<unknown> = Promise.resolve()
+export function rememberUnit(profile: Profile, name: string, to: 'kg' | 'lb') {
+  addPendingUnit(name.toLowerCase(), to)
+  return sendUnits(profile)
+}
+export function sendUnits(profile: Profile): Promise<boolean> {
+  const next = sending.then(async () => {
+    const pending = pendingUnits()
+    if (!Object.keys(pending).length) return false
+    const units = { ...profile.units }
+    for (const [k, u] of Object.entries(pending)) if (u === (profile.unit ?? 'kg')) delete units[k]; else units[k] = u
+    try { await api('PUT', 'profile', { ...profile, units }); return true } catch { return false }
+  })
+  sending = next
+  return next
 }
 
 export const rememberRest =(name: string, s: number) => write(KEY.rest, { ...read<Record<string, number>>(KEY.rest, {}), [name]: s })

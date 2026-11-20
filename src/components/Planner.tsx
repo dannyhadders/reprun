@@ -4,7 +4,7 @@ import { estimateS, focusChoices, formatLine, parsePlan, planPrompt, roughTime, 
 import { startersFor } from '../../shared/starter'
 import type { Data, Routine, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
-import { activityText, ago, date as fmtDate, plural, workoutText } from '../lib/format'
+import { activityText, ago, date as fmtDate, kg, plural, shown, unitOf, workoutText } from '../lib/format'
 import { Tap } from '../lib/haptic'
 import { lastSets, type Model } from '../lib/stats'
 import { MUSCLE_ICON } from '../lib/muscleIcons'
@@ -152,7 +152,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
                   </button>
                   <button className="relative btn-ghost py-1.5" onClick={() => go(fromWorkout(s.workout!, model.exById))}><Tap />Repeat</button>
                 </div>
-                {open === s.key && <Preview rows={byExercise(s.workout!.sets).map(([id, sets]) => [model.exById.get(id)?.name ?? '?', sets.map(x => `${x.weight_kg ?? 'BW'}×${x.reps ?? '–'}`).join(', '), null])} />}
+                {open === s.key && <Preview rows={byExercise(s.workout!.sets).map(([id, sets]) => [model.exById.get(id)?.name ?? '?', sets.map(x => `${x.weight_kg === null ? 'BW' : shown(x.weight_kg, unitOf(model.exById.get(id)?.name))}×${x.reps ?? '–'}`).join(', '), null])} />}
               </li>
             ))}
           </ul>
@@ -175,7 +175,7 @@ export const Time = ({ s, approx = true }: { s: number | null; approx?: boolean 
 const Chevron = ({ open }: { open: boolean }) => <span aria-hidden className={`inline-block text-xs text-muted transition ${open ? 'rotate-90' : ''}`}>›</span>
 
 const planRows = (items: PlanItem[]): [string, string, string | null][] =>
-  items.map(p => [p.name, `${targetText(p)}${p.weight !== null ? ` · ${p.weight} kg` : ''}${p.restS ? ` · rest ${p.restS}s` : ''}`, p.note])
+  items.map(p => [p.name, `${targetText(p)}${p.weight !== null ? ` · ${kg(p.weight, p.name)}` : ''}${p.restS ? ` · rest ${p.restS}s` : ''}`, p.note])
 
 function byExercise(sets: WorkoutSet[]) {
   const g = new Map<number, WorkoutSet[]>()
@@ -360,7 +360,7 @@ function ImportPlan({ routine, close }: { routine: Routine | null; close: () => 
                 <li key={j}>
                   <div className="flex items-baseline justify-between gap-2">
                     <span className={matched ? '' : 'text-pb'}>{matched ?? p.name}</span>
-                    <span className="shrink-0 tabular-nums text-muted">{targetText(p)}{p.weight !== null ? ` · ${p.weight} kg` : ''}{p.restS ? ` · ${p.restS}s` : ''}</span>
+                    <span className="shrink-0 tabular-nums text-muted">{targetText(p)}{p.weight !== null ? ` · ${kg(p.weight, matched ?? p.name)}` : ''}{p.restS ? ` · ${p.restS}s` : ''}</span>
                   </div>
                   {!matched && (
                     <label className="mt-1 flex items-center gap-2 text-xs text-muted">New exercise, or is it

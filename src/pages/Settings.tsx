@@ -15,7 +15,7 @@ import { pushSupported, ReminderSwitches, RestAlertsButton, useRestAlerts, Whats
 import { CHANGELOG } from '../lib/changelog'
 import { checkForUpdate } from '../components/Update'
 import { Tap } from '../lib/haptic'
-import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/format'
+import { ago, date as fmtDate, dropPendingUnit, kg, localISO, plural, shortDate } from '../lib/format'
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 
@@ -159,6 +159,7 @@ function SwitchedUnits({ onChange }: { onChange: (units: Profile['units']) => vo
   const back = async (key: string) => {
     const units = { ...data.profile.units }
     delete units[key]
+    dropPendingUnit(key) // a switch still on its way from the logger mustn't put it back
     onChange(units)
     await api('PUT', 'profile', { ...data.profile, units })
     await reload()

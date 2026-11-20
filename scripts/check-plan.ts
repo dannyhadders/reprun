@@ -297,17 +297,43 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   f.setUnits({ unit: 'kg', units: { 'leg press': 'lb' } })
   eq([f.unitOf('Leg Press'), f.unitOf('Squat'), f.unitOf()], ['lb', 'kg', 'kg'], 'units: a switched exercise, else the default')
   eq([f.kg(100, 'Leg Press'), f.kg(100, 'Squat'), f.setText({ weight_kg: 99.79, reps: 10, seconds: null }, 'Leg Press')], ['220.5 lb', '100 kg', '220 lb × 10'], 'units: shown in the exercise unit')
-  eq([setKg('220', true), f.shown(setKg('220', true), 'lb'), convert('100', false, true), convert('220.5', true, false), convert('', false, true)], [99.79, '220', '220.5', '100', ''], 'units: lb to kg and back without drift')
-  eq([setKg('126.8', true), setKg('220.5', true), setKg('225', true), setKg('45', true)], [57.5, 100, 102.06, 20.41], 'units: kg shown in lb snaps back (no false PB); real lb weights kept')
+  eq([setKg('220', true), f.shown(setKg('220', true), 'lb'), convert('100', false, true), convert('220.5', true, false), convert('', false, true)], [99.8, '220', '220.5', '100', ''], 'units: lb to kg and back without drift')
+  eq([setKg('126.8', true), setKg('220.5', true), setKg('30', true)], [57.5, 100, 13.6], 'units: kg shown in lb snaps back exactly (no false PB)')
+  // Swept in full when chosen: every 0.05 kg step goes kg → lb → kg exactly, every 0.5 lb step reads back as typed.
+  for (let i = 1; i <= 8000; i++) { const k = Math.round(i * 5) / 100; assert(setKg(f.shown(k, 'lb'), true) === k, `units: ${k} kg through lb came back ${setKg(f.shown(k, 'lb'), true)}`) }
+  for (let i = 1; i <= 1800; i++) assert(f.shown(setKg(String(i / 2), true), 'lb') === String(i / 2), `units: ${i / 2} lb reads back ${f.shown(setKg(String(i / 2), true), 'lb')}`)
+  eq([f.shown(33.75, 'kg'), f.shown(31.25, 'kg')], ['33.75', '31.25'], 'units: kg boxes keep quarter kilos (no 33.8)')
+  const { stepUp } = await import('../shared/plan.ts')
+  eq([stepUp(100), stepUp(15), f.shown(stepUp(setKg('220', true), true), 'lb'), f.shown(stepUp(setKg('30', true), true), 'lb')], [102.5, 16, '225', '32.5'], 'units: progression steps 5 lb (2.5 under 45) for an exercise in lb')
   f.setUnits({ unit: 'kg', units: { 'incline leg press': 'lb' } }) // "Leg Press" is the catalogue's Incline Leg Press
   const e = newExercise('Leg Press')
   eq(e.lb, true, 'units: a switched exercise starts in lb in the logger')
   e.sets[0] = { weight: '220', reps: '10', done: true }
   const w = toImport({ clientId: 'x', startedAt: Date.now(), title: '', exercises: [e], restEndsAt: null })
-  eq(w.sets[0].weight_kg, 99.79, 'units: lb typed, kg saved')
+  eq(w.sets[0].weight_kg, 99.8, 'units: lb typed, kg saved')
   switchUnit(e)
   eq([e.lb, e.sets[0].weight], [undefined, '99.8'], 'units: switching converts the boxes')
   f.setUnits({})
+  const { parseLine: pl } = await import('../shared/plan.ts')
+  eq([pl('Leg Press – 3x10 @ 220lb')?.weight, pl('Leg Press – 3x10 @ 225 lbs')?.weight, pl('Squat – 5x5 @ 100kg')?.weight], [99.8, 102.05, 100], 'units: plans take @ lb as well as kg, kept in kg')
+  // A switch the server hasn't confirmed: applies at once, survives a stale reload, goes once the profile shows it.
+  const mem = new Map<string, string>()
+  Object.assign(globalThis, { localStorage: { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v), removeItem: (k: string) => void mem.delete(k) } })
+  f.setUnits({ unit: 'kg' })
+  f.addPendingUnit('chest press', 'lb')
+  f.setUnits({ unit: 'kg', units: {} }) // a reload that doesn't have it yet
+  eq([f.unitOf('Chest Press'), f.pendingUnits()], ['lb', { 'chest press': 'lb' }], 'units: a pending switch holds through a stale reload')
+  f.setUnits({ unit: 'kg', units: { 'chest press': 'lb' } })
+  eq(f.pendingUnits(), {}, 'units: pending dropped once the profile has it')
+  f.addPendingUnit('chest press', 'kg')
+  f.setUnits({ unit: 'kg' }) // back to the default = no entry: that counts as having it
+  eq([f.unitOf('Chest Press'), f.pendingUnits()], ['kg', {}], 'units: a switch back to the default is done when the entry is gone')
+  // PBs ignore a hair: 220 lb saved as 99.79 (first release) then 99.8 isn't a PB; 100 is.
+  const { livePbHit } = await import('../src/lib/stats.ts')
+  const was = [{ date: '2026-11-19', workoutId: 1, sets: [{ id: 1, workout_id: 1, exercise_id: 1, set_no: 1, weight_kg: 99.79, reps: 10, seconds: null, rpe: null, notes: null } as never] }]
+  eq([livePbHit(was, [{ weight_kg: 99.8, reps: 10, done: true }]), livePbHit(was, [{ weight_kg: 100, reps: 10, done: true }])?.kind], [null, 'weight'], 'units: no PB for the same weight a hundredth apart')
+  f.setUnits({})
+  Reflect.deleteProperty(globalThis, 'localStorage')
   console.log('units self-check passed')
 }
 

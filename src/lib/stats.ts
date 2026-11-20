@@ -44,6 +44,12 @@ export const PB_METRIC: Record<PbKind, (s: Pick<WorkoutSet, 'weight_kg' | 'reps'
   reps: s => (s.weight_kg ? 0 : s.reps ?? 0),
 }
 
+/**
+ * How much more counts as a PB, in kg: a hair over the old best isn't one. The same weight can be saved a hundredth
+ * apart (220 lb is 99.79 kg from the first lb release, 99.8 now), and nobody loads 0.025 kg. Reps count from +1.
+ */
+export const MORE = 0.025
+
 /** livePb, plus which kind of PB it is and the best it beat (for the finish screen's PB moment). */
 export function livePbHit(history: ExerciseSession[], sets: LiveSet[]): { at: number; kind: PbKind; before: number; now: number } | null {
   const past = history.flatMap(h => h.sets)
@@ -51,7 +57,7 @@ export function livePbHit(history: ExerciseSession[], sets: LiveSet[]): { at: nu
   const pick = (f: (s: LiveSet) => number) => sets.reduce((b, s, i) => (s.done && (s.reps ?? 0) > 0 && f(s) > 0 && (b < 0 || f(s) > f(sets[b])) ? i : b), -1)
   for (const kind of ['weight', 'e1rm', 'reps'] as const) {
     const f = PB_METRIC[kind], before = Math.max(0, ...past.map(f)), at = pick(f)
-    if (at >= 0 && before > 0 && f(sets[at]) > before) return { at, kind, before, now: f(sets[at]) }
+    if (at >= 0 && before > 0 && f(sets[at]) > before + (kind === 'reps' ? 0 : MORE)) return { at, kind, before, now: f(sets[at]) }
   }
   return null
 }
@@ -88,8 +94,8 @@ export function buildModel(data: Data) {
       const now = { weight: heaviest?.weight_kg ?? 0, e1rm: strongest ? e1rm(strongest)! : 0, reps: mostReps?.reps ?? 0 }
       const prev = best.get(exId)
       if (prev) {
-        if (heaviest && now.weight > prev.weight && prev.weight > 0) pbs.set(heaviest.id, ['weight'])
-        else if (strongest && now.e1rm > prev.e1rm && prev.e1rm > 0) pbs.set(strongest.id, ['e1rm'])
+        if (heaviest && now.weight > prev.weight + MORE && prev.weight > 0) pbs.set(heaviest.id, ['weight'])
+        else if (strongest && now.e1rm > prev.e1rm + MORE && prev.e1rm > 0) pbs.set(strongest.id, ['e1rm'])
         else if (mostReps && now.reps > prev.reps && prev.reps > 0) pbs.set(mostReps.id, ['reps'])
       }
       if (now.weight || now.e1rm || now.reps) {
