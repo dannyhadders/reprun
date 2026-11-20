@@ -57,8 +57,8 @@ function candidates(m: Model, s: Session, prevSame: Session | undefined, usedThi
     const prevBest = Math.max(0, ...before.map(x => x.weight_kg ?? 0))
     const kinds = m.pbs.get(top.id)!
     const what = kinds.includes('weight') && prevBest
-      ? `${kg(top.weight_kg)} × ${num(top.reps ?? 0)}, ${kg((top.weight_kg ?? 0) - prevBest)} up on your old best`
-      : kinds.includes('reps') ? `${num(top.reps ?? 0)} reps, a new high` : `${kg(top.weight_kg)} × ${num(top.reps ?? 0)}, your strongest set yet`
+      ? `${kg(top.weight_kg, name(top.exercise_id))} × ${num(top.reps ?? 0)}, ${kg((top.weight_kg ?? 0) - prevBest, name(top.exercise_id))} up on your old best`
+      : kinds.includes('reps') ? `${num(top.reps ?? 0)} reps, a new high` : `${kg(top.weight_kg, name(top.exercise_id))} × ${num(top.reps ?? 0)}, your strongest set yet`
     const more = pbSets.length > 1 ? ` (and ${pbSets.length - 1} more PB${pbSets.length > 2 ? 's' : ''})` : ''
     out.push({ kind: 'pb', key: `pb:${w.id}`, text: `New PB on ${name(top.exercise_id)}: ${what}${more}.` })
   }
@@ -73,7 +73,7 @@ function candidates(m: Model, s: Session, prevSame: Session | undefined, usedThi
     out.push({
       kind: 'standard',
       key: `std:${ex.lift}:${Math.round(st.pct / 5)}`,
-      text: `That ${kg(x.weight_kg)} × ${num(x.reps ?? 0)} ${LIFT_NAMES[ex.lift]} (≈${kg(Math.round(est))} 1RM) beats roughly ${st.pct}% of men your weight who lift.`,
+      text: `That ${kg(x.weight_kg, ex.name)} × ${num(x.reps ?? 0)} ${LIFT_NAMES[ex.lift]} (≈${kg(Math.round(est), ex.name)} 1RM) beats roughly ${st.pct}% of men your weight who lift.`,
     })
     break
   }

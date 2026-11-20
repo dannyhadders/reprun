@@ -5,7 +5,7 @@ import { ACCENT, ACCENT_2, Chart, STRAVA } from '../components/Chart'
 import { Heatmap } from '../components/Heatmap'
 import { Card, Empty, Line, PbBadge, Tabs } from '../components/ui'
 import { useData } from '../lib/data'
-import { duration, kg, km, num, pace, plural, shortDate } from '../lib/format'
+import { duration, kg, km, num, pace, plural, setText, shortDate } from '../lib/format'
 import { overallLine } from '../lib/motivation'
 import { MUSCLES, runPace, yearsWithData, yearSummary } from '../lib/stats'
 
@@ -130,7 +130,7 @@ export default function Year() {
                 <li key={s.id} className="flex items-center gap-3 py-2.5 text-sm">
                   <span className="w-14 text-xs text-muted">{shortDate(date)}</span>
                   <Link to={`/exercises/${s.exercise_id}`} className="flex-1 truncate font-medium hover:text-accent">{model.exById.get(s.exercise_id)?.name}</Link>
-                  <span className="tabular-nums">{s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'}{s.reps !== null ? ` × ${num(s.reps)}` : ''}</span>
+                  <span className="tabular-nums">{s.reps !== null ? setText(s, model.exById.get(s.exercise_id)?.name) : s.weight_kg !== null ? kg(s.weight_kg, model.exById.get(s.exercise_id)?.name) : 'BW'}</span>
                   <PbBadge kinds={kinds} />
                 </li>
               ))}

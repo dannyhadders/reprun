@@ -6,7 +6,7 @@ import { formatLine, parseLine, parsePlan, suggest, type PlanItem } from '../../
 import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
 import { useEffect, useState } from 'react'
 import { api } from './data'
-import { localISO } from './format'
+import { localISO, shown, toKg, unitOf } from './format'
 
 export type LogSet = { reps: string; weight: string; done: boolean; note?: string } // strings: they're straight from inputs; note undefined = no note box
 export type LogExercise = {
@@ -20,6 +20,7 @@ export type LogExercise = {
   suggest?: { weight: string; reps: string; fresh?: boolean; held?: boolean } // progression pick, shown as placeholders; fresh = no history and no weight in the plan; held = weight kept because last time felt hard
   collapsed?: boolean // folded away in the logger; ticked count still shows
   rpe?: number // how hard it felt, rated once it's done; saved on each of its sets
+  lb?: boolean // its weights are typed in lb (converted to kg when saved); set from your choice when it's added
 }
 export type Active = { clientId: string; startedAt: number; title: string; notes?: string; exercises: LogExercise[]; restEndsAt: number | null; restFrom?: number | null; hold?: Hold | null } // restFrom: when the rest began, for the timer bar
 /** A timed set's countdown: exercise i, set j, ends at endsAt; it ticks the set when it runs out. */
@@ -58,6 +59,7 @@ export const newExercise = (raw: string, muscle?: Muscle, sets = 1, reps = '', w
     name: e.name,
     muscle: muscle ?? e.muscle,
     restS: read<Record<string, number>>(KEY.rest, {})[e.name] ?? DEFAULT_REST,
+    ...(unitOf(e.name) === 'lb' && { lb: true }),
     sets: Array.from({ length: Math.max(1, sets) }, () => ({ reps, weight, done: false })),
   }
 }
@@ -77,7 +79,7 @@ export function fromRoutine(r: Routine, known: Exercise[], last: Last, aliases: 
       ...(p.timed && { timed: true }),
       target: { sets: p.sets, repsMin: p.repsMin, repsMax: p.repsMax, note: p.note, ...(p.timed && { timed: true }) },
       // A hold with no weight is just bodyweight: nothing to ask the first time.
-      suggest: { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: !p.timed && s.weight === null && !last(e.name).length, held: s.held },
+      suggest: { weight: shown(s.weight, e.lb ? 'lb' : 'kg'), reps: String(s.reps), fresh: !p.timed && s.weight === null && !last(e.name).length, held: s.held },
     }
   }))
 }
@@ -101,10 +103,11 @@ export function fromWorkout(w: Workout, exById: Map<number, Exercise>): Active {
 export function swapExercise(ex: LogExercise, name: string, muscle: Muscle, last: WorkoutSet[]): LogExercise {
   const target = ex.target && { ...ex.target, note: null }
   const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last)
+  const lb = unitOf(name) === 'lb'
   return {
-    key: ex.key, name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }),
-    sets: ex.sets.map(x => (x.done ? x : { ...x, weight: '', reps: '' })),
-    suggest: s && { weight: s.weight === null ? '' : String(s.weight), reps: String(s.reps), fresh: s.weight === null && !last.length, held: s.held },
+    key: ex.key, name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }), ...(lb && { lb: true }),
+    sets: ex.sets.map(x => (x.done ? { ...x, weight: convert(x.weight, !!ex.lb, lb) } : { ...x, weight: '', reps: '' })),
+    suggest: s && { weight: shown(s.weight, lb ? 'lb' : 'kg'), reps: String(s.reps), fresh: s.weight === null && !last.length, held: s.held },
   }
 }
 
@@ -116,6 +119,19 @@ export function moveExercise(a: Active, from: number, to: number) {
   if (h) h.i = h.i === from ? to : h.i > from && h.i <= to ? h.i - 1 : h.i < from && h.i >= to ? h.i + 1 : h.i
 }
 
+/** A typed weight in kg, from a box in kg or lb. */
+export const setKg = (w: string, lb?: boolean) => toKg(+w, lb ? 'lb' : 'kg')
+/** A typed weight moved from one unit to the other ("100" kg → "220.5" lb). Blank stays blank. */
+export const convert = (w: string, fromLb: boolean, toLb: boolean) => (w === '' || fromLb === toLb ? w : shown(setKg(w, fromLb), toLb ? 'lb' : 'kg'))
+/** Switch an exercise's boxes between kg and lb, numbers converted, today's suggestion too. */
+export function switchUnit(ex: LogExercise) {
+  const lb = !ex.lb
+  for (const s of ex.sets) s.weight = convert(s.weight, !!ex.lb, lb)
+  if (ex.suggest) ex.suggest.weight = convert(ex.suggest.weight, !!ex.lb, lb)
+  if (lb) ex.lb = true
+  else delete ex.lb
+}
+
 export const rememberRest =(name: string, s: number) => write(KEY.rest, { ...read<Record<string, number>>(KEY.rest, {}), [name]: s })
 
 const validSet = (s: LogSet) => s.done && +s.reps > 0 && (s.weight === '' || +s.weight >= 0)
@@ -125,7 +141,7 @@ export const isTimed = (sets: Pick<WorkoutSet, 'reps' | 'seconds'>[]) => sets.le
 
 export const totals = (a: Active) => {
   const sets = a.exercises.flatMap(e => e.sets.filter(validSet))
-  const lifted = a.exercises.flatMap(e => (e.timed ? [] : e.sets.filter(validSet))) // seconds held aren't kilos lifted
+  const lifted = a.exercises.flatMap(e => (e.timed ? [] : e.sets.filter(validSet).map(s => ({ ...s, weight: String(setKg(s.weight || '0', e.lb)) })))) // seconds held aren't kilos lifted
   return { sets: sets.length, volume: lifted.reduce((v, s) => v + (+s.weight || 0) * +s.reps, 0) }
 }
 
@@ -174,7 +190,7 @@ export function toImport(a: Active, endedAt = Date.now()): ImportWorkout {
       const lift = resolveExercise(e.name, null).lift ?? null
       return e.sets.filter(validSet).map(s => ({
         exercise: e.name, muscle: e.muscle, lift, position: position++,
-        weight_kg: s.weight === '' ? null : +s.weight, reps: e.timed ? null : +s.reps, seconds: e.timed ? +s.reps : null, notes: s.note?.trim() || null, rpe: e.rpe ?? null,
+        weight_kg: s.weight === '' ? null : setKg(s.weight, e.lb), reps: e.timed ? null : +s.reps, seconds: e.timed ? +s.reps : null, notes: s.note?.trim() || null, rpe: e.rpe ?? null,
       }))
     }),
   }
@@ -251,7 +267,7 @@ export function nextUp(a: Active) {
     if (!s) continue
     const w = s.weight || ex.suggest?.weight
     const r = s.reps || ex.suggest?.reps
-    return [ex.name, w && `${w} kilos`, r && `${r} ${ex.timed ? 'seconds' : 'reps'}`].filter(Boolean).join(', ')
+    return [ex.name, w && `${w} ${ex.lb ? 'pounds' : 'kilos'}`, r && `${r} ${ex.timed ? 'seconds' : 'reps'}`].filter(Boolean).join(', ')
   }
   return null
 }

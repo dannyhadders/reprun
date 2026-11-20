@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { WorkoutSet } from '../../shared/types'
 import { ask, CopyButton, Empty, Icon, Line, PageHeader, PbBadge, ShareButton, SourceBadge, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
-import { duration, kg, monthLabel, plural, setText, weekday, workoutText, date as fmtDate } from '../lib/format'
+import { duration, kg, monthLabel, plural, setText, shown, toKg, unitOf, weekday, workoutText, date as fmtDate } from '../lib/format'
 import { e1rm, type Session } from '../lib/stats'
 
 const PENCIL = 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4'
@@ -136,17 +136,18 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
 function SetRow({ set, n }: { set: WorkoutSet; n: number }) {
   const { model } = useData()
   const est = e1rm(set)
+  const name = model.exById.get(set.exercise_id)?.name
   return (
     <tr className="border-t border-line/60 align-top">
       <td className="py-2 text-muted">{n}</td>
       <td className="py-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-medium tabular-nums">{setText(set)}</span>
+          <span className="font-medium tabular-nums">{setText(set, name)}</span>
           <PbBadge kinds={model.pbs.get(set.id)} />
         </div>
         {set.notes && <div className="mt-0.5 text-xs text-muted">{set.notes}</div>}
       </td>
-      <td className="hidden py-2 text-right text-muted tabular-nums sm:table-cell">{est ? kg(Math.round(est * 10) / 10) : '–'}</td>
+      <td className="hidden py-2 text-right text-muted tabular-nums sm:table-cell">{est ? kg(Math.round(est * 10) / 10, name) : '–'}</td>
     </tr>
   )
 }
@@ -160,8 +161,10 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
   const w = s.workout
   const [title, setTitle] = useState(w?.title ?? '')
   const [notes, setNotes] = useState(w?.notes ?? '')
+  // Weights in each exercise's own unit (lb for one in lb), back to kg when saved.
+  const unit = (x: WorkoutSet) => unitOf(model.exById.get(x.exercise_id)?.name)
   const [sets, setSets] = useState(() => new Map<number, Draft>((w?.sets ?? []).map(x => [x.id, {
-    weight: x.weight_kg?.toString() ?? '', reps: (timed(x) ? x.seconds : x.reps)?.toString() ?? '', removed: false,
+    weight: shown(x.weight_kg, unit(x)), reps: (timed(x) ? x.seconds : x.reps)?.toString() ?? '', removed: false,
   }])))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -186,8 +189,8 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
     for (const x of w.sets) {
       const d = sets.get(x.id)!
       if (d.removed) await api('DELETE', `sets/${x.id}`)
-      else if (d.weight !== (x.weight_kg?.toString() ?? '') || d.reps !== ((timed(x) ? x.seconds : x.reps)?.toString() ?? '')) {
-        await api('PATCH', `sets/${x.id}`, { weight_kg: d.weight, reps: timed(x) ? null : d.reps, seconds: timed(x) ? d.reps : null, notes: x.notes })
+      else if (d.weight !== shown(x.weight_kg, unit(x)) || d.reps !== ((timed(x) ? x.seconds : x.reps)?.toString() ?? '')) {
+        await api('PATCH', `sets/${x.id}`, { weight_kg: d.weight === '' ? '' : toKg(+d.weight, unit(x)), reps: timed(x) ? null : d.reps, seconds: timed(x) ? d.reps : null, notes: x.notes })
       }
     }
   })
@@ -210,7 +213,7 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
               const d = sets.get(x.id)!
               return [
                 <span key={`n${x.id}`} className={`text-center text-muted ${d.removed ? 'line-through' : ''}`}>{i + 1}</span>,
-                <input key={`w${x.id}`} className="input px-2 text-center" type="number" step="0.5" min="0" inputMode="decimal" disabled={d.removed} value={d.weight} onChange={e => edit(x.id, { weight: e.target.value })} aria-label={`Set ${i + 1} kg`} placeholder="kg" />,
+                <input key={`w${x.id}`} className="input px-2 text-center" type="number" step="0.5" min="0" inputMode="decimal" disabled={d.removed} value={d.weight} onChange={e => edit(x.id, { weight: e.target.value })} aria-label={`Set ${i + 1} ${unit(x)}`} placeholder={unit(x)} />,
                 <span key={`x${x.id}`} className="text-muted">×</span>,
                 <input key={`r${x.id}`} className="input px-2 text-center" type="number" step="1" min="0" inputMode="numeric" disabled={d.removed} value={d.reps} onChange={e => edit(x.id, { reps: e.target.value })} aria-label={`Set ${i + 1} ${timed(x) ? 'seconds' : 'reps'}`} placeholder={timed(x) ? 'sec' : 'reps'} />,
                 <button key={`d${x.id}`} className="icon-btn" onClick={() => edit(x.id, { removed: !d.removed })} aria-label={d.removed ? `Keep set ${i + 1}` : `Remove set ${i + 1}`}>{d.removed ? '↺' : '✕'}</button>,

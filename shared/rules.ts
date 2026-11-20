@@ -30,4 +30,11 @@ export const cleanGoals = (v: unknown): GoalId[] =>
   Array.isArray(v) ? [...new Set(v.filter((g): g is GoalId => GOALS.some(x => x.id === g)))].slice(0, 2) : []
 /** A profile from a request body, as both the Worker and the phone-only copy store it. */
 export const cleanProfile = (b: Partial<Profile>): Profile =>
-  ({ age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg), goals: cleanGoals(b.goals), ...(Number.isInteger(b.weekly) && b.weekly! >= 1 && b.weekly! <= 7 ? { weekly: b.weekly } : {}) })
+  ({ age: num(b.age), sex: b.sex === 'female' ? 'female' : 'male', weight_kg: num(b.weight_kg), goals: cleanGoals(b.goals), ...(Number.isInteger(b.weekly) && b.weekly! >= 1 && b.weekly! <= 7 ? { weekly: b.weekly } : {}),
+    ...(b.unit === 'lb' && { unit: 'lb' as const }), ...cleanUnits(b.units) })
+/** Exercises switched to kg or lb (lower-case name → unit): kept only when well formed, at most 300. */
+const cleanUnits = (v: unknown): Pick<Profile, 'units'> => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {}
+  const units = Object.fromEntries(Object.entries(v).filter(([k, u]) => k.length <= 100 && (u === 'kg' || u === 'lb')).slice(0, 300)) as Record<string, 'kg' | 'lb'>
+  return Object.keys(units).length ? { units } : {}
+}

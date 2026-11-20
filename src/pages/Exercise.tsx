@@ -7,7 +7,7 @@ import { ACCENT_2, Chart, gradientFill, gradientStroke } from '../components/Cha
 import { ask, Card, Empty, Line, PageHeader, PbBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { date as fmtDate, kg, num, plural, shortDate } from '../lib/format'
+import { date as fmtDate, fromKg, kg, num, plural, setText, shortDate, unitOf } from '../lib/format'
 import { LIFT_NAMES, standing } from '../lib/standards'
 import { e1rm, exerciseBests, exerciseSeries, METRICS, RANGES, type MetricKey, type RangeKey } from '../lib/stats'
 
@@ -23,7 +23,9 @@ export default function Exercise() {
   const timed = !!b && !b.heaviest && !!b.longestHold
   const metrics = (timed ? ['hold'] : b?.heaviest ? ['heaviest', 'e1rm', 'bestSet', 'volume', 'reps'] : ['reps']) as MetricKey[]
   const activeMetric = metrics.includes(metric) ? metric : metrics[0]
-  const series = useMemo(() => (ex ? exerciseSeries(model, ex.id, activeMetric, range) : []), [model, ex, activeMetric, range])
+  // Weight metrics in the exercise's unit (lb for a machine marked in lb); reps and seconds as they are.
+  const unit = METRICS[activeMetric].unit === 'kg' ? unitOf(ex?.name) : METRICS[activeMetric].unit
+  const series = useMemo(() => (ex ? exerciseSeries(model, ex.id, activeMetric, range).map(p => ({ ...p, value: unit === 'lb' ? fromKg(p.value, 'lb') : p.value })) : []), [model, ex, activeMetric, range, unit])
 
   const config = useMemo<ChartConfiguration>(() => ({
     type: 'line',
@@ -32,10 +34,10 @@ export default function Exercise() {
       datasets: [{ data: series.map(p => p.value), borderColor: gradientStroke, backgroundColor: gradientFill, fill: true, pointBackgroundColor: ACCENT_2, pointRadius: 4, pointHoverRadius: 6, borderWidth: 3, tension: 0.3 }],
     },
     options: {
-      plugins: { tooltip: { callbacks: { label: c => ` ${num(c.parsed.y ?? 0, 1)} ${METRICS[activeMetric].unit}` } } },
-      scales: { x: { grid: { display: false } }, y: { beginAtZero: false, ticks: { callback: v => `${num(+v)} ${METRICS[activeMetric].unit}` } } },
+      plugins: { tooltip: { callbacks: { label: c => ` ${num(c.parsed.y ?? 0, 1)} ${unit}` } } },
+      scales: { x: { grid: { display: false } }, y: { beginAtZero: false, ticks: { callback: v => `${num(+v)} ${unit}` } } },
     },
-  }), [series, activeMetric])
+  }), [series, unit])
 
   if (!ex || !b) return <Empty>That exercise doesn't exist. <Link className="text-accent" to="/exercises">Back to exercises</Link></Empty>
 
@@ -56,10 +58,10 @@ export default function Exercise() {
           <Card><Stat accent value={`${num(b.longestHold!.value)}s`} label="Longest hold" sub={shortDate(b.longestHold!.date)} /></Card>
         ) : (
           <>
-            <Card><Stat accent value={b.heaviest ? kg(b.heaviest.value) : '–'} label="Heaviest weight" sub={b.heaviest && `× ${num(b.heaviest.set.reps ?? 0)} · ${shortDate(b.heaviest.date)}`} /></Card>
-            <Card><Stat accent value={b.oneRm ? kg(Math.round(b.oneRm.value * 10) / 10) : '–'} label="Est. 1RM" sub={b.oneRm && `from ${kg(b.oneRm.set.weight_kg)} × ${num(b.oneRm.set.reps ?? 0)}`} /></Card>
-            <Card><Stat accent value={b.bestSet ? kg(b.bestSet.value) : '–'} label="Best set volume" sub={b.bestSet && shortDate(b.bestSet.date)} /></Card>
-            <Card><Stat accent value={b.bestSession ? kg(b.bestSession.value) : '–'} label="Best session volume" sub={b.bestSession && shortDate(b.bestSession.date)} /></Card>
+            <Card><Stat accent value={b.heaviest ? kg(b.heaviest.value, ex.name) : '–'} label="Heaviest weight" sub={b.heaviest && `× ${num(b.heaviest.set.reps ?? 0)} · ${shortDate(b.heaviest.date)}`} /></Card>
+            <Card><Stat accent value={b.oneRm ? kg(Math.round(b.oneRm.value * 10) / 10, ex.name) : '–'} label="Est. 1RM" sub={b.oneRm && `from ${kg(b.oneRm.set.weight_kg, ex.name)} × ${num(b.oneRm.set.reps ?? 0)}`} /></Card>
+            <Card><Stat accent value={b.bestSet ? kg(b.bestSet.value, ex.name) : '–'} label="Best set volume" sub={b.bestSet && shortDate(b.bestSet.date)} /></Card>
+            <Card><Stat accent value={b.bestSession ? kg(b.bestSession.value, ex.name) : '–'} label="Best session volume" sub={b.bestSession && shortDate(b.bestSession.date)} /></Card>
           </>
         )}
         <Card><Stat accent value={b.mostReps ? num(b.mostReps.value) : '–'} label="Most reps in a set" sub={b.mostReps && shortDate(b.mostReps.date)} /></Card>
@@ -67,7 +69,7 @@ export default function Exercise() {
 
       <Card
         title={METRICS[activeMetric].label}
-        action={change !== 0 && <span className={`text-sm font-semibold ${change > 0 ? 'text-good' : 'text-bad'}`}>{change > 0 ? '▲' : '▼'} {num(Math.abs(change), 1)} {METRICS[activeMetric].unit} over this range</span>}
+        action={change !== 0 && <span className={`text-sm font-semibold ${change > 0 ? 'text-good' : 'text-bad'}`}>{change > 0 ? '▲' : '▼'} {num(Math.abs(change), 1)} {unit} over this range</span>}
       >
         <div className="mb-4 flex flex-wrap gap-2">
           {metrics.length > 1 && <Tabs size="sm" value={activeMetric} onChange={setMetric} options={metrics.map(k => ({ value: k, label: METRICS[k].label }))} />}
@@ -84,7 +86,7 @@ export default function Exercise() {
               <div className="text-right text-sm text-muted">{num(st.ratio, 2)}× body weight</div>
             </div>
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-2"><div className="h-full grad-bg" style={{ width: `${st.pct}%` }} /></div>
-            {st.next && <div className="mt-4"><Line>Next up: {st.next.level} at about {kg(st.next.kg)} est. 1RM for {LIFT_NAMES[ex.lift!]}, {kg(Math.max(0, Math.round(st.next.kg - b.oneRm.value)))} to go.</Line></div>}
+            {st.next && <div className="mt-4"><Line>Next up: {st.next.level} at about {kg(st.next.kg, ex.name)} est. 1RM for {LIFT_NAMES[ex.lift!]}, {kg(Math.max(0, Math.round(st.next.kg - b.oneRm.value)), ex.name)} to go.</Line></div>}
             <p className="mt-3 text-xs text-muted">Rough guide from published lifter standards at {kg(data.profile.weight_kg)} body weight. Not UK-specific or age-adjusted. Update your weight in Settings.</p>
           </Card>
         )}
@@ -96,7 +98,7 @@ export default function Exercise() {
                 {b.setRecords.map(([reps, r]) => (
                   <tr key={reps} className="border-t border-line/60 first:border-0">
                     <td className="py-2 text-muted">{plural(reps, 'rep')}</td>
-                    <td className="py-2 text-right font-semibold tabular-nums">{kg(r.kg)}</td>
+                    <td className="py-2 text-right font-semibold tabular-nums">{kg(r.kg, ex.name)}</td>
                     <td className="w-24 py-2 text-right text-xs text-muted">{shortDate(r.date)}</td>
                   </tr>
                 ))}
@@ -124,9 +126,8 @@ export default function Exercise() {
                   const est = e1rm(s)
                   return (
                     <span key={s.id} className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-2.5 py-1 text-sm tabular-nums">
-                      {s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'}
-                      {s.reps !== null ? ` × ${num(s.reps)}` : s.seconds !== null ? ` × ${num(s.seconds)}s` : ''}
-                      {est && <span className="text-xs text-muted">({num(est, 0)})</span>}
+                      {setText(s, ex.name)}
+                      {est && <span className="text-xs text-muted">({num(fromKg(est, unitOf(ex.name)), 0)})</span>}
                       <PbBadge kinds={model.pbs.get(s.id)} />
                     </span>
                   )

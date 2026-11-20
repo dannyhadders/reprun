@@ -49,7 +49,7 @@ export type RecordRow = { id: number; category: string | null; name: string; val
 export type Goal = { id: number; exercise: string; latest: string | null; target: string; context: string | null; source: string }
 export type BodyWeight = { date: string; kg: number; source: string }
 export type Routine = { id: number; name: string; body: string; created: string }
-export type Profile = { age: number | null; sex: 'male' | 'female'; weight_kg: number | null; goals?: GoalId[]; weekly?: number } // goals: up to two, from onboarding or Settings; weekly: sessions a week for the streak (1-7)
+export type Profile = { age: number | null; sex: 'male' | 'female'; weight_kg: number | null; goals?: GoalId[]; weekly?: number; unit?: 'kg' | 'lb'; units?: Record<string, 'kg' | 'lb'> } // goals: up to two, from onboarding or Settings; weekly: sessions a week for the streak (1-7)
 
 export type Data = {
   exercises: Exercise[]

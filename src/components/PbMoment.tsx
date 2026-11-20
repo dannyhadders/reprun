@@ -124,7 +124,7 @@ function Roll({ p }: { p: PbShow }) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [p])
-  const shown = p.unit === 'kg' ? num(Math.round(v * 2) / 2, 1) : num(Math.round(v))
+  const shown = p.unit !== 'reps' ? num(Math.round(v * 2) / 2, 1) : num(Math.round(v))
   return (
     <div className="grid h-full content-center justify-items-center gap-3 px-6 text-center" style={{ background: 'radial-gradient(70% 45% at 50% 45%, rgb(129 140 248 / 0.25), transparent 70%)' }}>
       <p className="text-xl font-bold" style={anim('pbm-rise', 0.4)}>{p.name}</p>

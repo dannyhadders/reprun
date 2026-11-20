@@ -10,14 +10,14 @@ import { pauseReminders, scheduleRest } from '../lib/push'
 import type { ImportWorkout, Muscle, WorkoutSet } from '../../shared/types'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
-import { ago, clock, EFFORT, effort, kg, num, plural, setText, workoutText } from '../lib/format'
+import { ago, clock, EFFORT, effort, kg, plural, setText, shown, workoutText } from '../lib/format'
 import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sheet, Stepper, useShareCards } from '../components/ui'
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
 import { pbShow } from '../lib/pbMoment'
 import { DONE_WORDS, workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, restOver, saveActive, setVoice, swapExercise, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { beep, isTimed, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -52,7 +52,7 @@ export default function Log() {
 }
 
 function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => void; finish: () => void }) {
-  const { data, model } = useData()
+  const { data, model, reload } = useData()
   const now = useNow()
   const [name, setName] = useState('')
   const [muscle, setMuscle] = useState<Muscle>('other')
@@ -200,7 +200,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
         <Link to="/" className="icon-btn -ml-2 text-xl" aria-label="Back to the menu, workout keeps running">‹</Link>
         <div className="min-w-0 flex-1">
           <input className="w-full bg-transparent text-lg font-bold outline-none placeholder:text-ink" placeholder="Workout" value={a.title} onChange={e => update(x => (x.title = e.target.value))} aria-label="Workout name" />
-          <p className="text-sm tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · <span key={t.sets} className="inline-block animate-bump">{plural(t.sets, 'set')}</span> · {num(t.volume)} kg</p>
+          <p className="text-sm tabular-nums text-muted">{clock((now - a.startedAt) / 1000)} · <span key={t.sets} className="inline-block animate-bump">{plural(t.sets, 'set')}</span> · {kg(Math.round(t.volume))}</p>
         </div>
         {/* Mutes the spoken "Rest over. Next: …"; the beep stays. */}
         <button className="icon-btn relative" onClick={() => { unlockAudio(); setVoice(!voice); setVoiceState(!voice) }}
@@ -222,7 +222,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           // ponytail: put back by name, so removing an exercise above it first can't land it on the wrong one. Same name twice: first wins.
           setUndo({ msg: `Removed set ${j + 1} of ${ex.name}`, put: x => void x.exercises.find(e => e.name === ex.name)?.sets.splice(j, 0, s) })
         }
-        const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : +s.weight, reps: s.reps === '' ? null : +s.reps, done: s.done })))
+        const u = ex.lb ? 'lb' : 'kg'
+        const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : setKg(s.weight, ex.lb), reps: s.reps === '' ? null : +s.reps, done: s.done })))
         const done = ex.sets.filter(s => s.done).length
         const cur = ex.sets.findIndex(s => !s.done) // the next set to do: "+ Add note" goes there, in every exercise (people don't go in order)
         const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
@@ -309,17 +310,26 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
             )}
             {ex.target && (<>
               <p className="mb-3 text-xs text-muted">
-                Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} kg` : 'BW'} × ${ex.suggest.reps}${ex.timed ? 's' : ''}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
+                Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} ${u}` : 'BW'} × ${ex.suggest.reps}${ex.timed ? 's' : ''}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
               </p>
               {/* From a routine the grey numbers are today's suggestion, so last time goes here: every set, one line. */}
-              {prev[0] && <p className="-mt-2 mb-3 text-xs text-muted">Last time: {prev.map(x => setText(x).replace(' kg', '')).join(' · ')}</p>}
+              {prev[0] && <p className="-mt-2 mb-3 text-xs text-muted">Last time: {prev.map(x => (x.weight_kg === null ? 'BW' : shown(x.weight_kg, u)) + setText(x).replace(/^.*? × /, ' × ')).join(' · ')}</p>}
             </>)}
             <div className="grid grid-cols-[1.25rem_minmax(6.5rem,1.4fr)_minmax(4.75rem,1fr)_2.75rem] items-center gap-1.5 text-sm">
-              <span className="text-xs text-muted">Set</span><span className="text-xs text-muted">kg</span><span className="text-xs text-muted">{ex.timed ? 'Secs' : 'Reps'}</span><span />
+              <span className="text-xs text-muted">Set</span>{/* The unit is a button: machines marked in lb at a kg gym. Remembered for this exercise (Settings → Profile lists them). */}
+              <button className="relative -my-3 justify-self-start py-3 pr-3 text-left text-xs font-semibold text-accent" aria-label={`Weights in ${u} for ${ex.name}. Switch to ${ex.lb ? 'kg' : 'lb'}`}
+                onClick={() => {
+                  update(x => switchUnit(x.exercises[i]))
+                  const to = ex.lb ? 'kg' : 'lb', units = { ...data.profile.units }
+                  if (to === (data.profile.unit ?? 'kg')) delete units[ex.name.toLowerCase()]
+                  else units[ex.name.toLowerCase()] = to
+                  void api('PUT', 'profile', { ...data.profile, units }).then(reload, () => {}) // offline: today's switch still holds
+                }}><Tap />{u} ⇄</button>
+              <span className="text-xs text-muted">{ex.timed ? 'Secs' : 'Reps'}</span><span />
               {ex.sets.map((s, j) => {
                 const p = prev[j] ?? prev.at(-1)
                 // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
-                const hint = ex.suggest ?? { weight: p?.weight_kg?.toString() ?? '', reps: (ex.timed ? p?.seconds : p?.reps)?.toString() ?? '' }
+                const hint = ex.suggest ?? { weight: shown(p?.weight_kg, u), reps: (ex.timed ? p?.seconds : p?.reps)?.toString() ?? '' }
                 return [
                   <SwipeRow key={`row${j}`} onDelete={ex.sets.length > 1 ? () => void removeSet(j) : undefined}>
                   {/* Tap the set number for a note on that set. */}
@@ -327,7 +337,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
                     {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>
-                  <Stepper done={s.done} by={2.5} min={0} label={`Set ${j + 1} kg`} placeholder={hint.weight || (ex.suggest?.fresh ? 'kg' : 'BW')} value={s.weight} set={v => update(x => (x.exercises[i].sets[j].weight = v))} />
+                  <Stepper done={s.done} by={ex.lb ? 5 : 2.5} min={0} label={`Set ${j + 1} ${u}`} placeholder={hint.weight || (ex.suggest?.fresh ? u : 'BW')} value={s.weight} set={v => update(x => (x.exercises[i].sets[j].weight = v))} />
                   <Stepper done={s.done} by={ex.timed ? 5 : 1} min={ex.timed ? 5 : 1} label={`Set ${j + 1} ${ex.timed ? 'seconds' : 'reps'}`} placeholder={hint.reps} value={s.reps} set={v => update(x => (x.exercises[i].sets[j].reps = v))} />
                   <button aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
                     className={`press relative h-11 rounded-xl text-lg font-bold ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'} ${s.done && fx?.i === i && fx.j === j ? 'animate-pop' : ''}`}
@@ -417,8 +427,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                     <Tap />
                     <span className="block font-medium">{e.name}</span>
                     <span className="block text-xs text-muted">
-                      {last ? <>Last {ago(last.date).toLowerCase()}: {setText(heaviest(last.sets)!)}</> : 'Not done yet'}
-                      {best && <> · Best {setText(best)}</>}
+                      {last ? <>Last {ago(last.date).toLowerCase()}: {setText(heaviest(last.sets)!, e.name)}</> : 'Not done yet'}
+                      {best && <> · Best {setText(best, e.name)}</>}
                     </span>
                   </button>
                 </li>
@@ -574,7 +584,7 @@ function SwapPicker({ current, pick, close }: { current: { name: string; muscle:
                 <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent/15 text-xs font-bold text-accent">{initials(e.name)}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{e.name}</span>
-                  <span className="block text-xs text-muted">{top ? `Last ${setText(top)}` : 'Not done yet'}</span>
+                  <span className="block text-xs text-muted">{top ? `Last ${setText(top, e.name)}` : 'Not done yet'}</span>
                 </span>
                 {last && <span className="shrink-0 text-xs text-muted">{ago(last.date)}</span>}
               </button>
@@ -756,7 +766,7 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
           {pbNames.map((n, i) => (
             <li key={n} className="flex animate-pop items-center gap-3 px-4 py-3" style={{ animationDelay: `${0.2 + i * 0.12}s`, animationFillMode: 'backwards' }}>
               <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-lg bg-pb/15">🏆</span>
-              <span className="min-w-0 flex-1"><span className="block truncate font-semibold">PB: {n}</span><span className="block text-xs text-muted">{setText(best(n))}</span></span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-semibold">PB: {n}</span><span className="block text-xs text-muted">{setText(best(n), n)}</span></span>
               {i === 0 && <span className="relative"><Burst n={18} r={70} /></span>}
             </li>
           ))}
@@ -870,7 +880,7 @@ function History({ name, close }: { name: string; close: () => void }) {
     <Sheet close={close} label={`${name} history`}>
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="truncate text-lg font-bold">{name}</h2>
-        {trend.length > 0 && <span className="shrink-0 text-sm text-muted">Est. 1RM <b className="text-ink tabular-nums">{kg(Math.round(trend.at(-1)! * 2) / 2)}</b></span>}
+        {trend.length > 0 && <span className="shrink-0 text-sm text-muted">Est. 1RM <b className="text-ink tabular-nums">{kg(Math.round(trend.at(-1)! * 2) / 2, name)}</b></span>}
       </div>
       {trend.length > 1 && <div className="mt-3 h-14"><Chart height={56} label={`${name} estimated 1RM trend`} config={sparkConfig(trend.slice(-20))} /></div>}
       {hist.length ? (
@@ -884,7 +894,7 @@ function History({ name, close }: { name: string; close: () => void }) {
                   {f && <span className="text-xs text-muted">{f.emoji} {f.label}</span>}
                   <span className="ml-auto">{h.sets.map(s => <PbBadge key={s.id} kinds={model.pbs.get(s.id)} />)}</span>
                 </div>
-                <p className="mt-0.5 text-sm text-muted">{h.sets.map(x => setText(x) + (x.notes ? ` (${x.notes})` : '')).join(' · ')}</p>
+                <p className="mt-0.5 text-sm text-muted">{h.sets.map(x => setText(x, name) + (x.notes ? ` (${x.notes})` : '')).join(' · ')}</p>
               </li>
             )
           })}

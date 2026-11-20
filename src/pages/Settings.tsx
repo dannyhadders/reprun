@@ -137,6 +137,34 @@ function UpdateRow() {
   )
 }
 
+/** Exercises switched away from your default unit (from the logger), each with a way back. Saved straight away. */
+function SwitchedUnits({ onChange }: { onChange: (units: Profile['units']) => void }) {
+  const { data, reload } = useData()
+  const def = data.profile.unit ?? 'kg'
+  const list = Object.entries(data.profile.units ?? {}).filter(([, u]) => u !== def)
+  if (!list.length) return null
+  const back = async (key: string) => {
+    const units = { ...data.profile.units }
+    delete units[key]
+    onChange(units)
+    await api('PUT', 'profile', { ...data.profile, units })
+    await reload()
+  }
+  return (
+    <div className="mt-5 rounded-2xl border border-line">
+      <p className="px-3.5 pt-3 text-xs font-semibold uppercase tracking-wide text-muted">In {def === 'kg' ? 'lb' : 'kg'}</p>
+      <ul className="divide-y divide-line">
+        {list.map(([key]) => (
+          <li key={key} className="flex items-center justify-between gap-3 pl-3.5">
+            <span className="min-w-0 truncate text-sm">{data.exercises.find(e => e.name.toLowerCase() === key)?.name ?? key}</span>
+            <button className="relative h-11 shrink-0 px-3.5 text-sm font-semibold text-accent" onClick={() => void back(key)}><Tap />Back to {def}</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function ProfileCard() {
   const { data, reload } = useData()
   const [p, setP] = useState<Profile>(data.profile)
@@ -171,6 +199,16 @@ function ProfileCard() {
             <option value="female">Women</option>
           </select>
         </label>
+        {/* Lifting weights only; body weight stays in kg. Stored in kg either way, so switching changes nothing logged. */}
+        <div className="col-span-3 flex items-center justify-between gap-3 text-sm text-muted">Weights in
+          <div role="group" aria-label="Weights in" className="flex overflow-hidden rounded-xl border border-line">
+            {(['kg', 'lb'] as const).map(u => (
+              <button key={u} type="button" aria-pressed={(p.unit ?? 'kg') === u} onClick={() => setP({ ...p, unit: u })}
+                className={`press relative h-11 w-16 font-semibold ${(p.unit ?? 'kg') === u ? 'bg-accent-deep text-white' : 'bg-surface-2 text-muted'}`}><Tap />{u}</button>
+            ))}
+          </div>
+        </div>
+        <p className="col-span-3 -mt-1 text-xs text-muted">Machines marked in the other one? In a workout, tap the unit above an exercise's weights to switch just that exercise.</p>
         <label className="col-span-3 text-sm text-muted">Sessions a week <span className="text-xs">(for your streak 🔥: gym, runs, anything from Strava)</span>
           <select className="input mt-1" value={p.weekly ?? DEFAULT_WEEKLY} onChange={e => setP({ ...p, weekly: +e.target.value })}>
             {[1, 2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}</option>)}
@@ -182,6 +220,7 @@ function ProfileCard() {
           <button type="button" className="ml-auto text-sm text-accent underline-offset-4 hover:underline" onClick={() => (showIntroAgain(), location.reload())}>Show the intro again</button>
         </div>
       </form>
+      <SwitchedUnits onChange={units => setP(x => ({ ...x, units }))} />
     </Card>
   )
 }

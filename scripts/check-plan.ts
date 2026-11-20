@@ -288,6 +288,28 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   console.log('reminders self-check passed')
 }
 
+// kg / lb: stored in kg, shown and typed in each exercise's unit (src/lib/format.ts, session.ts), kept on the profile.
+{
+  const f = await import('../src/lib/format.ts')
+  const { convert, setKg, switchUnit, toImport, newExercise } = await import(sessionPath)
+  eq([cleanProfile({ unit: 'lb', units: { 'leg press': 'lb', x: 'stone' as never } }).unit, cleanProfile({ unit: 'lb', units: { 'leg press': 'lb', x: 'stone' as never } }).units], ['lb', { 'leg press': 'lb' }], 'units: lb and well-formed switches kept')
+  eq([cleanProfile({ unit: 'kg' }).unit, cleanProfile({ units: [] as never }).units], [undefined, undefined], 'units: kg is the default, junk dropped')
+  f.setUnits({ unit: 'kg', units: { 'leg press': 'lb' } })
+  eq([f.unitOf('Leg Press'), f.unitOf('Squat'), f.unitOf()], ['lb', 'kg', 'kg'], 'units: a switched exercise, else the default')
+  eq([f.kg(100, 'Leg Press'), f.kg(100, 'Squat'), f.setText({ weight_kg: 99.79, reps: 10, seconds: null }, 'Leg Press')], ['220.5 lb', '100 kg', '220 lb × 10'], 'units: shown in the exercise unit')
+  eq([setKg('220', true), f.shown(setKg('220', true), 'lb'), convert('100', false, true), convert('220.5', true, false), convert('', false, true)], [99.79, '220', '220.5', '100', ''], 'units: lb to kg and back without drift')
+  f.setUnits({ unit: 'kg', units: { 'incline leg press': 'lb' } }) // "Leg Press" is the catalogue's Incline Leg Press
+  const e = newExercise('Leg Press')
+  eq(e.lb, true, 'units: a switched exercise starts in lb in the logger')
+  e.sets[0] = { weight: '220', reps: '10', done: true }
+  const w = toImport({ clientId: 'x', startedAt: Date.now(), title: '', exercises: [e], restEndsAt: null })
+  eq(w.sets[0].weight_kg, 99.79, 'units: lb typed, kg saved')
+  switchUnit(e)
+  eq([e.lb, e.sets[0].weight], [undefined, '99.8'], 'units: switching converts the boxes')
+  f.setUnits({})
+  console.log('units self-check passed')
+}
+
 // The PB moment: what each PB says, and which look plays.
 {
   const { pbShow, pickStyle } = await import('../src/lib/pbMoment.ts')

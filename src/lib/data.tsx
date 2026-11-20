@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { planPrompt } from '../../shared/plan.ts'
 import { startersFor } from '../../shared/starter.ts'
 import { Onboarding, Splash, type Answers } from '../components/Onboarding.tsx'
-import { today } from './format.ts'
+import { setUnits, today } from './format.ts'
 import { installHint, introAgain, introDone, markIntroDone } from './intro.ts'
 import { local, LOCAL, startLocal, started } from './local.ts'
 import { sessionLines } from './motivation.ts'
@@ -113,6 +113,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(() => {
     if (!data) return null
+    setUnits(data.profile) // before anything formats a weight
     const model = buildModel(data)
     return { data, model, lines: sessionLines(model), reload, pending, upload, sync, backToIntro }
   }, [data, reload, pending, upload, sync, backToIntro])

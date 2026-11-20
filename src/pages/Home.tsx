@@ -99,8 +99,8 @@ export default function Home() {
                     </div>
                     <div className={`hidden h-9 w-28 ${x.series.length > 1 ? 'sm:block' : ''}`}><Chart height={36} label={`${x.exercise.name} trend`} config={sparkConfig(x.series.map(p => p.value))} /></div>
                     <div className="w-24 text-right">
-                      <div className="font-semibold tabular-nums">{x.best ? kg(x.best) : '–'}</div>
-                      <div className={`text-xs tabular-nums ${x.change > 0 ? 'text-good' : x.change < 0 ? 'text-bad' : 'text-muted'}`}>{x.change > 0 ? '▲ ' : x.change < 0 ? '▼ ' : ''}{x.change ? kg(Math.abs(x.change)) : x.points < 2 ? 'new' : 'steady'}</div>
+                      <div className="font-semibold tabular-nums">{x.best ? kg(x.best, x.exercise.name) : '–'}</div>
+                      <div className={`text-xs tabular-nums ${x.change > 0 ? 'text-good' : x.change < 0 ? 'text-bad' : 'text-muted'}`}>{x.change > 0 ? '▲ ' : x.change < 0 ? '▼ ' : ''}{x.change ? kg(Math.abs(x.change), x.exercise.name) : x.points < 2 ? 'new' : 'steady'}</div>
                     </div>
                   </Link>
                 </li>

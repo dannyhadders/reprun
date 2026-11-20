@@ -554,6 +554,29 @@ const CHECKS = {
     await t.shot('After the swap')
   }],
 
+  'units': ['kg / lb: switch one exercise to lb in the logger (numbers convert), see it in Settings, back to kg; lb as the default', async t => {
+    await begin(t, true)
+    await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
+    const first = t.page.locator('button[aria-expanded]').first()
+    const name = (await first.locator('h2').innerText()).trim()
+    await first.click()
+    await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).first().fill('100')
+    await t.page.getByRole('button', { name: `Weights in kg for ${name}. Switch to lb` }).click()
+    await t.expect(null, '100 kg becomes 220.5 lb', (await t.page.getByRole('spinbutton', { name: 'Set 1 lb' }).first().inputValue()) === '220.5')
+    await t.shot('Exercise in lb')
+    await t.page.getByRole('link', { name: /Back to the menu/ }).click()
+    await settings(t, 'Profile')
+    await t.expect(t.page.getByText(name, { exact: true }), `${name} is listed under In lb`)
+    await t.page.getByRole('button', { name: 'Back to kg' }).click()
+    await t.expect(t.page.getByRole('button', { name: 'Back to kg' }), 'Back to kg empties the list', 0)
+    await t.page.getByRole('group', { name: 'Weights in' }).getByRole('button', { name: 'lb' }).click()
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(t.page.getByText('Saved', { exact: true }), 'lb saved as the default')
+    await t.shot('Profile in lb')
+    await tab(t, '/exercises')
+    await t.expect(t.page.locator('main').getByText(/ lb$/).first(), 'Exercises show lb')
+  }],
+
   'workout-edit': ['Edit a past workout (rename, drop a set), then delete it', async t => {
     await begin(t, true)
     await tab(t, '/workouts')

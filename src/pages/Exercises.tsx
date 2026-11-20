@@ -36,7 +36,7 @@ export default function Exercises() {
                 </div>
                 <div className="text-right">
                   <div className="font-semibold tabular-nums">
-                    {b.heaviest ? `${kg(b.heaviest.value)}` : b.longestHold ? `${num(b.longestHold.value)}s` : b.mostReps ? `${num(b.mostReps.value)} reps` : '–'}
+                    {b.heaviest ? `${kg(b.heaviest.value, e.name)}` : b.longestHold ? `${num(b.longestHold.value)}s` : b.mostReps ? `${num(b.mostReps.value)} reps` : '–'}
                   </div>
                   <div className="text-xs text-muted">{b.heaviest ? 'heaviest' : b.longestHold ? 'longest hold' : 'best'}</div>
                 </div>

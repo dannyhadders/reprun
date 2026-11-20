@@ -16,7 +16,24 @@ export const weekStart = (iso: string) => {
 }
 
 export const num = (n: number, dp = 0) => n.toLocaleString('en-GB', { maximumFractionDigits: dp, minimumFractionDigits: 0 })
-export const kg = (n: number | null | undefined) => (n === null || n === undefined ? '–' : `${num(n, 1)} kg`)
+// kg or lb. Weights are always stored in kg; this is only what you see and type. Your default is on the profile, and
+// so is each exercise you've switched (the unit button in the logger: machines marked in lb at a kg gym).
+export type Unit = 'kg' | 'lb'
+const LB = 2.20462
+let units: { unit: Unit; each: Record<string, Unit> } = { unit: 'kg', each: {} }
+/** Called by DataProvider whenever the data loads, so every page formats with the current choice. */
+export const setUnits = (p: { unit?: Unit; units?: Record<string, Unit> }) => void (units = { unit: p.unit ?? 'kg', each: p.units ?? {} })
+/** An exercise's unit (your switch for it, else your default); no name = your default, for totals. */
+export const unitOf = (name?: string): Unit => (name && units.each[name.toLowerCase()]) || units.unit
+export const fromKg = (v: number, u: Unit) => (u === 'lb' ? v * LB : v)
+export const toKg = (v: number, u: Unit) => (u === 'lb' ? Math.round((v / LB) * 100) / 100 : v)
+/** A kg value as the box shows it: "220.5" in lb, "100" in kg. */
+export const shown = (v: number | null | undefined, u: Unit) => (v === null || v === undefined ? '' : String(Math.round(fromKg(v, u) * 10) / 10))
+/** "100 kg", or "220.5 lb" for an exercise in lb. The name picks the unit; without one it's your default. */
+export const kg = (n: number | null | undefined, name?: string) => {
+  const u = unitOf(name)
+  return n === null || n === undefined ? '–' : `${num(fromKg(n, u), 1)} ${u}`
+}
 export const km = (m: number | null | undefined, dp = 2) => (m === null || m === undefined ? '–' : `${num(m / 1000, dp)} km`)
 
 export const date = (iso: string, opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }) =>
@@ -55,9 +72,9 @@ export const greeting = () => {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
-/** "60 kg × 8", "BW × 12", "BW × 45s" */
-export const setText = (s: { weight_kg: number | null; reps: number | null; seconds: number | null }) =>
-  `${s.weight_kg !== null ? `${num(s.weight_kg, 1)} kg` : 'BW'} × ${s.reps !== null ? num(s.reps) : s.seconds !== null ? `${num(s.seconds)}s` : '–'}`
+/** "60 kg × 8", "BW × 12", "BW × 45s"; in lb when the exercise `name` is. */
+export const setText = (s: { weight_kg: number | null; reps: number | null; seconds: number | null }, name?: string) =>
+  `${s.weight_kg !== null ? kg(s.weight_kg, name) : 'BW'} × ${s.reps !== null ? num(s.reps) : s.seconds !== null ? `${num(s.seconds)}s` : '–'}`
 
 /** The logger's four effort choices, stored as RPE so a 1-10 rating from anywhere else still reads. */
 export const EFFORT = [{ rpe: 6, emoji: '😌', label: 'Easy' }, { rpe: 8, emoji: '🙂', label: 'Good' }, { rpe: 9, emoji: '😤', label: 'Hard' }, { rpe: 10, emoji: '🥵', label: 'Max' }] as const
@@ -74,11 +91,11 @@ export const activityText = (a: { sport: string; date: string; distance_m: numbe
 export function workoutText(w: { date: string; title: string | null; duration_s?: number | null; notes?: string | null; sets: TextSet[] }) {
   const byEx = new Map<string, TextSet[]>()
   for (const s of w.sets) byEx.set(s.exercise, [...(byEx.get(s.exercise) ?? []), s])
-  const set = (s: TextSet) => setText(s) + (s.notes ? ` (${s.notes})` : '')
+  const set = (s: TextSet) => setText(s, s.exercise) + (s.notes ? ` (${s.notes})` : '')
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
   return [
     `${w.title || 'Workout'} · ${date(w.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}${w.duration_s ? ` · ${duration(w.duration_s)}` : ''}`,
-    `${plural(w.sets.length, 'set')}, ${num(volume)} kg total volume`,
+    `${plural(w.sets.length, 'set')}, ${kg(Math.round(volume))} total volume`,
     ...(w.notes ? ['', w.notes] : []),
     '',
     ...[...byEx].map(([name, sets]) => `${name}: ${sets.map(set).join(', ')}${effort(sets[0].rpe) ? ` (felt ${effort(sets[0].rpe)!.label.toLowerCase()})` : ''}`),

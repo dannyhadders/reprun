@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'kg or lb: pick your default in Settings → Profile. Machines marked in lb at a kg gym? In a workout, tap the unit above an exercise\'s weights and it switches (the numbers convert) and stays that way for that exercise. Everything you\'ve logged is kept as it was.',
       'The website has a Questions section: is it free, where your workouts are kept, no signal, the App Store, Apple Watch and more, each a tap to open.',
       'Buttons are a slightly deeper indigo, so their white writing is easier to read, especially outdoors. The same goes for the + button, selected tabs and the red bin when you swipe a set.',
       'A monthly report: on the 1st at 10am, a notification with last month in numbers (gym sessions, runs, km, PBs) and how it compares with the month before. It comes with rest alerts; switch it off in Settings → Notifications.',

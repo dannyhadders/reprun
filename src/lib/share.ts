@@ -7,7 +7,7 @@ export type CardWorkout = {
   date: string; title: string | null; duration_s?: number | null
   sets: { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null }[]
 }
-import { date, duration, num, plural, setText } from './format'
+import { date, duration, kg, plural, setText } from './format'
 
 const W = 1080, H = 1350, PAD = 90
 const C = { bg: '#0a0c11', surface: '#12151d', line: '#242a38', ink: '#e8eaf0', muted: '#8b93a7', accent: '#818cf8', accent2: '#22d3ee', pb: '#fbbf24' }
@@ -48,7 +48,7 @@ export type Look = (typeof LOOKS)[number]['id']
 /** Time, Sets, Volume, and PBs when there are any: what every look shows. */
 function statsOf(w: CardWorkout, pbs: string[]): [string, string][] {
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
-  const out: [string, string][] = [[duration(w.duration_s ?? null), 'Time'], [String(w.sets.length), 'Sets'], [`${num(volume)} kg`, 'Volume']]
+  const out: [string, string][] = [[duration(w.duration_s ?? null), 'Time'], [String(w.sets.length), 'Sets'], [kg(Math.round(volume)), 'Volume']]
   if (pbs.length) out.push([`🏆 ${pbs.length}`, pbs.length === 1 ? 'PB' : 'PBs'])
   return out
 }
@@ -331,7 +331,7 @@ function drawFull(w: CardWorkout, pbs: string[], line?: string): HTMLCanvasEleme
   const all = [...byEx].sort(([a], [b]) => Number(pbs.includes(b)) - Number(pbs.includes(a))) // stable: done order kept within each group
   const room = H - 180 - y // down to just above the footer rule
   const best = (sets: CardWorkout['sets']) => sets.reduce((b, s) => ((s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b))
-  const detail = (sets: CardWorkout['sets']) => `${plural(sets.length, 'set')} · ${setText(best(sets))}`
+  const detail = (sets: CardWorkout['sets']) => `${plural(sets.length, 'set')} · ${setText(best(sets), sets[0].exercise)}`
   if (all.length * 44 <= room) {
     // One column, name left and sets right, rows as roomy as fit (44–64px).
     const rowH = Math.min(64, room / all.length)
