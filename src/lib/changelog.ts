@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'Fixed: after an update the app could open to a blank dark screen and stay that way, even after closing it. It now ignores a bad saved copy and loads your data fresh.',
       'kg or lb: pick your default in Settings → Profile. Machines marked in lb at a kg gym? In a workout, tap the unit above an exercise\'s weights and it switches (the numbers convert) and stays that way for that exercise. Everything you\'ve logged is kept as it was.',
       'The website has a Questions section: is it free, where your workouts are kept, no signal, the App Store, Apple Watch and more, each a tap to open.',
       'Buttons are a slightly deeper indigo, so their white writing is easier to read, especially outdoors. The same goes for the + button, selected tabs and the red bin when you swipe a set.',

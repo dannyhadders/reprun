@@ -23,6 +23,10 @@ declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 // The copy opened on at launch must come from this version of the app: one saved by an older version may lack a field
 // the new screens read, and a crash before the first fetch would never get replaced. (The offline fallback takes any copy, as before.)
 const CACHE_BUILD = 'reprun.data.build'
+// A body that isn't the dataset (a 200 that wasn't JSON comes back from api() as {}) must never be shown or saved:
+// opened on at launch, it crashed before the fetch that would replace it, and the app stayed blank for good.
+const usable = (d: unknown): d is Data => Array.isArray((d as Data | null)?.exercises)
+const cachedData = () => { try { const d = JSON.parse(localStorage.getItem(CACHE) ?? 'null'); return usable(d) ? d : null } catch { return null } }
 
 export async function api<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
   if (LOCAL) return local<T>(method, path, body)
@@ -59,7 +63,7 @@ export async function importStravaFile(file: File) {
 export function DataProvider({ children }: { children: ReactNode }) {
   // Open on the last copy straight away and refresh behind it; the network only decides what shows on the very first open.
   const [data, setData] = useState<Data | null>(() => {
-    try { return !LOCAL && localStorage.getItem(CACHE_BUILD) === __BUILD__.sha ? JSON.parse(localStorage.getItem(CACHE) ?? 'null') as Data | null : null } catch { return null }
+    try { return !LOCAL && localStorage.getItem(CACHE_BUILD) === __BUILD__.sha ? cachedData() : null } catch { return null }
   })
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(() => outbox().length)
@@ -68,13 +72,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     try {
       const d = await api<Data>('GET', 'data')
+      if (!usable(d)) throw new Error('Unexpected reply')
       setData(d)
       setError(null)
       if (!LOCAL) try { localStorage.setItem(CACHE, JSON.stringify(d)); localStorage.setItem(CACHE_BUILD, __BUILD__.sha) } catch { /* full or blocked: just no offline copy */ }
     } catch (e) {
       // Offline at the gym (or Access session expired): carry on with the last copy so the logger still works.
-      const cached = (() => { try { return localStorage.getItem(CACHE) } catch { return null } })()
-      if (cached) setData(d => d ?? (JSON.parse(cached) as Data))
+      const cached = cachedData()
+      if (cached) setData(d => d ?? cached)
       else setError(e instanceof Error ? e.message : String(e))
     }
   }, [])
