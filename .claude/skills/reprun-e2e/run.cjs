@@ -96,6 +96,21 @@ const CHECKS = {
     await t.shot('Settings: Check for updates', true)
   }],
 
+  'crash-screen': ['A crash while drawing shows Something went wrong with Reload, not a blank screen, and Reload recovers', async t => {
+    await begin(t, false)
+    const good = await t.page.evaluate(() => localStorage.getItem('reprun.local'))
+    await t.page.evaluate(() => localStorage.setItem('reprun.local', JSON.stringify({ profile: null }))) // loads fine, but nothing can draw without a profile
+    t.crashing = true
+    await t.page.reload()
+    await t.expect(t.page.getByText('Something went wrong'), 'The crash screen shows instead of a blank page')
+    await t.expect(null, 'Phone-only: no Reload from the server (it would have nothing to reload from)', await t.page.getByRole('button', { name: 'Reload from the server' }).count() === 0)
+    await t.shot('Crash screen')
+    await t.page.evaluate(v => localStorage.setItem('reprun.local', v), good)
+    await t.page.getByRole('button', { name: 'Reload' }).click()
+    await t.expect(t.page.locator('main'), 'Reload opens the app again')
+    t.crashing = false
+  }],
+
   'settings-list': ['Settings is a grouped list: rows show their status and open their own page, Back returns', async t => {
     await begin(t, true)
     await tab(t, '/settings')
@@ -658,8 +673,8 @@ async function run(id, device, browser) {
   await ctx.addInitScript(() => Object.defineProperty(navigator, 'standalone', { get: () => true }))
   const page = await ctx.newPage()
   const errors = []
-  page.on('pageerror', e => !t.offline && errors.push(e.message))
-  page.on('console', m => m.type() === 'error' && !t.offline && errors.push(m.text()))
+  page.on('pageerror', e => !t.offline && !t.crashing && errors.push(e.message)) // crashing: the crash-screen check breaks it on purpose
+  page.on('console', m => m.type() === 'error' && !t.offline && !t.crashing && errors.push(m.text()))
   page.setDefaultTimeout(8000)
   const res = { id, title, device, steps: [], status: 'PASS' }
   let n = 0

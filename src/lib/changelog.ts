@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'If something ever goes wrong on screen, RepRun now says so with a Reload button, instead of leaving a blank page.',
       'Fixed: on wifi that wants you to sign in first (some gyms and hotels), a finished workout could look uploaded when it wasn\'t. It now stays on your phone and goes up once you\'re properly online.',
       'Fixed: after an update the app could open to a blank dark screen and stay that way, even after closing it. It now ignores a bad saved copy and loads your data fresh.',
       'kg or lb: pick your default in Settings → Profile. Machines marked in lb at a kg gym? In a workout, tap the unit above an exercise\'s weights and it switches (the numbers convert) and stays that way for that exercise. Everything you\'ve logged is kept as it was.',
