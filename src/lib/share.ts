@@ -5,8 +5,9 @@
 /** What the card needs: an ImportWorkout fits, and so does a saved workout with its exercise names filled in. */
 export type CardWorkout = {
   date: string; title: string | null; duration_s?: number | null
-  sets: { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null }[]
+  sets: { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; warmup?: number | boolean | null }[]
 }
+import { working } from '../../shared/types.ts'
 import { date, duration, kg, plural, setText } from './format'
 
 const W = 1080, H = 1350, PAD = 90
@@ -46,7 +47,8 @@ export const LOOKS = [
 export type Look = (typeof LOOKS)[number]['id']
 
 /** Time, Sets, Volume, and PBs when there are any: what every look shows. */
-function statsOf(w: CardWorkout, pbs: string[]): [string, string][] {
+function statsOf(all: CardWorkout, pbs: string[]): [string, string][] {
+  const w = { ...all, sets: all.sets.filter(working) } // warm-ups aren't in the sets or the volume
   const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
   const out: [string, string][] = [[duration(w.duration_s ?? null), 'Time'], [String(w.sets.length), 'Sets'], [kg(Math.round(volume)), 'Volume']]
   if (pbs.length) out.push([`🏆 ${pbs.length}`, pbs.length === 1 ? 'PB' : 'PBs'])
@@ -327,7 +329,7 @@ function drawFull(w: CardWorkout, pbs: string[], line?: string): HTMLCanvasEleme
 
   // Each exercise with its set count and best set. PBs first, in gold; the rest in the order done.
   const byEx = new Map<string, CardWorkout['sets']>()
-  for (const s of w.sets) byEx.set(s.exercise, [...(byEx.get(s.exercise) ?? []), s])
+  for (const s of w.sets.filter(working)) byEx.set(s.exercise, [...(byEx.get(s.exercise) ?? []), s])
   const all = [...byEx].sort(([a], [b]) => Number(pbs.includes(b)) - Number(pbs.includes(a))) // stable: done order kept within each group
   const room = H - 180 - y // down to just above the footer rule
   const best = (sets: CardWorkout['sets']) => sets.reduce((b, s) => ((s.weight_kg ?? 0) > (b.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (b.weight_kg ?? 0) && (s.reps ?? 0) > (b.reps ?? 0)) ? s : b))

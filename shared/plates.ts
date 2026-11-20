@@ -54,3 +54,20 @@ export function load(total: number, bar: number, plates: number[]): Load | null 
   const exact = Math.abs(want - n) < 1e-9
   return { side, exact, lower: exact ? null : bar + 2 * n * unit, higher: exact ? null : bar + 2 * (n + 1) * unit }
 }
+
+/**
+ * Warm-up sets building up to the working weight `work` (same unit as the bar and plates): the bar × 10, then 50% × 5,
+ * 70% × 3 and 85% × 1, each rounded down to a weight you can load. A step that lands on the bar, repeats a weight or
+ * reaches the working weight is dropped, so light lifts get fewer. None at or below the bar.
+ */
+export function warmupRamp(work: number, bar: number, plates: number[]): { weight: number; reps: number }[] {
+  if (!(work > bar) || work - bar > MAX * 2) return []
+  const unit = Math.min(...plates)
+  const down = (w: number) => bar + Math.floor((w - bar) / 2 / unit + 1e-9) * 2 * unit
+  const out = [{ weight: bar, reps: 10 }]
+  for (const [pct, reps] of [[0.5, 5], [0.7, 3], [0.85, 1]]) {
+    const w = down(work * pct)
+    if (w > out.at(-1)!.weight && w < work) out.push({ weight: w, reps })
+  }
+  return out
+}

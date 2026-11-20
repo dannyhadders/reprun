@@ -228,8 +228,8 @@ async function importPayload(db: D1Database, p: ImportPayload | Backup): Promise
     writes.push(db.prepare('INSERT INTO workouts (date, title, notes, source, duration_s, client_id) VALUES (?, ?, ?, ?, ?, ?)')
       .bind(w.date, w.title ?? null, w.notes ?? null, w.source, w.duration_s ?? null, w.client_id ?? null))
     for (const s of w.sets) {
-      writes.push(db.prepare('INSERT INTO sets (workout_id, exercise_id, position, weight_kg, reps, seconds, notes, rpe) VALUES ((SELECT max(id) FROM workouts), ?, ?, ?, ?, ?, ?, ?)')
-        .bind(ids.get(s.exercise)!, s.position ?? 0, s.weight_kg ?? null, s.reps ?? null, s.seconds ?? null, s.notes ?? null, rpe(s.rpe)))
+      writes.push(db.prepare('INSERT INTO sets (workout_id, exercise_id, position, weight_kg, reps, seconds, notes, rpe, warmup) VALUES ((SELECT max(id) FROM workouts), ?, ?, ?, ?, ?, ?, ?, ?)')
+        .bind(ids.get(s.exercise)!, s.position ?? 0, s.weight_kg ?? null, s.reps ?? null, s.seconds ?? null, s.notes ?? null, rpe(s.rpe), s.warmup ? 1 : null))
     }
     result.workouts++
     result.sets += w.sets.length

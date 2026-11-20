@@ -5,7 +5,7 @@ import { THINGS } from './motivation.ts'
 import { localISO, num, parseISO, today, weekStart } from './format.ts'
 import { e1rm, runPace, weeklyTarget, type Model } from './stats.ts'
 import { LIFT_NAMES, levelKgs } from './standards.ts'
-import type { Lift } from '../../shared/types.ts'
+import { working, type Lift } from '../../shared/types.ts'
 
 export type Milestone = { key: string; emoji: string; title: string; date: string | null; progress: number } // progress 0-1; date when reached
 
@@ -33,7 +33,7 @@ const nth = (n: number) => `${num(n)}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : [
 
 export function milestones(m: Model, weeklyRaw?: number | null): Milestone[] {
   const weekly = weeklyTarget(weeklyRaw)
-  const workouts = m.chronological
+  const workouts = m.chronological.map(w => ({ ...w, sets: w.sets.filter(working) })) // warm-ups never earn a milestone
   const sessions = [...m.sessions].reverse() // oldest first
   const runs = [...m.runs].sort((a, b) => a.date.localeCompare(b.date))
   const pbDates = workouts.flatMap(w => w.sets.filter(s => m.pbs.has(s.id)).map(() => w.date))

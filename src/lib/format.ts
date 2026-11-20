@@ -95,7 +95,7 @@ export const EFFORT = [{ rpe: 6, emoji: '😌', label: 'Easy' }, { rpe: 8, emoji
 /** The nearest choice at or above a rating: 7 reads as Good, 5 as Easy. */
 export const effort = (rpe: number | null | undefined) => (rpe ? EFFORT.find(e => rpe <= e.rpe) ?? EFFORT[3] : null)
 
-type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null; rpe?: number | null }
+type TextSet = { exercise: string; weight_kg: number | null; reps: number | null; seconds: number | null; notes?: string | null; rpe?: number | null; warmup?: number | boolean | null }
 /** A workout as plain text, one line per exercise, for pasting into ChatGPT or sending to a PT. */
 /** A run or other activity on one line, for the ChatGPT prompt: "Run · Tue 17 Nov 2026 · 10.2 km · 52 min · avg HR 151". */
 export const activityText = (a: { sport: string; date: string; distance_m: number | null; moving_s: number | null; elapsed_s: number | null; avg_hr: number | null }) =>
@@ -106,12 +106,18 @@ export function workoutText(w: { date: string; title: string | null; duration_s?
   const byEx = new Map<string, TextSet[]>()
   for (const s of w.sets) byEx.set(s.exercise, [...(byEx.get(s.exercise) ?? []), s])
   const set = (s: TextSet) => setText(s, s.exercise) + (s.notes ? ` (${s.notes})` : '')
-  const volume = w.sets.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
+  // Warm-ups are listed (so a PT or ChatGPT can see how you warmed up) but not counted in the sets or the volume.
+  const work = w.sets.filter(s => !s.warmup)
+  const volume = work.reduce((v, s) => v + (s.weight_kg ?? 0) * (s.reps ?? 0), 0)
+  const line = (sets: TextSet[]) => {
+    const warm = sets.filter(s => s.warmup), rest = sets.filter(s => !s.warmup)
+    return [warm.length && `warm-up ${warm.map(set).join(', ')}`, rest.map(set).join(', ')].filter(Boolean).join(' · ')
+  }
   return [
     `${w.title || 'Workout'} · ${date(w.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}${w.duration_s ? ` · ${duration(w.duration_s)}` : ''}`,
-    `${plural(w.sets.length, 'set')}, ${kg(Math.round(volume))} total volume`,
+    `${plural(work.length, 'set')}${w.sets.length > work.length ? ` (plus ${plural(w.sets.length - work.length, 'warm-up set')})` : ''}, ${kg(Math.round(volume))} total volume`,
     ...(w.notes ? ['', w.notes] : []),
     '',
-    ...[...byEx].map(([name, sets]) => `${name}: ${sets.map(set).join(', ')}${effort(sets[0].rpe) ? ` (felt ${effort(sets[0].rpe)!.label.toLowerCase()})` : ''}`),
+    ...[...byEx].map(([name, sets]) => `${name}: ${line(sets)}${effort(sets[0].rpe) ? ` (felt ${effort(sets[0].rpe)!.label.toLowerCase()})` : ''}`),
   ].join('\n')
 }

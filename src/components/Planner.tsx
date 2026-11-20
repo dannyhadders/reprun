@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { working } from '../../shared/types'
 import { Link } from 'react-router-dom'
 import { estimateS, focusChoices, formatLine, parsePlan, planPrompt, roughTime, targetText, workoutPrompt, type PlanItem } from '../../shared/plan'
 import { startersFor } from '../../shared/starter'
@@ -152,7 +153,7 @@ export function Planner({ begin, children }: { begin: (a: Active) => void; child
                   </button>
                   <button className="relative btn-ghost py-1.5" onClick={() => go(fromWorkout(s.workout!, model.exById))}><Tap />Repeat</button>
                 </div>
-                {open === s.key && <Preview rows={byExercise(s.workout!.sets).map(([id, sets]) => [model.exById.get(id)?.name ?? '?', sets.map(x => `${x.weight_kg === null ? 'BW' : shown(x.weight_kg, unitOf(model.exById.get(id)?.name))}×${x.reps ?? '–'}`).join(', '), null])} />}
+                {open === s.key && <Preview rows={byExercise(s.workout!.sets.filter(working)).map(([id, sets]) => [model.exById.get(id)?.name ?? '?', sets.map(x => `${x.weight_kg === null ? 'BW' : shown(x.weight_kg, unitOf(model.exById.get(id)?.name))}×${x.reps ?? '–'}`).join(', '), null])} />}
               </li>
             ))}
           </ul>
@@ -215,7 +216,7 @@ function AskChatGPT() {
   const [[today, from]] = useState(() => [new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }), new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)])
   const workouts = model.sessions.filter(s => s.workout?.sets.length).map(s => s.workout!) // newest first
   // The buttons weigh this week; the prompt gets the last 5 workouts however old, so a week off still shows your weights.
-  const choices = focusChoices(workouts.filter(w => w.date >= from).flatMap(w => w.sets.map(x => model.exById.get(x.exercise_id)?.muscle ?? 'other')))
+  const choices = focusChoices(workouts.filter(w => w.date >= from).flatMap(w => w.sets.filter(working).map(x => model.exById.get(x.exercise_id)?.muscle ?? 'other')))
   const copy = async (label: string) => {
     const recent = workouts.slice(0, 5).map(w => workoutText({ ...w, sets: w.sets.map(x => ({ ...x, exercise: model.exById.get(x.exercise_id)?.name ?? '?' })) }))
     // Runs and rides count too: a long run yesterday means no heavy legs today.

@@ -1,5 +1,5 @@
 // Everything the screens show is derived here from the raw /api/data payload. Pure functions, no fetching.
-import type { Activity, Data, Exercise, Muscle, Workout, WorkoutSet } from '../../shared/types.ts'
+import { working, type Activity, type Data, type Exercise, type Muscle, type Workout, type WorkoutSet } from '../../shared/types.ts'
 import { daysAgo, localISO, parseISO, today, weekStart } from './format.ts'
 
 export const RUN_SPORTS = new Set(['Run', 'TrailRun', 'VirtualRun'])
@@ -85,7 +85,8 @@ export function buildModel(data: Data) {
   const top = (sets: WorkoutSet[], f: (s: WorkoutSet) => number) => sets.reduce<WorkoutSet | null>((a, s) => (f(s) > 0 && (!a || f(s) > f(a)) ? s : a), null)
   for (const w of chronological) {
     const byEx = new Map<number, WorkoutSet[]>()
-    for (const s of w.sets) byEx.set(s.exercise_id, [...(byEx.get(s.exercise_id) ?? []), s])
+    // Warm-ups are left out of history, so PBs, 1RM, charts, last-time hints and suggestions never count them.
+    for (const s of w.sets.filter(working)) byEx.set(s.exercise_id, [...(byEx.get(s.exercise_id) ?? []), s])
     for (const [exId, sets] of byEx) {
       exHistory.set(exId, [...(exHistory.get(exId) ?? []), { date: w.date, workoutId: w.id, sets }])
       const heaviest = top(sets, s => s.weight_kg ?? 0)
@@ -108,7 +109,7 @@ export function buildModel(data: Data) {
   const sessions: Session[] = data.workouts.map(w => {
     const act = (gymByDate.get(w.date) ?? []).find(a => !usedGym.has(a.id)) ?? null
     if (act) usedGym.add(act.id)
-    const s = w.sets
+    const s = w.sets.filter(working) // counts and volume: working sets only (the workout itself keeps its warm-ups)
     return {
       key: `w${w.id}`,
       date: w.date,
@@ -204,7 +205,7 @@ export function muscleSets(m: Model, from: string, to = today()) {
   const counts = Object.fromEntries(MUSCLES.map(k => [k, 0])) as Record<(typeof MUSCLES)[number], number>
   for (const w of m.data.workouts) {
     if (w.date < from || w.date > to) continue
-    for (const s of w.sets) {
+    for (const s of w.sets.filter(working)) {
       const mu = m.exById.get(s.exercise_id)?.muscle
       if (mu && mu !== 'other') counts[mu]++
     }
@@ -215,7 +216,7 @@ export function muscleSets(m: Model, from: string, to = today()) {
 export function mainExercises(m: Model, days = 30, limit = 5) {
   const from = daysAgo(days)
   const counts = new Map<number, number>()
-  for (const w of m.data.workouts) if (w.date >= from) for (const s of w.sets) counts.set(s.exercise_id, (counts.get(s.exercise_id) ?? 0) + 1)
+  for (const w of m.data.workouts) if (w.date >= from) for (const s of w.sets.filter(working)) counts.set(s.exercise_id, (counts.get(s.exercise_id) ?? 0) + 1)
   return [...counts]
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
@@ -317,7 +318,7 @@ export function yearSummary(m: Model, year: number) {
   const sessions = m.sessions.filter(s => s.date.startsWith(y))
   const runs = m.runs.filter(r => r.date.startsWith(y))
   const workouts = m.data.workouts.filter(w => w.date.startsWith(y))
-  const sets = workouts.flatMap(w => w.sets)
+  const sets = workouts.flatMap(w => w.sets.filter(working))
   const activeDays = [...m.activeDays.keys()].filter(d => d.startsWith(y))
 
   const months = Array.from({ length: 12 }, (_, i) => {

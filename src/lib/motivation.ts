@@ -1,5 +1,6 @@
 // One-line hype for each session and for the overall picture. Everything is computed from the data,
 // so the lines change as new sessions land. Each session gets a line no earlier session has used.
+import { working } from '../../shared/types.ts'
 import { LIFT_NAMES, standing } from './standards.ts'
 import { e1rm, longestWeekStreak, type Model, type Session } from './stats.ts'
 import { daysBetween, kg, num, weekStart } from './format.ts'
@@ -40,7 +41,7 @@ type Candidate = { kind: string; key: string; text: string }
 
 function candidates(m: Model, s: Session, prevSame: Session | undefined, usedThings: Set<string>): Candidate[] {
   const out: Candidate[] = []
-  const w = s.workout
+  const w = s.workout && { ...s.workout, sets: s.workout.sets.filter(working) } // warm-ups say nothing about the session
   if (!w) {
     const mins = Math.round((s.durationS ?? 0) / 60)
     out.push({ kind: 'strava', key: `strava:${s.key}`, text: `${mins} minutes on the clock. The details live in your head, not the log.` })

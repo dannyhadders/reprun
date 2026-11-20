@@ -167,7 +167,7 @@ function importLocal(d: Data, p: ImportPayload | Backup): ImportResult {
     const wid = nextId(d.workouts)
     d.workouts.push({
       id: wid, date: w.date, title: w.title ?? null, notes: w.notes ?? null, source: w.source, duration_s: w.duration_s ?? null, client_id: w.client_id ?? null,
-      sets: w.sets.map(s => ({ id: setId++, workout_id: wid, exercise_id: ids.get(s.exercise)!, position: s.position ?? 0, weight_kg: s.weight_kg ?? null, reps: s.reps ?? null, seconds: s.seconds ?? null, notes: s.notes ?? null, rpe: rpe(s.rpe) })),
+      sets: w.sets.map(s => ({ id: setId++, workout_id: wid, exercise_id: ids.get(s.exercise)!, position: s.position ?? 0, weight_kg: s.weight_kg ?? null, reps: s.reps ?? null, seconds: s.seconds ?? null, notes: s.notes ?? null, rpe: rpe(s.rpe), warmup: s.warmup ? 1 : null })),
     })
     result.workouts++
     result.sets += w.sets.length

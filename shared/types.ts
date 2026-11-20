@@ -15,7 +15,10 @@ export type WorkoutSet = {
   seconds: number | null
   notes: string | null
   rpe?: number | null // how hard the exercise felt, 1-10; older sets and imports have none
+  warmup?: number | boolean | null // 1/true: a warm-up set, saved but left out of PBs, volume, counts and progression
 }
+/** A working set, not a warm-up: what every stat counts. */
+export const working = <S extends { warmup?: number | boolean | null }>(s: S) => !s.warmup
 
 export type Workout = {
   id: number

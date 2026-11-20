@@ -445,6 +445,32 @@ const CHECKS = {
     await t.expect(t.page.getByRole('button', { name: 'Add setup note (stays every time)' }), 'Clear takes it away')
   }],
 
+  'warmup': ['Warm-ups: + Warm-up adds a ramp, a ticked one rests 60 s, a set can be made a warm-up, Remove warm-up, saved as W', async t => {
+    await begin(t, true)
+    await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
+    const first = t.page.locator('button[aria-expanded]').first()
+    await first.click()
+    await t.page.getByRole('spinbutton', { name: 'Set 1 kg' }).first().fill('100')
+    await t.page.getByRole('button', { name: /^Add 4 warm-up sets up to 100 kg/ }).click()
+    for (const [n, w] of [[1, '20'], [2, '50'], [3, '70'], [4, '85']]) await t.expect(null, `Warm-up ${n} is ${w} kg`, (await t.page.getByRole('spinbutton', { name: `Warm-up ${n} kg` }).inputValue()) === w)
+    await t.shot('Warm-up sets added')
+    await t.page.getByRole('button', { name: 'Warm-up 1 done' }).click()
+    await t.expect(t.page.getByText(/^(1:00|0:59|0:58)$/).first(), 'A ticked warm-up rests 60 s')
+    await t.page.getByRole('button', { name: 'Skip', exact: true }).click()
+    await t.page.getByRole('button', { name: 'Set 1: note or warm-up' }).first().click()
+    await t.page.getByRole('button', { name: 'Make it a warm-up' }).click()
+    await t.expect(t.page.getByRole('spinbutton', { name: 'Warm-up 5 kg' }), 'Set 1 is now warm-up 5')
+    await t.page.getByRole('button', { name: 'Remove warm-up' }).click()
+    await t.expect(t.page.getByRole('spinbutton', { name: /^Warm-up \d kg$/ }), 'Remove warm-up keeps only the ticked one', 1)
+    await t.page.getByRole('button', { name: 'Set 1 done' }).first().click()
+    await finish(t)
+    await pbThrough(t)
+    await t.page.getByRole('button', { name: 'Done' }).click()
+    await topWorkout(t).click()
+    await t.expect(topWorkout(t).getByTitle('Warm-up').first(), 'Workouts lists the warm-up as W')
+    await t.shot('Workout with a warm-up')
+  }],
+
   'plan-lb': ['A pasted plan in lb: "@ 220lb" comes in as 99.8 kg', async t => {
     await begin(t, false)
     await planner(t)

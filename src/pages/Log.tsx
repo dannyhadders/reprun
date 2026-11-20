@@ -15,12 +15,13 @@ import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sh
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
 import { PlateLine, PlateSheet } from '../components/Plates'
+import { working } from '../../shared/types'
 import { SetupNote } from '../components/SetupNote'
-import { barFor } from '../../shared/plates'
+import { barFor, BARS, PLATES, warmupRamp } from '../../shared/plates'
 import { pbShow } from '../lib/pbMoment'
 import { DONE_WORDS, workoutLine } from '../lib/motivation'
 import { milestones } from '../lib/milestones'
-import { beep, isTimed, lastNote, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, rememberUnit, sendUnits, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
+import { barOf, beep, isTimed, lastNote, loadActive, matchExercise, moveExercise, newExercise, routineFromWorkout, queue, rememberRest, rememberUnit, sendUnits, restOver, saveActive, setKg, setVoice, swapExercise, switchUnit, toImport, totals, unlockAudio, useNow, voiceOn, type Active } from '../lib/session'
 import { e1rm, lastSets, livePb, MUSCLES, type ExerciseSession } from '../lib/stats'
 
 let foldTimer = 0 // ponytail: module-level, there's only ever one logger
@@ -37,7 +38,7 @@ export default function Log() {
   useEffect(() => { if (running) pauseReminders() }, [running])
 
   const finish = (a: Active) => {
-    if (!totals(a).sets) return void ask('No sets ticked off. Discard this workout?', 'Discard', true).then(ok => ok && setActive(null))
+    if (!totals(a).ticked) return void ask('No sets ticked off. Discard this workout?', 'Discard', true).then(ok => ok && setActive(null))
     const w = toImport(a)
     queue(w)
     setActive(null)
@@ -84,6 +85,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
   const [restFor, setRestFor] = useState<number | null>(null) // exercise whose rest picker is open
   const [swapFor, setSwapFor] = useState<number | null>(null) // exercise being swapped
   const [plates, setPlates] = useState<{ total: number; name: string; u: 'kg' | 'lb' } | null>(null) // plate calculator sheet
+  const [setMenu, setSetMenu] = useState<{ i: number; j: number } | null>(null) // a set's menu: note, warm-up or working set
   // Drag the ☰ to reorder: a lifted copy of the card (the ghost) follows the finger, and the card's real place shows as a
   // dashed outline. Each time the ghost's middle passes the middle of the card above or below, they swap places.
   // Only the finger that started it counts. Cards are keyed by their own id, so the ☰ under the finger stays in the DOM.
@@ -241,8 +243,17 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
           setUndo({ msg: `Removed set ${j + 1} of ${ex.name}`, put: x => void x.exercises.find(e => e.name === ex.name)?.sets.splice(j, 0, s) })
         }
         const u = ex.lb ? 'lb' : 'kg'
-        const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : setKg(s.weight, ex.lb), reps: s.reps === '' ? null : +s.reps, done: s.done })))
+        const pbAt = livePb(history, ex.sets.map(s => ({ weight_kg: s.weight === '' ? null : setKg(s.weight, ex.lb), reps: s.reps === '' ? null : +s.reps, done: s.done && !s.warmup }))) // a warm-up is never a PB
         const done = ex.sets.filter(s => s.done).length
+        // Warm-ups are numbered W1, W2… and the working sets 1, 2, 3; the count on the card is working sets only.
+        const working = ex.sets.filter(s => !s.warmup), shownDone = working.filter(s => s.done).length
+        const label = (j: number) => ex.sets[j].warmup ? `Warm-up ${ex.sets.slice(0, j + 1).filter(s => s.warmup).length}` : `Set ${ex.sets.slice(0, j + 1).filter(s => !s.warmup).length}`
+        // + Warm-up: barbell lifts, with a working weight (typed or the grey one), and no warm-ups yet.
+        const firstWork = working.find(s => !s.done)
+        const workWeight = +(firstWork?.weight || ex.suggest?.weight || shown(prev[0]?.weight_kg, u) || 0)
+        const bar = BARS[u].find(b => b.id === barOf(ex.name)) ?? BARS[u][0]
+        const ramp = !ex.timed && barFor(ex.name) && !ex.sets.some(s => s.warmup) ? warmupRamp(workWeight, bar.weight, PLATES[u]) : []
+        const openWarmups = ex.sets.some(s => s.warmup && !s.done)
         const cur = ex.sets.findIndex(s => !s.done) // the next set to do: "+ Add note" goes there, in every exercise (people don't go in order)
         const toggle = () => update(x => void (x.exercises[i].collapsed = !ex.collapsed))
         return (
@@ -259,7 +270,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 <span className={`text-muted transition duration-300 ${ex.collapsed ? '-rotate-90' : ''}`}>▾</span>
                 <h2 className="min-w-0 break-words font-semibold leading-tight [overflow-wrap:anywhere] line-clamp-2">{ex.name}</h2>
                 <span key={done} className={`relative inline-block shrink-0 animate-bump text-xs tabular-nums ${done === ex.sets.length ? 'text-good' : 'text-muted'}`}>
-                  {done}/{ex.sets.length}
+                  {shownDone}/{working.length}
                   {fx?.all && fx.i === i && <Burst key={fx.t} />}
                 </span>
               </button>
@@ -344,19 +355,22 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 }}><Tap />{u} ⇄</button>
               <span className="text-xs text-muted">{ex.timed ? 'Secs' : 'Reps'}</span><span />
               {ex.sets.map((s, j) => {
-                const p = prev[j] ?? prev.at(-1)
-                // What an empty set means when ticked: today's suggestion if this came from a routine, else last time.
-                const hint = ex.suggest ?? { weight: shown(p?.weight_kg, u), reps: (ex.timed ? p?.seconds : p?.reps)?.toString() ?? '' }
+                // Last time's matching working set (warm-ups don't shift it: working set 1 lines up with last time's set 1).
+                const wj = ex.sets.slice(0, j).filter(x => !x.warmup).length
+                const p = prev[wj] ?? prev.at(-1)
+                // What an empty set means when ticked: today's suggestion if this came from a routine, else last time. A
+                // warm-up has its own numbers, so no grey ones.
+                const hint = s.warmup ? { weight: '', reps: '' } : ex.suggest ?? { weight: shown(p?.weight_kg, u), reps: (ex.timed ? p?.seconds : p?.reps)?.toString() ?? '' }
                 return [
                   <SwipeRow key={`row${j}`} onDelete={ex.sets.length > 1 ? () => void removeSet(j) : undefined}>
-                  {/* Tap the set number for a note on that set. */}
-                  <button className="relative min-h-11 text-center text-muted" aria-label={`Note for set ${j + 1}`}
-                    onClick={() => update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : s.note ? s.note : undefined))}>
-                    {j + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
+                  {/* Tap the set number for its menu: a note, or make it a warm-up (W) / a working set. */}
+                  <button className={`relative min-h-11 text-center ${s.warmup ? 'text-xs font-extrabold text-muted' : 'text-muted'}`} aria-label={`${label(j)}: note or warm-up`}
+                    onClick={() => setSetMenu({ i, j })}>
+                    {s.warmup ? 'W' : wj + 1}{s.note ? <span className="absolute -right-0.5 top-0 size-1.5 rounded-full bg-accent" /> : null}
                   </button>
-                  <Stepper done={s.done} by={ex.lb ? 5 : 2.5} min={0} label={`Set ${j + 1} ${u}`} placeholder={hint.weight || (ex.suggest?.fresh ? u : 'BW')} value={s.weight} set={v => update(x => (x.exercises[i].sets[j].weight = v))} />
-                  <Stepper done={s.done} by={ex.timed ? 5 : 1} min={ex.timed ? 5 : 1} label={`Set ${j + 1} ${ex.timed ? 'seconds' : 'reps'}`} placeholder={hint.reps} value={s.reps} set={v => update(x => (x.exercises[i].sets[j].reps = v))} />
-                  <button aria-label={`Set ${j + 1} done`} aria-pressed={s.done}
+                  <Stepper done={s.done} by={ex.lb ? 5 : 2.5} min={0} label={`${label(j)} ${u}`} placeholder={hint.weight || (ex.suggest?.fresh ? u : 'BW')} value={s.weight} set={v => update(x => (x.exercises[i].sets[j].weight = v))} />
+                  <Stepper done={s.done} by={ex.timed ? 5 : 1} min={ex.timed ? 5 : 1} label={`${label(j)} ${ex.timed ? 'seconds' : 'reps'}`} placeholder={hint.reps} value={s.reps} set={v => update(x => (x.exercises[i].sets[j].reps = v))} />
+                  <button aria-label={`${label(j)} done`} aria-pressed={s.done}
                     className={`press relative h-11 rounded-xl text-lg font-bold ${s.done ? 'bg-good text-bg' : 'bg-surface-2 text-muted'} ${s.done && fx?.i === i && fx.j === j ? 'animate-pop' : ''}`}
                     onClick={async () => {
                       unlockAudio()
@@ -393,31 +407,34 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                         y.done = !y.done
                         // Last set of the whole workout: nothing left to rest for.
                         const finished = x.exercises.every(e => e.sets.every(z => z.done))
-                        x.restEndsAt = finished ? null : y.done ? Date.now() + ex.restS * 1000 : x.restEndsAt
+                        x.restEndsAt = finished ? null : y.done ? Date.now() + (y.warmup ? 60 : ex.restS) * 1000 : x.restEndsAt // a warm-up rests 60 s
                         if (y.done) x.restFrom = Date.now()
                       })
                     }}><Tap />✓{j === pbAt && <span className="absolute right-0.5 top-0 animate-pop text-xs" role="img" aria-label="PB">🏆</span>}</button>
                   </SwipeRow>,
                   // Last time's note for this set, so "wide bar, upstairs machine" is there when you need it.
-                  prev[j]?.notes && <p key={`l${j}`} className="col-span-4 -mt-1 truncate px-1 text-xs text-muted">Last time: {prev[j].notes}</p>,
+                  !s.warmup && prev[wj]?.notes && <p key={`l${j}`} className="col-span-4 -mt-1 truncate px-1 text-xs text-muted">Last time: {prev[wj].notes}</p>,
                   // Barbell lifts: the plates for the set you're on, from the typed weight or the grey one.
                   j === cur && !ex.timed && barFor(ex.name) && <PlateLine key={`p${j}`} total={+(s.weight || hint.weight)} name={ex.name} u={u} open={() => setPlates({ total: +(s.weight || hint.weight), name: ex.name, u })} />,
                   s.note !== undefined ? (
-                    <input key={`t${j}`} className="input col-span-4 py-2" placeholder={`Note for set ${j + 1}, e.g. wide bar, felt easy`} aria-label={`Set ${j + 1} note`}
+                    <input key={`t${j}`} className="input col-span-4 py-2" placeholder={`Note for set ${j + 1}, e.g. wide bar, felt easy`} aria-label={`${label(j)} note`}
                       autoFocus={!s.note} value={s.note} onChange={e => update(x => void (x.exercises[i].sets[j].note = e.target.value))}
                       onBlur={e => !e.target.value.trim() && update(x => void (x.exercises[i].sets[j] && (x.exercises[i].sets[j].note = undefined)))} />
                   ) : j === cur && (
                     // Only under the set you're on; earlier sets still take a note by tapping their number.
                     <button key={`a${j}`} type="button" className="press col-span-4 flex h-9 items-center gap-1.5 rounded-xl border border-dashed border-line px-3 text-left text-[13px] text-muted active:bg-surface-2"
                       onClick={() => update(x => void (x.exercises[i].sets[j].note = ''))}>
-                      <Icon d={PLUS} className="size-3.5" />Add note for set {j + 1}
+                      <Icon d={PLUS} className="size-3.5" />Add note for {label(j).replace(/^S/, 's').replace(/^W/, 'w')}
                     </button>
                   ),
                 ]
               })}
             </div>
             <div className="mt-3 flex gap-2">
-              <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false, note: undefined }))}>+ Set</button>
+              <button className="btn-ghost flex-1" onClick={() => update(x => void x.exercises[i].sets.push({ ...ex.sets[ex.sets.length - 1], done: false, note: undefined, warmup: undefined }))}>+ Set</button>
+              {ramp.length > 0 && <button className="btn-ghost" aria-label={`Add ${ramp.length} warm-up sets up to ${workWeight} ${u}`}
+                onClick={() => update(x => void x.exercises[i].sets.unshift(...ramp.map(r => ({ weight: String(r.weight), reps: String(r.reps), done: false, warmup: true as const }))))}>+ Warm-up</button>}
+              {openWarmups && <button className="btn-ghost" onClick={() => update(x => void (x.exercises[i].sets = x.exercises[i].sets.filter(z => !z.warmup || z.done)))}>Remove warm-up</button>}
               {ex.sets.length > 1 && <button className="btn-ghost" aria-label="Remove last set" onClick={() => void removeSet(ex.sets.length - 1)}>− Set</button>}
             </div>
             </div>
@@ -480,6 +497,27 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
 
       {peek && <History name={peek} close={closePeek} />}
       {plates && <PlateSheet {...plates} close={() => setPlates(null)} />}
+      {setMenu && a.exercises[setMenu.i]?.sets[setMenu.j] && (() => {
+        // A set's menu, from its number: a note on it, or mark it a warm-up (saved, left out of PBs and stats) or back.
+        const { i, j } = setMenu, s = a.exercises[i].sets[j]
+        const n = a.exercises[i].sets.slice(0, j + 1).filter(x => !!x.warmup === !!s.warmup).length
+        const close = () => setSetMenu(null)
+        const row = 'press relative flex h-12 w-full items-center rounded-xl border border-line bg-surface-2 px-4 text-left text-[15px] font-medium'
+        return (
+          <Sheet close={close} label={`${s.warmup ? `Warm-up ${n}` : `Set ${n}`} of ${a.exercises[i].name}`}>
+            <h2 className="mb-3 truncate text-lg font-bold">{s.warmup ? `Warm-up ${n}` : `Set ${n}`} · {a.exercises[i].name}</h2>
+            <div className="grid gap-2">
+              <button className={row} onClick={() => (update(x => void (x.exercises[i].sets[j].note = s.note === undefined ? '' : undefined)), close())}>
+                <Tap />{s.note === undefined ? 'Add a note' : 'Remove the note'}
+              </button>
+              <button className={row} onClick={() => (update(x => void (s.warmup ? delete x.exercises[i].sets[j].warmup : (x.exercises[i].sets[j].warmup = true))), close())}>
+                <Tap />{s.warmup ? 'Make it a working set' : 'Make it a warm-up'}
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-muted">Warm-ups are saved but don't count towards PBs, volume or your next weights.</p>
+          </Sheet>
+        )
+      })()}
       {restFor !== null && a.exercises[restFor] && <RestPicker ex={a.exercises[restFor]} close={() => setRestFor(null)}
         pick={sec => (rememberRest(a.exercises[restFor].name, sec), update(x => void (x.exercises[restFor] && (x.exercises[restFor].restS = sec))), setRestFor(null))} />}
       {swapFor !== null && a.exercises[swapFor] && <SwapPicker current={a.exercises[swapFor]} close={() => setSwapFor(null)}
@@ -707,8 +745,10 @@ function SwipeRow({ onDelete, children }: { onDelete?: () => void; children: Rea
   )
 }
 
-function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
+function Summary({ w: all, done }: { w: ImportWorkout; done: () => void }) {
   const { data, model, lines, pending, reload } = useData()
+  // PBs, volume, the picture and best sets from the working sets; the copied text keeps the warm-ups, labelled.
+  const w = useMemo(() => ({ ...all, sets: all.sets.filter(working) }), [all])
   // A new workout (not a routine's, not the same exercises as one) can become a routine. Worked out once, so the button
   // stays to say "Saved" after the routine it made is in the list.
   const [asRoutine] = useState(() => routineFromWorkout(w, data.routines, data.exercises, data.aliases))
@@ -803,7 +843,7 @@ function Summary({ w, done }: { w: ImportWorkout; done: () => void }) {
         <Tap /><Icon d={SHARE} className="h-4 w-4" />Share as a picture
       </button>
       <div className={`grid gap-2 ${tiles === 3 ? 'grid-cols-3' : tiles === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        <CopyTile text={() => workoutText(w)} />
+        <CopyTile text={() => workoutText(all)} />
         {asRoutine && (
           <Tile icon={savedAs === 'yes' ? TICK : PLUS} label={savedAs === 'yes' ? 'Saved ✓' : 'Save as routine'} busy={savedAs === 'busy'} disabled={savedAs !== 'no'}
             aria={savedAs === 'yes' ? 'Saved as a routine ✓' : `Save "${asRoutine.name}" as a routine`} onClick={() => void saveRoutine()} />

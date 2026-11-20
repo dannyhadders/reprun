@@ -112,7 +112,7 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
                     <thead className="text-left text-xs text-muted">
                       <tr><th className="w-12 py-1 font-medium">Set</th><th className="py-1 font-medium">kg × reps</th><th className="hidden w-24 py-1 text-right font-medium sm:table-cell">Est. 1RM</th></tr>
                     </thead>
-                    <tbody>{sets.map((x, i) => <SetRow key={x.id} set={x} n={i + 1} />)}</tbody>
+                    <tbody>{sets.map((x, i) => <SetRow key={x.id} set={x} n={x.warmup ? 0 : sets.slice(0, i + 1).filter(y => !y.warmup).length} />)}</tbody>
                   </table>
                 </div>
               ))}
@@ -135,11 +135,12 @@ function WorkoutCard({ s, open, onToggle }: { s: Session; open: boolean; onToggl
 
 function SetRow({ set, n }: { set: WorkoutSet; n: number }) {
   const { model } = useData()
-  const est = e1rm(set)
+  const est = set.warmup ? null : e1rm(set) // a warm-up's 1RM estimate means nothing
   const name = model.exById.get(set.exercise_id)?.name
   return (
-    <tr className="border-t border-line/60 align-top">
-      <td className="py-2 text-muted">{n}</td>
+    // A warm-up shows as W, lighter; the working sets are numbered 1, 2, 3 after it.
+    <tr className={`border-t border-line/60 align-top ${set.warmup ? 'text-muted' : ''}`}>
+      <td className="py-2 text-muted">{set.warmup ? <abbr title="Warm-up" className="text-xs font-extrabold no-underline">W</abbr> : n}</td>
       <td className="py-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium tabular-nums">{setText(set, name)}</span>
@@ -214,7 +215,7 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
             {list.map((x, i) => {
               const d = sets.get(x.id)!
               return [
-                <span key={`n${x.id}`} className={`text-center text-muted ${d.removed ? 'line-through' : ''}`}>{i + 1}</span>,
+                <span key={`n${x.id}`} className={`text-center text-muted ${d.removed ? 'line-through' : ''} ${x.warmup ? 'text-xs font-extrabold' : ''}`}>{x.warmup ? 'W' : list.slice(0, i + 1).filter(y => !y.warmup).length}</span>,
                 <input key={`w${x.id}`} className="input px-2 text-center" type="number" step="0.5" min="0" inputMode="decimal" disabled={d.removed} value={d.weight} onChange={e => edit(x.id, { weight: e.target.value })} aria-label={`Set ${i + 1} ${d.u}`} placeholder={d.u} />,
                 <span key={`x${x.id}`} className="text-muted">×</span>,
                 <input key={`r${x.id}`} className="input px-2 text-center" type="number" step="1" min="0" inputMode="numeric" disabled={d.removed} value={d.reps} onChange={e => edit(x.id, { reps: e.target.value })} aria-label={`Set ${i + 1} ${timed(x) ? 'seconds' : 'reps'}`} placeholder={timed(x) ? 'sec' : 'reps'} />,

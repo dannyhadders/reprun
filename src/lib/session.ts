@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { api } from './data'
 import { addPendingUnit, localISO, pendingUnits, shown, toKg, unitOf } from './format'
 
-export type LogSet = { reps: string; weight: string; done: boolean; note?: string } // strings: they're straight from inputs; note undefined = no note box
+export type LogSet = { reps: string; weight: string; done: boolean; note?: string; warmup?: true } // warmup: saved, but not counted in any stat // strings: they're straight from inputs; note undefined = no note box
 export type LogExercise = {
   key?: string // stable React key, so a dragged card keeps its DOM node (and the finger on it) as it moves
   name: string
@@ -91,7 +91,7 @@ export function fromWorkout(w: Workout, exById: Map<number, Exercise>): Active {
   for (const s of w.sets) if (!order.includes(s.exercise_id)) order.push(s.exercise_id)
   return start(w.title ?? '', order.flatMap(id => {
     const ex = exById.get(id)
-    const sets = w.sets.filter(s => s.exercise_id === id)
+    const sets = w.sets.filter(s => s.exercise_id === id && !s.warmup) // Repeat: the working sets (add warm-ups again with + Warm-up)
     return ex ? [{ ...newExercise(ex.name, ex.muscle, sets.length), ...(isTimed(sets) && { timed: true }) }] : []
   }))
 }
@@ -107,7 +107,8 @@ export function swapExercise(ex: LogExercise, name: string, muscle: Muscle, last
   const s = target && suggest({ repsMin: target.repsMin, repsMax: target.repsMax, weight: null }, last, lb)
   return {
     key: ex.key, name, muscle, restS: ex.restS, target, ...(ex.timed && { timed: true }), ...(lb && { lb: true }),
-    sets: ex.sets.map(x => (x.done ? { ...x, weight: convert(x.weight, !!ex.lb, lb) } : { ...x, weight: '', reps: '' })),
+    // Unticked warm-ups were for the old exercise's weight: they go (+ Warm-up can add the new one's).
+    sets: ex.sets.filter(x => x.done || !x.warmup).map(x => (x.done ? { ...x, weight: convert(x.weight, !!ex.lb, lb) } : { ...x, weight: '', reps: '' })),
     suggest: s && { weight: shown(s.weight, lb ? 'lb' : 'kg'), reps: String(s.reps), fresh: s.weight === null && !last.length, held: s.held },
   }
 }
@@ -175,10 +176,12 @@ const validSet = (s: LogSet) => s.done && +s.reps > 0 && (s.weight === '' || +s.
 /** Sets held for time, not counted in reps: what makes an exercise timed when it comes from history, not a plan. */
 export const isTimed = (sets: Pick<WorkoutSet, 'reps' | 'seconds'>[]) => sets.length > 0 && sets.every(s => s.reps === null && (s.seconds ?? 0) > 0)
 
+/** sets and volume: working sets only (the header, the finish screen); ticked: every ticked set, warm-ups too. */
 export const totals = (a: Active) => {
-  const sets = a.exercises.flatMap(e => e.sets.filter(validSet))
-  const lifted = a.exercises.flatMap(e => (e.timed ? [] : e.sets.filter(validSet).map(s => ({ ...s, weight: String(setKg(s.weight || '0', e.lb)) })))) // seconds held aren't kilos lifted
-  return { sets: sets.length, volume: lifted.reduce((v, s) => v + (+s.weight || 0) * +s.reps, 0) }
+  const ticked = a.exercises.flatMap(e => e.sets.filter(validSet))
+  const sets = ticked.filter(s => !s.warmup)
+  const lifted = a.exercises.flatMap(e => (e.timed ? [] : e.sets.filter(s => validSet(s) && !s.warmup).map(s => ({ ...s, weight: String(setKg(s.weight || '0', e.lb)) })))) // seconds held aren't kilos lifted
+  return { sets: sets.length, ticked: ticked.length, volume: lifted.reduce((v, s) => v + (+s.weight || 0) * +s.reps, 0) }
 }
 
 /**
@@ -192,7 +195,7 @@ export const totals = (a: Active) => {
 export function routineFromWorkout(w: ImportWorkout, routines: Routine[], known: Exercise[], aliases: Aliases = {}) {
   const title = w.title?.trim().slice(0, 100)
   const name = title || `${new Date(`${w.date}T12:00`).toLocaleDateString('en-GB', { weekday: 'long' })} workout`
-  const names = [...new Set(w.sets.map(s => s.exercise))]
+  const names = [...new Set(w.sets.filter(s => !s.warmup).map(s => s.exercise))]
   if (!names.length) return null
   // Renames, merges and the catalogue's other names count as the same exercise, logged before or not.
   const key = (n: string) => (matchExercise(n, known, aliases)?.name ?? resolveExercise(applyAlias(aliases, n), null).name).trim().toLowerCase()
@@ -201,7 +204,7 @@ export function routineFromWorkout(w: ImportWorkout, routines: Routine[], known:
   if (routines.some(r => (title && r.name.trim().toLowerCase() === title.toLowerCase()) || same(parsePlan(r.body).flatMap(x => x.items).map(p => p.name)) === mine)) return null
   const rests = read<Record<string, number>>(KEY.rest, {})
   const lines = names.map(n => {
-    const all = w.sets.filter(s => s.exercise === n)
+    const all = w.sets.filter(s => s.exercise === n && !s.warmup) // the routine is the working sets
     const timed = all.some(s => s.seconds !== null)
     const top = Math.max(0, ...all.map(s => s.weight_kg ?? 0))
     const work = top ? all.filter(s => (s.weight_kg ?? 0) === top) : all
@@ -226,7 +229,7 @@ export function toImport(a: Active, endedAt = Date.now()): ImportWorkout {
       const lift = resolveExercise(e.name, null).lift ?? null
       return e.sets.filter(validSet).map(s => ({
         exercise: e.name, muscle: e.muscle, lift, position: position++,
-        weight_kg: s.weight === '' ? null : setKg(s.weight, e.lb), reps: e.timed ? null : +s.reps, seconds: e.timed ? +s.reps : null, notes: s.note?.trim() || null, rpe: e.rpe ?? null,
+        weight_kg: s.weight === '' ? null : setKg(s.weight, e.lb), reps: e.timed ? null : +s.reps, seconds: e.timed ? +s.reps : null, notes: s.note?.trim() || null, rpe: e.rpe ?? null, ...(s.warmup && { warmup: true }),
       }))
     }),
   }

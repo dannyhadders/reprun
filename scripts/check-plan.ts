@@ -357,6 +357,20 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   console.log('last note self-check passed')
 }
 
+// Warm-up sets: saved, but out of PBs, 1RM, volume, set counts, history and suggestions; listed (labelled) in the text.
+{
+  const { workoutText } = await import('../src/lib/format.ts')
+  // The last workout gets a silly-heavy warm-up: it must not become a PB, a set, volume or last time's top set.
+  const last = data.workouts.at(-1)!
+  const warm = { ...set(999, 200, 5), workout_id: last.id, warmup: 1 }
+  const m = buildModel({ ...data, workouts: data.workouts.map(w => (w === last ? { ...w, sets: [warm, ...w.sets] } : w)) })
+  const hist = m.exHistory.get(1)!
+  eq([m.pbs.has(999), hist.at(-1)!.sets.length, m.sessions[0].sets, m.sessions[0].volume === model.sessions[0].volume], [false, 1, 1, true], 'warm-up: not a PB, not in history, sets or volume')
+  const text = workoutText({ date: '2026-11-16', title: 'Legs', sets: [{ exercise: 'Squat', weight_kg: 20, reps: 10, seconds: null, warmup: 1 }, { exercise: 'Squat', weight_kg: 100, reps: 5, seconds: null }] })
+  assert(text.includes('1 set (plus 1 warm-up set), 500 kg total volume') && text.includes('Squat: warm-up 20 kg × 10 · 100 kg × 5'), text)
+  console.log('warm-up self-check passed')
+}
+
 // Plate calculator (shared/plates.ts): fewest plates per side for a total that includes the bar.
 {
   const { load, barFor, PLATES } = await import('../shared/plates.ts')
@@ -370,6 +384,11 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
     ['olympic', 'ez', 'trap', 'olympic', null, null, null, null], 'plates: barbell lifts only')
   eq([kgL(1e9), kgL(2020), kgL(2021)], [null, kgL(2020), null], 'plates: a mistyped huge weight is refused straight away (no hang)')
   assert(kgL(2020)!.exact, 'plates: up to 1,000 a side still works')
+  const { warmupRamp } = await import('../shared/plates.ts')
+  eq(warmupRamp(100, 20, PLATES.kg), [{ weight: 20, reps: 10 }, { weight: 50, reps: 5 }, { weight: 70, reps: 3 }, { weight: 85, reps: 1 }], 'warm-up ramp: 100 kg is bar, 50, 70, 85')
+  eq(warmupRamp(40, 20, PLATES.kg).map(x => x.weight), [20, 27.5, 32.5], 'warm-up ramp: light lifts get fewer, rounded down to loadable')
+  eq([warmupRamp(20, 20, PLATES.kg), warmupRamp(225, 45, PLATES.lb).map(x => x.weight)], [[], [45, 110, 155, 190]], 'warm-up ramp: none at the bar; lb works')
+  for (let t = 22.5; t <= 300; t += 2.5) for (const r of warmupRamp(t, 20, PLATES.kg)) assert(r.weight < t && kgL(r.weight)?.exact, `warm-up ramp: ${t} kg gave ${r.weight}`)
   console.log('plates self-check passed')
 }
 
