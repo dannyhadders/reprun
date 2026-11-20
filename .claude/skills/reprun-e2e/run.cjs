@@ -753,6 +753,7 @@ const CHECKS = {
     await t.expect(null, 'Muscles are lit (more than one colour)', (await t.page.locator('svg[aria-label="Front: muscles shaded by sets"] g[fill]').evaluateAll(gs => new Set(gs.map(g => g.getAttribute('fill'))).size)) > 1)
     await t.page.getByRole('img', { name: 'Front: muscles shaded by sets' }).scrollIntoViewIfNeeded()
     await t.shot('Body map')
+    await t.expect(t.page.getByRole('button', { name: 'View Milestones' }), 'Milestones links to the full list as View Milestones')
   }],
 
   'units-pending': ['kg / lb: a switch still waiting on the phone (no signal) is listed in Settings, and Back to kg clears it', async t => {

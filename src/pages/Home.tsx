@@ -260,7 +260,7 @@ function Milestones() {
   const next = list.filter(m => !m.date).sort((a, b) => b.progress - a.progress)
   if (!earned.length && !model.sessions.length && !model.runs.length) return null
   return (
-    <Card title="Milestones" action={<button className="min-h-9 text-sm text-accent hover:underline" onClick={() => setAll(true)}>All {earned.length}</button>}>
+    <Card title="Milestones" action={<button className="min-h-9 text-sm text-accent hover:underline" onClick={() => setAll(true)}>View Milestones</button>}>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {earned.slice(0, 2).map(m => <Badge key={m.key} m={m} />)}
         {next.slice(0, 2).map(m => <Badge key={m.key} m={m} />)}
