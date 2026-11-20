@@ -25,12 +25,14 @@ export function PlateLine({ total, name, u, open }: { total: number; name: strin
   if (!(total > 0)) return null
   const { bar, l, text } = words(total, name, u)
   return (
-    <button type="button" className="press relative col-span-4 -mt-1 flex min-h-9 items-center gap-2 rounded-xl px-1 text-left text-xs text-muted active:bg-surface-2"
+    // A full-width bordered row with a chevron, like a Settings row, so it reads as something to tap (brand book).
+    <button type="button" className="press relative col-span-4 -mt-0.5 flex h-11 items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 text-left text-[13px] font-medium text-ink"
       aria-label={`Plates for ${num(total)} ${u}: ${text}, ${bar.label} bar. Change the bar`} onClick={open}>
       <Tap />
-      <span className="flex items-center gap-0.5" aria-hidden>{l?.exact && l.side.map((p, k) => <i key={k} className={`w-1 rounded-sm ${look(p, u).cls}`} style={{ height: `${look(p, u).h / 6}px` }} />)}</span>
+      <span className="flex items-center gap-0.5" aria-hidden>{l?.exact && l.side.map((p, k) => <i key={k} className={`w-1 rounded-sm ${look(p, u).cls}`} style={{ height: `${look(p, u).h / 5.5}px` }} />)}</span>
       <span className="min-w-0 flex-1 truncate">{text}</span>
-      <span className="shrink-0">{bar.label} bar</span>
+      <span className="shrink-0 text-muted">{bar.label} bar</span>
+      <span className="shrink-0 text-base text-muted" aria-hidden>›</span>
     </button>
   )
 }
