@@ -181,6 +181,17 @@ console.log('streak + milestones self-check passed')
 eq([0, -2, null, 99].map(t => weekStreak(model, t, '2026-11-17').target), [1, 1, 1, 7], 'streak: a bad target is clamped (default 1), never loops')
 const { rpe, cleanProfile } = await import('../shared/rules.ts')
 eq([9, 1, 10, 0, 11, 8.5, '9', null, undefined].map(rpe), [9, 1, 10, null, null, null, null, null, null], 'rpe: whole 1-10 only')
+eq(cleanProfile({ setup: { 'bench press': '  Seat 4  ', squat: '   ', x: 5 as never, ['y'.repeat(101)]: 'long name' } }).setup, { 'bench press': 'Seat 4' }, 'profile: setup notes trimmed, blanks and junk dropped')
+eq([cleanProfile({ setup: { a: 'z'.repeat(400) } }).setup?.a.length, cleanProfile({ setup: [] as never }).setup], [300, undefined], 'profile: a setup note is 300 characters at most')
+{
+  const { patchProfile, keepMaps, renameInProfile } = await import('../shared/rules.ts')
+  const base = cleanProfile({ units: { 'leg press': 'lb' }, setup: { 'bench press': 'Seat 4' } })
+  const p1 = patchProfile(base, { setup: { squat: 'Pins at 6', 'bench press': null } })
+  eq([p1.setup, p1.units], [{ squat: 'Pins at 6' }, { 'leg press': 'lb' }], 'profile: PATCH changes only the keys sent (null removes)')
+  eq([keepMaps({ age: 40, units: {}, setup: {} }, p1).setup, keepMaps({ age: 40 }, p1).units, keepMaps({ age: 40 }, p1).age], [{ squat: 'Pins at 6' }, { 'leg press': 'lb' }, 40], 'profile: a whole-profile PUT keeps the stored notes and switches')
+  eq(renameInProfile(base, 'Bench Press', 'Flat Bench').setup, { 'flat bench': 'Seat 4' }, 'profile: a renamed exercise keeps its setup note')
+  eq(renameInProfile(cleanProfile({ setup: { a: 'mine', b: 'theirs' } }), 'A', 'B').setup, { b: 'theirs' }, 'profile: a merge keeps the target exercise its own note')
+}
 eq([cleanProfile({ weekly: 4 }).weekly, cleanProfile({ weekly: 0 }).weekly, cleanProfile({}).weekly], [4, undefined, undefined], 'profile: weekly kept only when 1-7')
 console.log('effort + profile self-check passed')
 // Running milestones: a half marathon and a sub-25 5K (24 min) from two runs.

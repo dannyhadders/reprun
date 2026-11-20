@@ -4,7 +4,7 @@ export { matchExercise }
 import { resolveExercise } from '../../shared/catalogue.ts'
 import { formatLine, parseLine, parsePlan, suggest, type PlanItem } from '../../shared/plan.ts'
 import { barFor } from '../../shared/plates.ts'
-import type { Exercise, ImportPayload, ImportWorkout, Muscle, Profile, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
+import type { Exercise, ImportPayload, ImportWorkout, Muscle, Routine, Workout, WorkoutSet } from '../../shared/types.ts'
 import { useEffect, useState } from 'react'
 import { api } from './data'
 import { addPendingUnit, localISO, pendingUnits, shown, toKg, unitOf } from './format'
@@ -137,17 +137,19 @@ export function switchUnit(ex: LogExercise) {
 // The switch applies at once and waits on the phone (lib/format.ts pending units) until a loaded profile shows it, so two
 // quick switches, or one with no signal, can't be lost. Sent one at a time; again at Finish and on the next switch.
 let sending: Promise<unknown> = Promise.resolve()
-export function rememberUnit(profile: Profile, name: string, to: 'kg' | 'lb') {
+export function rememberUnit(name: string, to: 'kg' | 'lb') {
   addPendingUnit(name.toLowerCase(), to)
-  return sendUnits(profile)
+  return sendUnits()
 }
-export function sendUnits(profile: Profile): Promise<boolean> {
+export function sendUnits(): Promise<boolean> {
   const next = sending.then(async () => {
     const pending = pendingUnits()
     if (!Object.keys(pending).length) return false
-    const units = { ...profile.units }
-    for (const [k, u] of Object.entries(pending)) if (u === (profile.unit ?? 'kg')) delete units[k]; else units[k] = u
-    try { await api('PUT', 'profile', { ...profile, units }); return true } catch { return false }
+    // Only these keys, on top of what the server has: an older copy of the profile here can't undo anything. Back to
+    // your default goes as a removal, so the exercise follows the default if you change it later.
+    const def = unitOf()
+    const units = Object.fromEntries(Object.entries(pending).map(([k, u]) => [k, u === def ? null : u]))
+    try { await api('PATCH', 'profile', { units }); return true } catch { return false }
   })
   sending = next
   return next

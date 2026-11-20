@@ -15,6 +15,7 @@ import { ask, Burst, COPY, Empty, Icon, LookStrip, PbBadge, SHARE, shareCard, Sh
 import { Chart, sparkConfig } from '../components/Chart'
 import { PbMoment } from '../components/PbMoment'
 import { PlateLine, PlateSheet } from '../components/Plates'
+import { SetupNote } from '../components/SetupNote'
 import { barFor } from '../../shared/plates'
 import { pbShow } from '../lib/pbMoment'
 import { DONE_WORDS, workoutLine } from '../lib/motivation'
@@ -26,7 +27,7 @@ let foldTimer = 0 // ponytail: module-level, there's only ever one logger
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300]
 
 export default function Log() {
-  const { sync, data } = useData()
+  const { sync } = useData()
   const [active, setActiveRaw] = useState(loadActive)
   const [finished, setFinished] = useState<ImportWorkout | null>(null)
   // Finished or discarded: no rest alert still to come.
@@ -42,7 +43,7 @@ export default function Log() {
     setActive(null)
     setFinished(w)
     void sync()
-    void sendUnits(data.profile) // a unit switch made with no signal
+    void sendUnits() // a unit switch made with no signal
   }
 
   return (
@@ -325,6 +326,8 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
                 }}><Icon d={BIN} /></button>
               </div>
             )}
+            {/* Setup that's true every time (seat, grip, pins), not how today felt: that's the set note. */}
+            <SetupNote key={ex.name} name={ex.name} className="mb-3" /> {/* keyed by name: a swap doesn't carry an open draft over */}
             {ex.target && (<>
               <p className="mb-3 text-xs text-muted">
                 Plan {targetText(ex.target)}{ex.suggest ? ex.suggest.fresh ? ' · first time: enter a weight, or leave it blank for bodyweight' : ` · today ${ex.suggest.weight ? `${ex.suggest.weight} ${u}` : 'BW'} × ${ex.suggest.reps}${ex.timed ? 's' : ''}${ex.suggest.held ? ', same weight: last time felt hard' : ''}` : ''}{ex.target.note ? ` · ${ex.target.note}` : ''}
@@ -337,7 +340,7 @@ function Workout({ a, set, finish }: { a: Active; set: (a: Active | null) => voi
               <button className="relative -my-3 justify-self-start py-3 pr-3 text-left text-xs font-semibold text-accent" aria-label={`Weights in ${u} for ${ex.name}. Switch to ${ex.lb ? 'kg' : 'lb'}`}
                 onClick={() => {
                   update(x => switchUnit(x.exercises[i]))
-                  void rememberUnit(data.profile, ex.name, ex.lb ? 'kg' : 'lb').then(ok => { if (ok) void reload() }) // no signal: kept, sent at Finish
+                  void rememberUnit(ex.name, ex.lb ? 'kg' : 'lb').then(ok => { if (ok) void reload() }) // no signal: kept, sent at Finish
                 }}><Tap />{u} ⇄</button>
               <span className="text-xs text-muted">{ex.timed ? 'Secs' : 'Reps'}</span><span />
               {ex.sets.map((s, j) => {

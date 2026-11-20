@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'Setup notes: a note that stays with an exercise ("seat 4, grip on the rings"), shown under its name every time you do it and on its page. Tap the pencil to change or clear it. For how a set felt, use the set note as before.',
       'Last time you wrote: start a routine and the note you left at the end of it last time is right at the top ("go lighter on incline"). ✕ hides it.',
       'The Connect Strava and Sync now buttons are a deeper orange, so their white writing is easier to read.',
       'Plate calculator: on barbell lifts, a line under the set you\'re on says what goes on each side ("25 + 15 each side · 20 kg bar"). Tap it for a picture of the bar and to pick a 15 kg, EZ or trap bar; it\'s remembered for that exercise. Works in lb too.',

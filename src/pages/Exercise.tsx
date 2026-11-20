@@ -7,6 +7,7 @@ import { C, Chart, gradientFill, gradientStroke } from '../components/Chart'
 import { ask, Card, Empty, Line, PageHeader, PbBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
+import { SetupNote } from '../components/SetupNote'
 import { date as fmtDate, fromKg, kg, num, plural, setText, shortDate, unitOf } from '../lib/format'
 import { LIFT_NAMES, standing } from '../lib/standards'
 import { e1rm, exerciseBests, exerciseSeries, METRICS, RANGES, type MetricKey, type RangeKey } from '../lib/stats'
@@ -52,6 +53,7 @@ export default function Exercise() {
       <PageHeader title={ex.name} sub={<><span className="capitalize">{ex.muscle}</span> · {plural(b.sessions, 'session')} · {plural(b.totalSets, 'set')}</>}
         action={!editing && <button className="relative btn-ghost" onClick={() => setEditing(true)}><Tap />Edit</button>} />
       {editing && <EditExercise key={ex.id} ex={ex} done={() => setEditing(false)} />}
+      <SetupNote name={ex.name} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {timed ? (

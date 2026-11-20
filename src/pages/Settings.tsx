@@ -161,7 +161,7 @@ function SwitchedUnits({ onChange }: { onChange: (units: Profile['units']) => vo
     delete units[key]
     dropPendingUnit(key) // a switch still on its way from the logger mustn't put it back
     onChange(units)
-    await api('PUT', 'profile', { ...data.profile, units })
+    await api('PATCH', 'profile', { units: { [key]: null } })
     await reload()
   }
   return (

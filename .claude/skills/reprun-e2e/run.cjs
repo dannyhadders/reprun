@@ -425,6 +425,26 @@ const CHECKS = {
     await t.page.getByRole('button', { name: "Hide last time's note" }).click()
     await t.expect(t.page.getByText('Go lighter on incline'), '✕ hides it', 0)
   }],
+
+  'setup-note': ['Setup note: add one in the logger, it shows on the exercise page too, edit and clear it', async t => {
+    await begin(t, true)
+    await t.page.getByRole('button', { name: 'Start', exact: true }).first().click()
+    const first = t.page.locator('button[aria-expanded]').first()
+    const name = (await first.locator('h2').innerText()).trim()
+    await first.click()
+    await t.page.getByRole('button', { name: 'Add setup note (stays every time)' }).first().click()
+    await t.page.getByRole('textbox', { name: `Setup note for ${name}` }).fill('Seat 4 · grip on the rings')
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(t.page.getByText('Seat 4 · grip on the rings').first(), `${name} shows its setup note`)
+    await t.shot('Setup note in the logger')
+    await t.page.goto(BASE + '/exercises')
+    await t.page.getByRole('link').filter({ hasText: name }).first().click() // a row's name starts with its initials
+    await t.expect(t.page.getByText('Seat 4 · grip on the rings').first(), 'The exercise page shows it too')
+    await t.page.getByRole('button', { name: `Edit the setup note for ${name}` }).click()
+    await t.page.getByRole('button', { name: 'Clear', exact: true }).click()
+    await t.expect(t.page.getByRole('button', { name: 'Add setup note (stays every time)' }), 'Clear takes it away')
+  }],
+
   'plan-lb': ['A pasted plan in lb: "@ 220lb" comes in as 99.8 kg', async t => {
     await begin(t, false)
     await planner(t)

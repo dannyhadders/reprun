@@ -1,6 +1,6 @@
 import type { Activity, Backup, BodyWeight, Data, Exercise, Goal, Muscle, ImportActivity, ImportPayload, ImportResult, Profile, RecordRow, Routine, Workout, WorkoutSet } from '../shared/types.ts'
 import { isBackup, planRestore, workoutSeen } from '../shared/backup.ts'
-import { cleanProfile, isDate, num, routineOk, rpe, setNumbers } from '../shared/rules.ts'
+import { cleanProfile, isDate, keepMaps, num, patchProfile, renameInProfile, routineOk, rpe, setNumbers, type ProfilePatch } from '../shared/rules.ts'
 import { addAlias, exerciseNameOk, mergeAliases, MUSCLE_LIST, nameFiler, rewriteRoutine, type Aliases } from '../shared/exercises.ts'
 import { demoData } from '../shared/demo.ts'
 import { fromStrava, sampleStravaActivities, type StravaActivity } from '../shared/strava.ts'
@@ -136,9 +136,11 @@ async function route(req: Request, env: Env, url: URL): Promise<Response> {
     if (m === 'DELETE' && id) return (await db.prepare('DELETE FROM routines WHERE id = ?').bind(id).run(), json({ ok: true }))
   }
 
-  if (resource === 'profile' && m === 'PUT') {
-    const b = (await req.json()) as Profile
-    await setSetting(db, 'profile', cleanProfile(b))
+  // PUT: the whole profile, except units and setup notes, which only change one key at a time with PATCH (rules.ts).
+  if (resource === 'profile' && (m === 'PUT' || m === 'PATCH')) {
+    const stored = await getSetting<Profile>(db, 'profile', NO_PROFILE)
+    const b = await req.json()
+    await setSetting(db, 'profile', m === 'PUT' ? keepMaps(b as Profile, stored) : patchProfile(stored, b as ProfilePatch))
     return json({ ok: true })
   }
 
@@ -182,7 +184,7 @@ async function loadAll(env: Env): Promise<Data> {
     goals: go.results as Goal[],
     bodyWeight: bw.results as BodyWeight[],
     routines: ro.results as Routine[],
-    profile: settings.profile ?? { age: null, sex: 'male', weight_kg: null },
+    profile: settings.profile ?? NO_PROFILE,
     aliases: settings.aliases ?? {},
     demo: !!env.DEMO,
     strava: { configured: !!(env.STRAVA_CLIENT_ID && env.STRAVA_CLIENT_SECRET), connected: !!tokens?.refresh_token, lastSync: tokens?.last_sync ?? null },
@@ -290,6 +292,8 @@ async function upsertActivities(db: D1Database, list: ImportActivity[]) {
   return list.length
 }
 
+const NO_PROFILE: Profile = { age: null, sex: 'male', weight_kg: null }
+
 async function getSetting<T>(db: D1Database, key: string, fallback: T): Promise<T> {
   const row = await db.prepare('SELECT value FROM settings WHERE key = ?').bind(key).first<{ value: string }>()
   return row ? (JSON.parse(row.value) as T) : fallback
@@ -305,6 +309,7 @@ async function editExercise(db: D1Database, req: Request, id: number, merge: boo
   const b = (await req.json()) as { name?: unknown; muscle?: unknown; into?: unknown }
   const routines = (await db.prepare('SELECT id, body FROM routines').all()).results as Pick<Routine, 'id' | 'body'>[]
   const aliases = await getSetting<Aliases>(db, 'aliases', {})
+  const profile = await getSetting<Profile>(db, 'profile', NO_PROFILE)
 
   // Both paths end the same way: goals and routines follow the new name, and the old one becomes an alias.
   const follow = (to: string) => [
@@ -313,6 +318,9 @@ async function editExercise(db: D1Database, req: Request, id: number, merge: boo
       .map(([r, body]) => db.prepare('UPDATE routines SET body = ? WHERE id = ?').bind(body, r.id)),
     db.prepare("INSERT INTO settings (key, value) VALUES ('aliases', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
       .bind(JSON.stringify(addAlias(aliases, ex.name, to))),
+    // Its kg/lb choice and setup note follow it too.
+    db.prepare("INSERT INTO settings (key, value) VALUES ('profile', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .bind(JSON.stringify(renameInProfile(profile, ex.name, to))),
   ]
 
   if (merge) {
