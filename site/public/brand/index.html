@@ -233,10 +233,11 @@
       <div class="sec-head">
         <p class="lab">01 · Colour</p>
         <h2>Near-black, two blues, and a <span class="g">gradient</span>.</h2>
-        <p>One dark theme, always on. Indigo to cyan is the brand; green, red and gold only ever mean done, wrong and personal best. Tap a swatch to copy it.</p>
+        <p>Dark is the look, and the default. The app also has a light theme (Settings → Appearance), with the same tokens in deeper shades. Indigo to cyan is the brand; green, red and gold only ever mean done, wrong and personal best. Tap a swatch to copy it.</p>
         <p class="rule">Every colour is a token. No raw hex in a component.</p>
         <p class="rule">White text never sits on <code>accent</code>, <code>accent-2</code> or <code>bad</code> (2.98, 1.81 and 2.77:1: all fail). A filled button or badge with white on it uses the <code>-deep</code> shade instead: <code>accent-deep</code> 4.88:1, <code>accent-2-deep</code> 5.36:1 (the gradient end, as on the Start workout button), <code>bad-deep</code> 4.83:1. Indigo text, rings, borders and charts stay on <code>accent</code>, which reads better on the page.</p>
         <p class="rule"><code>faint</code> is for large or throwaway text only (3.36:1).</p>
+        <p class="rule">Light theme (the app only; the website, share pictures and reels stay dark): <code>bg</code> #f5f6fa, <code>surface</code> #ffffff, <code>surface-2</code> #eceef4, <code>line</code> #dfe2ea, <code>ink</code> #12151d, <code>muted</code> #596175, <code>accent</code> #4f46e5, <code>accent-2</code> #0e7490, <code>good</code> #047857, <code>bad</code> #c81e1e, <code>pb</code> #a35a00, <code>strava</code> #c2410c. Every text colour reads at 4.5:1 or better on <code>bg</code>, <code>surface</code> and <code>surface-2</code> (<code>strava</code> 4.46 on <code>surface-2</code>). The <code>-deep</code> fills are the same in both. They live in <code>src/index.css</code> under <code>[data-theme="light"]</code>.</p>
       </div>
       <div class="grid" id="swatches" style="grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));"></div>
       <div class="grid wide" style="margin-top: 16px;">

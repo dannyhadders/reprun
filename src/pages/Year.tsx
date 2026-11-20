@@ -1,7 +1,7 @@
 import type { ChartConfiguration } from 'chart.js'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ACCENT, ACCENT_2, Chart, STRAVA } from '../components/Chart'
+import { C, Chart } from '../components/Chart'
 import { Heatmap } from '../components/Heatmap'
 import { Card, Empty, Line, PbBadge, Tabs } from '../components/ui'
 import { useData } from '../lib/data'
@@ -24,8 +24,8 @@ export default function Year() {
     data: {
       labels: MONTHS.map(m => m.slice(0, 3)),
       datasets: [
-        { label: 'Gym', data: y.months.map(m => m.gym), backgroundColor: ACCENT, borderRadius: 4, stack: 's' },
-        { label: 'Runs', data: y.months.map(m => m.runs), backgroundColor: STRAVA, borderRadius: 4, stack: 's' },
+        { label: 'Gym', data: y.months.map(m => m.gym), backgroundColor: C().accent, borderRadius: 4, stack: 's' },
+        { label: 'Runs', data: y.months.map(m => m.runs), backgroundColor: C().strava, borderRadius: 4, stack: 's' },
       ],
     },
     options: { plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10 } } }, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, ticks: { precision: 0 } } } },
@@ -33,8 +33,8 @@ export default function Year() {
 
   const muscleChart = useMemo<ChartConfiguration>(() => ({
     type: 'radar',
-    data: { labels: MUSCLES.map(m => m[0].toUpperCase() + m.slice(1)), datasets: [{ data: MUSCLES.map(m => y.muscles[m]), borderColor: ACCENT_2, backgroundColor: 'rgba(34,211,238,0.18)', pointBackgroundColor: ACCENT_2, borderWidth: 2 }] },
-    options: { plugins: { tooltip: { callbacks: { label: c => ` ${c.parsed.r} sets` } } }, scales: { r: { angleLines: { color: '#242a38' }, grid: { color: '#242a38' }, pointLabels: { color: '#e8eaf0', font: { size: 12, weight: 600 } }, ticks: { display: false }, beginAtZero: true } } },
+    data: { labels: MUSCLES.map(m => m[0].toUpperCase() + m.slice(1)), datasets: [{ data: MUSCLES.map(m => y.muscles[m]), borderColor: C().accent2, backgroundColor: C().accent2 + '2e', pointBackgroundColor: C().accent2, borderWidth: 2 }] },
+    options: { plugins: { tooltip: { callbacks: { label: c => ` ${c.parsed.r} sets` } } }, scales: { r: { angleLines: { color: C().line }, grid: { color: C().line }, pointLabels: { color: C().ink, font: { size: 12, weight: 600 } }, ticks: { display: false }, beginAtZero: true } } },
   }), [y])
 
   if (!years.length) return <Empty>Nothing logged yet. Come back after a few sessions.</Empty>

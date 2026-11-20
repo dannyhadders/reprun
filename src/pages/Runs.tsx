@@ -1,7 +1,7 @@
 import type { ChartConfiguration } from 'chart.js'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ACCENT_2, Chart, gradientFill, gradientStroke, STRAVA } from '../components/Chart'
+import { C, Chart, gradientFill, gradientStroke } from '../components/Chart'
 import { ask, Card, Empty, Icon, Line, PageHeader, SourceBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { clock, date as fmtDate, duration, km, num, pace, plural, shortDate, today } from '../lib/format'
@@ -20,7 +20,7 @@ export default function Runs() {
   const weeks = useMemo(() => weekly(model, 16), [model])
   const kmChart = useMemo<ChartConfiguration>(() => ({
     type: 'bar',
-    data: { labels: weeks.map(w => shortDate(w.week)), datasets: [{ data: weeks.map(w => Math.round(w.km * 10) / 10), backgroundColor: STRAVA, borderRadius: 4 }] },
+    data: { labels: weeks.map(w => shortDate(w.week)), datasets: [{ data: weeks.map(w => Math.round(w.km * 10) / 10), backgroundColor: C().strava, borderRadius: 4 }] },
     options: {
       plugins: { tooltip: { callbacks: { title: i => `Week of ${i[0].label}`, label: c => ` ${c.parsed.y} km` } } },
       scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 12 } }, y: { ticks: { callback: v => `${v} km` } } },
@@ -32,7 +32,7 @@ export default function Runs() {
     type: 'line',
     data: {
       labels: paceRuns.map(r => shortDate(r.date)),
-      datasets: [{ data: paceRuns.map(r => Math.round(runPace(r)!)), borderColor: gradientStroke, backgroundColor: gradientFill, fill: true, pointRadius: 2.5, pointBackgroundColor: ACCENT_2, borderWidth: 2, tension: 0.3 }],
+      datasets: [{ data: paceRuns.map(r => Math.round(runPace(r)!)), borderColor: gradientStroke, backgroundColor: gradientFill, fill: true, pointRadius: 2.5, pointBackgroundColor: C().accent2, borderWidth: 2, tension: 0.3 }],
     },
     options: {
       plugins: { tooltip: { callbacks: { label: c => ` ${pace(c.parsed.y)} · ${km(paceRuns[c.dataIndex].distance_m)}` } } },

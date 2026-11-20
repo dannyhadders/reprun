@@ -1,11 +1,12 @@
-import { useState, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { isBackup } from '../../shared/backup'
 import { GOALS } from '../../shared/rules'
 import { showIntroAgain } from '../lib/intro'
 import type { ImportResult, Profile } from '../../shared/types'
 import { DEFAULT_WEEKLY } from '../lib/stats'
-import { ask, Card, Icon, PageHeader, SourceBadge } from '../components/ui'
+import { ask, Card, Icon, PageHeader, SourceBadge, Tabs } from '../components/ui'
+import { getTheme, setTheme, type Theme } from '../lib/theme'
 import { api, importStravaFile, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
 import { lastBackup, saveBackup } from '../lib/backupFile'
@@ -83,8 +84,9 @@ export default function Settings() {
         </span>
         <Icon d={CHEVRON} className="size-4 text-muted" />
       </Link>
-      {groups.map(([name, rows]) => (
-        <section key={name}>
+      {groups.map(([name, rows]) => (<Fragment key={name}>
+        {name === 'RepRun' && <Appearance />}
+        <section>
           <h2 className="mb-2 pl-3.5 text-[13px] font-semibold uppercase tracking-wider text-muted">{name}</h2>
           <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
             {name === 'RepRun' && <UpdateRow />}
@@ -98,9 +100,20 @@ export default function Settings() {
             ))}
           </div>
         </section>
-      ))}
+      </Fragment>))}
       <p className="text-center text-xs tabular-nums text-muted">Version {__BUILD__.date} · {__BUILD__.sha}</p>
     </div>
+  )
+}
+
+/** Light or dark, right in the list: two buttons the width of the page. */
+function Appearance() {
+  const [theme, set] = useState(getTheme)
+  return (
+    <section>
+      <h2 className="mb-2 pl-3.5 text-[13px] font-semibold uppercase tracking-wider text-muted">Appearance</h2>
+      <Tabs full value={theme} options={[{ value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }] as { value: Theme; label: string }[]} onChange={t => (setTheme(t), set(t))} />
+    </section>
   )
 }
 

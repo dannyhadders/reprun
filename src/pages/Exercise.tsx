@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { MUSCLE_LIST } from '../../shared/exercises'
 import type { Exercise as Ex, Muscle } from '../../shared/types'
-import { ACCENT_2, Chart, gradientFill, gradientStroke } from '../components/Chart'
+import { C, Chart, gradientFill, gradientStroke } from '../components/Chart'
 import { ask, Card, Empty, Line, PageHeader, PbBadge, Stat, Tabs } from '../components/ui'
 import { api, useData } from '../lib/data'
 import { Tap } from '../lib/haptic'
@@ -31,7 +31,7 @@ export default function Exercise() {
     type: 'line',
     data: {
       labels: series.map(p => shortDate(p.date)),
-      datasets: [{ data: series.map(p => p.value), borderColor: gradientStroke, backgroundColor: gradientFill, fill: true, pointBackgroundColor: ACCENT_2, pointRadius: 4, pointHoverRadius: 6, borderWidth: 3, tension: 0.3 }],
+      datasets: [{ data: series.map(p => p.value), borderColor: gradientStroke, backgroundColor: gradientFill, fill: true, pointBackgroundColor: C().accent2, pointRadius: 4, pointHoverRadius: 6, borderWidth: 3, tension: 0.3 }],
     },
     options: {
       plugins: { tooltip: { callbacks: { label: c => ` ${num(c.parsed.y ?? 0, 1)} ${unit}` } } },

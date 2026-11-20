@@ -5,7 +5,7 @@ import { estimateS } from '../../shared/plan'
 import { routineRows, Time } from '../components/Planner'
 import { Tap } from '../lib/haptic'
 import { fromRoutine, loadActive, saveActive } from '../lib/session'
-import { ACCENT, ACCENT_2, Chart, sparkConfig, STRAVA } from '../components/Chart'
+import { C, Chart, sparkConfig } from '../components/Chart'
 import { BodyMap } from '../components/BodyMap'
 import { Card, Empty, Line, Sheet, SourceBadge, Stat, Tabs, useCountUp } from '../components/ui'
 import { api, useData } from '../lib/data'
@@ -39,13 +39,13 @@ export default function Home() {
       data: {
         labels: MUSCLES.map(m => m[0].toUpperCase() + m.slice(1)),
         datasets: [
-          { label: `Last ${n} days`, data: MUSCLES.map(m => now[m]), borderColor: ACCENT_2, backgroundColor: 'rgba(34,211,238,0.18)', pointBackgroundColor: ACCENT_2, borderWidth: 2 },
-          { label: `Previous ${n} days`, data: MUSCLES.map(m => before[m]), borderColor: 'rgba(129,140,248,0.6)', backgroundColor: 'rgba(129,140,248,0.06)', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5 },
+          { label: `Last ${n} days`, data: MUSCLES.map(m => now[m]), borderColor: C().accent2, backgroundColor: C().accent2 + '2e', pointBackgroundColor: C().accent2, borderWidth: 2 },
+          { label: `Previous ${n} days`, data: MUSCLES.map(m => before[m]), borderColor: C().accent + '99', backgroundColor: C().accent + '0f', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5 },
         ],
       },
       options: {
         plugins: { legend: { display: true, position: 'bottom', labels: { boxWidth: 10, boxHeight: 10, useBorderRadius: true, borderRadius: 2 } }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.r} sets` } } },
-        scales: { r: { angleLines: { color: '#242a38' }, grid: { color: '#242a38' }, pointLabels: { color: '#e8eaf0', font: { size: 12, weight: 600 } }, ticks: { display: false }, beginAtZero: true } },
+        scales: { r: { angleLines: { color: C().line }, grid: { color: C().line }, pointLabels: { color: C().ink, font: { size: 12, weight: 600 } }, ticks: { display: false }, beginAtZero: true } },
       },
     }
   }, [split, n])
@@ -56,8 +56,8 @@ export default function Home() {
     data: {
       labels: weeks.map(w => shortDate(w.week)),
       datasets: [
-        { label: 'Gym', data: weeks.map(w => w.gym), backgroundColor: ACCENT, borderRadius: 4, stack: 's' },
-        { label: 'Runs', data: weeks.map(w => w.runs), backgroundColor: STRAVA, borderRadius: 4, stack: 's' },
+        { label: 'Gym', data: weeks.map(w => w.gym), backgroundColor: C().accent, borderRadius: 4, stack: 's' },
+        { label: 'Runs', data: weeks.map(w => w.runs), backgroundColor: C().strava, borderRadius: 4, stack: 's' },
       ],
     },
     options: {
@@ -201,7 +201,7 @@ function BodyWeight() {
   const latest = pts.at(-1)
   const config = useMemo<ChartConfiguration>(() => ({
     type: 'line',
-    data: { labels: pts.map(p => shortDate(p.date)), datasets: [{ data: pts.map(p => p.kg), borderColor: ACCENT_2, pointBackgroundColor: ACCENT_2, tension: 0.3, borderWidth: 2 }] },
+    data: { labels: pts.map(p => shortDate(p.date)), datasets: [{ data: pts.map(p => p.kg), borderColor: C().accent2, pointBackgroundColor: C().accent2, tension: 0.3, borderWidth: 2 }] },
     options: { scales: { x: { grid: { display: false } }, y: { ticks: { callback: v => `${v} kg` } } } },
   }), [pts])
 

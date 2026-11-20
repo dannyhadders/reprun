@@ -28,6 +28,27 @@
   --animate-tick-in: tick-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.4) both, tick-pulse 1.4s ease-in-out 0.5s infinite;
 }
 
+/* Light theme (Settings → Appearance, src/lib/theme.ts; index.html sets it before first paint). Every text colour is
+   at least 4.5:1 on bg, surface and surface-2 (strava 4.46 on surface-2). The -deep fills stay as they are. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #f5f6fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #eceef4;
+  --color-line: #dfe2ea;
+  --color-ink: #12151d;
+  --color-muted: #596175;
+  --color-accent: #4f46e5;
+  --color-accent-2: #0e7490;
+  --color-strava: #c2410c;
+  --color-good: #047857;
+  --color-bad: #c81e1e;
+  --color-pb: #a35a00;
+}
+/* Gold for the PB card's big number and stamp: bright on dark, deep amber on light. */
+.gold { background-image: linear-gradient(135deg, #fde68a, #fbbf24 45%, #d97706); }
+:root[data-theme="light"] .gold { background-image: linear-gradient(135deg, #a35a00, #8a4b00 45%, #6b3a00); }
+
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes pop { 50% { transform: scale(1.18); } }

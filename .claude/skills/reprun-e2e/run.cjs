@@ -85,6 +85,23 @@ const CHECKS = {
     await t.expect(null, `Start fresh contrast is ${ratio.toFixed(2)}:1 (${fg} on ${bgc})`, ratio >= 4.5)
   }],
 
+  'light-theme': ['Appearance: Light turns the app light, survives a reload, and Dark turns it back', async t => {
+    await begin(t, true) // sample data, so Home's charts show in light
+    await tab(t, '/settings')
+    const bg = () => t.page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+    const dark = await bg()
+    await t.page.getByRole('button', { name: 'Light', exact: true }).click()
+    await t.expect(null, `Light: the page turns light (${await bg()})`, (await bg()) === 'rgb(245, 246, 250)')
+    await t.shot('Settings in light')
+    await t.page.reload()
+    await t.expect(null, 'Light is kept after a reload', (await bg()) === 'rgb(245, 246, 250)')
+    await tab(t, '/')
+    await t.shot('Home in light')
+    await tab(t, '/settings')
+    await t.page.getByRole('button', { name: 'Dark', exact: true }).click()
+    await t.expect(null, 'Dark: back to how it was', (await bg()) === dark)
+  }],
+
   'update-check': ['Self-update: index.html carries the build for the open app to compare, and a plain open shows no update pop-up', async t => {
     await begin(t, false)
     await t.expect(null, 'index.html says which build it is', await t.page.locator('meta[name="reprun-build"]').count() === 1)

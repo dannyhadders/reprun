@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'A light theme: Settings → Appearance → Light. Same colours, deeper shades, so it\'s easy to read in daylight. Dark is still the default.',
       'If something ever goes wrong on screen, RepRun now says so with a Reload button, instead of leaving a blank page.',
       'Fixed: on wifi that wants you to sign in first (some gyms and hotels), a finished workout could look uploaded when it wasn\'t. It now stays on your phone and goes up once you\'re properly online.',
       'Fixed: after an update the app could open to a blank dark screen and stay that way, even after closing it. It now ignores a bad saved copy and loads your data fresh.',

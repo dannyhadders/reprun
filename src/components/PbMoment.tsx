@@ -92,12 +92,12 @@ function Card({ p }: { p: PbShow }) {
   const lo = Math.min(...p.series), hi = Math.max(...p.series)
   const pts = p.series.map((v, k) => [p.series.length > 1 ? (k / (p.series.length - 1)) * 256 : 128, 62 - ((v - lo) / (hi - lo || 1)) * 54])
   return (
-    <div className="relative w-full max-w-xs overflow-hidden rounded-3xl border border-pb/50 bg-[linear-gradient(160deg,#2b2410,#151208_60%)] p-5 shadow-[0_30px_70px_-20px_rgb(251_191_36/0.35)]" style={anim('pbm-card', 0.7)}>
+    <div className="relative w-full max-w-xs overflow-hidden rounded-3xl border border-pb/50 bg-[linear-gradient(160deg,color-mix(in_srgb,var(--color-pb)_16%,var(--color-surface)),var(--color-surface)_60%)] p-5 shadow-[0_30px_70px_-20px_rgb(251_191_36/0.35)]" style={anim('pbm-card', 0.7)}>
       <span aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_30%,rgb(255_255_255/0.18)_45%,transparent_60%)]" style={{ animation: 'pbm-shine 1.4s ease-in-out 0.6s both' }} />
       <div className="flex items-center justify-between"><span className="rounded-full bg-pb/15 px-2 py-0.5 text-[11px] font-bold text-pb">🏆 {LABEL[p.kind]}</span><span className="font-bold text-good">{p.up}</span></div>
       <p className="mt-3 text-2xl font-extrabold tracking-tight">{p.name}</p>
       <p className="text-xs text-muted">{p.was}</p>
-      <p className="bg-[linear-gradient(135deg,#fde68a,#fbbf24_45%,#d97706)] bg-clip-text text-5xl font-extrabold leading-tight tracking-tighter text-transparent">{p.set}</p>
+      <p className="gold bg-clip-text text-5xl font-extrabold leading-tight tracking-tighter text-transparent">{p.set}</p>
       {p.series.length > 1 && (
         <svg viewBox="0 0 256 70" className="mt-3 h-16 w-full" aria-hidden>
           <polyline points={pts.map(q => q.join(',')).join(' ')} fill="none" stroke="var(--color-pb)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
@@ -131,7 +131,7 @@ function Roll({ p }: { p: PbShow }) {
       <p className={`flex items-end text-[84px] font-extrabold leading-none tracking-tighter tabular-nums transition-[color,text-shadow] duration-300 ${done ? 'text-pb [text-shadow:0_0_40px_rgb(251_191_36/0.5)]' : ''}`}>
         {shown}<span className="mb-2 ml-1.5 text-3xl tracking-tight text-muted">{p.unit}</span>
       </p>
-      <span className={`rounded-lg bg-[linear-gradient(135deg,#fde68a,#fbbf24_45%,#d97706)] px-3.5 py-1.5 text-sm font-extrabold tracking-[0.2em] text-bg ${done ? '' : 'opacity-0'}`} style={done ? { animation: `pbm-stamp 0.45s ${ease} both` } : undefined}>{LABEL[p.kind].toUpperCase()}</span>
+      <span className={`rounded-lg gold px-3.5 py-1.5 text-sm font-extrabold tracking-[0.2em] text-bg ${done ? '' : 'opacity-0'}`} style={done ? { animation: `pbm-stamp 0.45s ${ease} both` } : undefined}>{LABEL[p.kind].toUpperCase()}</span>
       <p className="text-sm text-muted">{p.was} · <b className="text-good">{p.up}</b></p>
       <p className="mt-6 text-sm text-muted">Tap to {done ? 'carry on' : 'skip'}</p>
     </div>
