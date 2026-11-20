@@ -386,10 +386,10 @@ async function strava(req: Request, env: Env, url: URL, action: string | undefin
 
   if (action === 'callback') {
     const code = url.searchParams.get('code')
-    if (!code) return Response.redirect(`${url.origin}/settings?strava=denied`, 302)
+    if (!code) return Response.redirect(`${url.origin}/settings/strava?strava=denied`, 302)
     const tokens = await stravaToken(env, { grant_type: 'authorization_code', code })
     await setSetting(db, 'strava', tokens)
-    return Response.redirect(`${url.origin}/settings?strava=connected`, 302)
+    return Response.redirect(`${url.origin}/settings/strava?strava=connected`, 302)
   }
 
   if (action === 'sync' && req.method === 'POST') {

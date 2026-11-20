@@ -152,7 +152,7 @@ export function UpdateBanner() {
           {fresh?.notes.length ? (
             <ul className="mt-3 space-y-1.5 text-left text-sm leading-snug">
               {fresh.notes.map(n => <li key={n} className="flex gap-2 animate-page-in"><span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent" />{n}</li>)}
-              {fresh.more > 0 && <li className="pl-3.5 text-muted">+ {fresh.more} more in Settings → About</li>}
+              {fresh.more > 0 && <li className="pl-3.5 text-muted">+ {fresh.more} more in Settings → What's new</li>}
             </ul>
           ) : <p className="mt-1 text-sm text-muted">You're on the latest RepRun.</p>}
           <button className="btn relative mt-4 min-h-12 w-full overflow-hidden text-base" onClick={() => setPhase('leaving')}>

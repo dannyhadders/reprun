@@ -48,7 +48,7 @@ export default function Runs() {
       <PageHeader title="Runs" sub={`${num(yearKm / 1000)} km so far in ${year}`} action={<Tabs value={range} onChange={setRange} options={['30D', '3M', '1Y', 'All'] as RangeKey[]} />} />
       {hasSample && (
         <div className="rounded-2xl border border-dashed border-strava/40 bg-strava/5 p-4 text-sm text-ink/90">
-          Most runs here are <strong>sample Strava data</strong>, shaped exactly like a real Strava import so you can see how it'll look. Connect Strava and remove the samples in <Link className="text-strava underline" to="/settings">Settings</Link>.
+          Most runs here are <strong>sample Strava data</strong>, shaped exactly like a real Strava import so you can see how it'll look. Connect Strava and remove the samples in <Link className="text-strava underline" to="/settings/strava">Settings → Strava</Link>.
         </div>
       )}
 

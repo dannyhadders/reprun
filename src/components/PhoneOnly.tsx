@@ -18,7 +18,7 @@ export function ThisPhoneCard() {
     location.assign('/')
   }
   return (
-    <Card title="This phone">
+    <Card>
       <p className="text-sm text-muted">Everything is stored on this phone only: no account, no server, no sync.</p>
       <p className="mt-2 text-sm text-muted">
         {kept === true ? '✓ Protected: the phone won\'t clear it to free up space.'

@@ -19,6 +19,12 @@ const TABS = [['/', 'Home'], ['/workouts', 'Workouts'], ['/exercises', 'Exercise
 const PLAN = 'Arm day:\nEZ-bar Curl – 3x10-12 @ 20kg, rest 75s\nTricep Pushdown – 3x12 @ 25kg, rest 60s'
 
 // --- helpers every check uses -------------------------------------------------------------------------------------
+// Settings is a list: open it, then the row's own page.
+async function settings(t, row) {
+  await tab(t, '/settings')
+  await t.page.getByRole('link', { name: new RegExp(`^${row}`) }).first().click()
+  await t.page.getByRole('heading', { name: row, exact: true }).waitFor()
+}
 async function begin(t, sample, open = true) {
   if (open) await t.page.goto(BASE + '/')
   await t.page.getByRole('button', { name: sample ? 'Try it with sample data first' : 'Start fresh' }).click()
@@ -75,6 +81,18 @@ const CHECKS = {
     await t.page.getByRole('button', { name: 'Check for updates' }).click()
     await t.expect(t.page.getByRole('status').filter({ hasText: "You're on the latest" }), 'Check for updates: on the latest')
     await t.shot('Settings: Check for updates', true)
+  }],
+
+  'settings-list': ['Settings is a grouped list: rows show their status and open their own page, Back returns', async t => {
+    await begin(t, true)
+    await tab(t, '/settings')
+    await t.expect(t.page.getByRole('link', { name: /^Backup/ }), 'Backup row shows it has never been saved', 'Not saved yet')
+    await t.noOverflow('Settings list')
+    await t.shot('Settings list')
+    await settings(t, 'Body weight')
+    await t.shot('Body weight page')
+    await t.page.getByRole('link', { name: 'Settings' }).first().click()
+    await t.expect(t.page.getByRole('link', { name: /^Profile/ }), 'Back to the list')
   }],
 
   'sample-tour': ['Sample data: every tab loads, nothing wider than the screen', async t => {
@@ -390,17 +408,18 @@ const CHECKS = {
     await begin(t, true)
     await tab(t, '/workouts')
     const before = await t.page.locator('main h1 + p').innerText() // "33 gym sessions, …"
-    await tab(t, '/settings')
+    await settings(t, 'Backup')
     await t.page.evaluate(() => { navigator.canShare = () => false }) // iPhone opens the share sheet; take the download path
     const [dl] = await Promise.all([t.page.waitForEvent('download'), t.page.getByRole('button', { name: 'Save a backup' }).click()])
     const file = OUT + `${t.id}-backup.json`
     await dl.saveAs(file)
     await t.expect(null, `Backup saved (${fs.statSync(file).size} bytes)`, fs.statSync(file).size > 1000)
+    await settings(t, 'This phone')
     await t.page.getByRole('button', { name: 'Start over' }).click()
     await t.shot('Start over asks first')
     await t.page.getByRole('dialog').last().getByRole('button', { name: /Start over|Delete|Wipe/ }).click()
     await begin(t, false, false) // Start over reloads into the welcome screen by itself
-    await tab(t, '/settings')
+    await settings(t, 'Backup')
     await t.page.getByLabel('Restore from a file').setInputFiles(file)
     await t.shot('Restored message')
     await tab(t, '/workouts')
@@ -569,7 +588,7 @@ const CHECKS = {
 
   'settings-profile': ['Profile saves and survives a reload; the intro can be shown again', async t => {
     await begin(t, true)
-    await tab(t, '/settings')
+    await settings(t, 'Profile')
     await t.page.getByRole('spinbutton', { name: 'Age' }).fill('41')
     await t.page.getByRole('button', { name: 'Save', exact: true }).click()
     await t.expect(t.page.getByText('Saved', { exact: true }), 'It says Saved')

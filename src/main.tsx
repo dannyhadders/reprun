@@ -33,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="runs" element={<Runs />} />
             <Route path="year" element={<Year />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="settings/:section" element={<Settings />} />
           </Route>
         </Routes>
       </DataProvider>

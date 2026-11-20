@@ -1,11 +1,11 @@
-import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { isBackup } from '../../shared/backup'
 import { GOALS } from '../../shared/rules'
 import { showIntroAgain } from '../lib/intro'
 import type { ImportResult, Profile } from '../../shared/types'
 import { DEFAULT_WEEKLY } from '../lib/stats'
-import { ask, Card, PageHeader, SourceBadge } from '../components/ui'
+import { ask, Card, Icon, PageHeader, SourceBadge } from '../components/ui'
 import { api, importStravaFile, useData } from '../lib/data'
 import { LOCAL } from '../lib/local'
 import { lastBackup, saveBackup } from '../lib/backupFile'
@@ -18,23 +18,122 @@ import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/fo
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 
+// One icon per row: drawn in a tinted square, like the iPhone's own Settings.
+const ICONS = {
+  you: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21a8 8 0 0 1 16 0',
+  bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4',
+  weight: 'M4 18l5-6 4 3 7-9',
+  phone: 'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2',
+  backup: 'M12 3v12M7 10l5 5 5-5M5 21h14',
+  strava: 'M10 3 4 15h4l2-4 2 4h4zM14 15l2 4 2-4',
+  file: 'M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h6',
+}
+const CHEVRON = 'M9 6l6 6-6 6'
+
+type Section = { id: string; title: string; icon?: string; tint?: string; status?: ReactNode; page: ReactNode }
+
+/**
+ * Settings is a grouped list, like the iPhone's: each row says where things stand ("On", "2 days ago") and opens its
+ * own page at /settings/<id>. Check for updates runs right in the list.
+ */
 export default function Settings() {
   const { data } = useData()
-  return (
-    <div className="space-y-5">
-      <PageHeader title="Settings" sub="Your profile, data sources and imports." />
-      <div className="grid gap-5 lg:grid-cols-2">
-        <ProfileCard />
-        {LOCAL && <ThisPhoneCard />}
-        <BackupCard />
-        {!data.demo && <ImportCard />}
-        {!data.demo && !LOCAL && <StravaCard />}
-        {(pushSupported() || badgeSupported) && <NotificationsCard />}
-        <BodyWeightLog />
-        <SourcesCard />
-        <AboutCard />
+  const { section } = useParams()
+  const last = lastBackup()
+  const goals = GOALS.filter(g => data.profile.goals?.includes(g.id)).map(g => g.label)
+  const weighIn = data.bodyWeight.at(-1)
+  const notify = pushSupported() || badgeSupported
+  const groups: [string, Section[]][] = [
+    ['Training', [
+      ...(notify ? [{ id: 'notifications', title: 'Notifications', icon: ICONS.bell, tint: 'bg-accent/15 text-accent', status: pushSupported() ? <AlertsStatus /> : undefined, page: <NotificationsCard /> }] : []),
+      { id: 'body-weight', title: 'Body weight', icon: ICONS.weight, tint: 'bg-accent-2/15 text-accent-2', status: weighIn ? kg(weighIn.kg) : 'None yet', page: <BodyWeightLog /> },
+    ]],
+    ['Your data', [
+      ...(LOCAL ? [{ id: 'phone', title: 'This phone', icon: ICONS.phone, tint: 'bg-pb/15 text-pb', page: <ThisPhoneCard /> }] : []),
+      { id: 'backup', title: 'Backup', icon: ICONS.backup, tint: 'bg-good/15 text-good', status: last ? ago(localISO(new Date(last))) : 'Not saved yet', page: <BackupCard /> },
+      ...(!data.demo && !LOCAL ? [{ id: 'strava', title: 'Strava', icon: ICONS.strava, tint: 'bg-strava/15 text-strava', status: data.strava.connected ? 'Connected' : 'Not connected', page: <StravaCard /> }] : []),
+      ...(!data.demo ? [{ id: 'import', title: 'Import from a file', icon: ICONS.file, tint: 'bg-muted/15 text-ink', page: <ImportCard /> }] : []),
+    ]],
+    ['RepRun', [
+      { id: 'about', title: "What's new", page: <AboutCard /> },
+      { id: 'sources', title: 'Where the data comes from', page: <SourcesCard /> },
+    ]],
+  ]
+  const profile: Section = { id: 'profile', title: 'Profile', page: <ProfileCard /> }
+  const all = [profile, ...groups.flatMap(([, rows]) => rows)]
+  if (section) {
+    const open = all.find(r => r.id === section)
+    if (!open) return <Navigate to="/settings" replace />
+    return (
+      <div className="mx-auto max-w-xl">
+        <Link to="/settings" className="press -ml-1 inline-flex min-h-11 items-center gap-1 text-accent"><Icon d="M15 6l-6 6 6 6" className="size-5" />Settings</Link>
+        <PageHeader title={open.title} />
+        {open.page}
       </div>
+    )
+  }
+  return (
+    <div className="mx-auto max-w-xl space-y-6">
+      <PageHeader title="Settings" />
+      <Link to="/settings/profile" className="row-press flex items-center gap-3.5 rounded-2xl border border-line bg-surface p-3.5">
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-gradient-to-br from-accent to-accent-2 text-bg"><Icon d={ICONS.you} className="size-6 [stroke-width:2.2]" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Profile</span>
+          <span className="block truncate text-sm text-muted">{[...goals, `${plural(data.profile.weekly ?? DEFAULT_WEEKLY, 'session')} a week`].join(' · ')}</span>
+        </span>
+        <Icon d={CHEVRON} className="size-4 text-muted" />
+      </Link>
+      {groups.map(([name, rows]) => (
+        <section key={name}>
+          <h2 className="mb-2 pl-3.5 text-[13px] font-semibold uppercase tracking-wider text-muted">{name}</h2>
+          <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
+            {name === 'RepRun' && <UpdateRow />}
+            {rows.map(r => (
+              <Link key={r.id} to={`/settings/${r.id}`} className="row-press flex min-h-13 items-center gap-3 px-3.5">
+                {r.icon && <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${r.tint}`}><Icon d={r.icon} className="size-[18px]" /></span>}
+                <span className="min-w-0 flex-1 truncate">{r.title}</span>
+                {r.status && <span className="shrink-0 text-sm text-muted">{r.status}</span>}
+                <Icon d={CHEVRON} className="size-4 shrink-0 text-muted" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+      <p className="text-center text-xs tabular-nums text-muted">Version {__BUILD__.date} · {__BUILD__.sha}</p>
     </div>
+  )
+}
+
+/** The Notifications row's status. Its own component, so the push check only runs where push exists. */
+function AlertsStatus() {
+  const { state } = useRestAlerts()
+  return <>{state === 'on' ? 'On' : 'Off'}</>
+}
+
+const FOUND = {
+  new: 'Found one, installing…',
+  later: 'Installs after your workout',
+  latest: "You're on the latest ✓",
+  offline: "Couldn't check",
+}
+
+/** Check for updates, right in the list: the answer shows where the row's status would be. */
+function UpdateRow() {
+  const [busy, setBusy] = useState(false)
+  const [said, setSaid] = useState<keyof typeof FOUND | null>(null)
+  const look = async () => {
+    setBusy(true)
+    const found = await checkForUpdate()
+    setBusy(false)
+    setSaid(found)
+    if (found !== 'new') setTimeout(() => setSaid(null), 4000) // 'new': the update pop-up takes over
+  }
+  return (
+    <button className="row-press relative flex min-h-13 w-full items-center gap-3 px-3.5 text-left disabled:opacity-60" disabled={busy} aria-busy={busy} onClick={look}>
+      {!busy && <Tap />}
+      <span className="flex-1 text-accent">{busy ? 'Checking…' : 'Check for updates'}</span>
+      {said && <span role="status" className={`animate-fade-in text-sm ${said === 'latest' ? 'text-good' : 'text-muted'}`}>{FOUND[said]}</span>}
+    </button>
   )
 }
 
@@ -49,7 +148,7 @@ function ProfileCard() {
     setTimeout(() => setSaved(false), 2000)
   }
   return (
-    <Card title="Profile" action={<span className="text-xs text-muted">Shapes plans and strength comparisons</span>}>
+    <Card action={<span className="text-xs text-muted">Shapes plans and strength comparisons</span>}>
       <form className="grid grid-cols-3 gap-3" onSubmit={e => (e.preventDefault(), save())}>
         <div className="col-span-3 text-sm text-muted">Training for <span className="text-xs">(up to two)</span>
           <div className="mt-1 flex flex-wrap gap-2">
@@ -121,7 +220,7 @@ function BackupCard() {
   }
 
   return (
-    <Card title="Backup" action={<span className="text-xs text-muted">{last ? `Last saved: ${ago(localISO(new Date(last)))}` : 'Not saved on this device yet'}</span>}>
+    <Card action={<span className="text-xs text-muted">{last ? `Last saved: ${ago(localISO(new Date(last)))}` : 'Not saved on this device yet'}</span>}>
       <p className="text-sm text-muted">Everything in one file: workouts, runs, routines, body weight and profile. Keep it in Files or iCloud Drive, or use it to move to another copy of RepRun. It's always called reprun-backup.json: save it into the same folder and choose Replace, so there's only ever one.</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button className="btn" onClick={save}>Save a backup</button>
@@ -171,7 +270,7 @@ function ImportCard() {
   }
 
   return (
-    <Card title="Import spreadsheet" action={<SourceBadge source="sheet" />}>
+    <Card action={<SourceBadge source="sheet" />}>
       <p className="text-sm text-muted">Drop in a training workbook (.xlsx) with the sheets listed below. Days already in RepRun are skipped, so re-importing the updated file only adds new sessions and never overwrites your edits.</p>
       <p className="mt-2 text-sm text-muted">Or Strava's <b className="text-ink">activities.csv</b>: on strava.com, Settings → My Account → Download or Delete Your Account → Request your archive. Every run, ride and gym session comes in with its time and distance (Strava keeps no sets).</p>
       <label className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line px-4 py-8 text-center transition hover:border-accent hover:bg-accent/5 ${busy ? 'pointer-events-none opacity-60' : ''}`}
@@ -215,7 +314,7 @@ function StravaCard() {
   }
 
   return (
-    <Card title="Strava" action={<SourceBadge source="strava" />}>
+    <Card action={<SourceBadge source="strava" />}>
       <div className="flex items-center gap-3">
         <span className={`h-2.5 w-2.5 rounded-full ${data.strava.connected ? 'bg-good' : 'bg-muted'}`} />
         <span className="font-semibold">{data.strava.connected ? 'Connected' : data.strava.configured ? 'Not connected' : 'Not set up yet'}</span>
@@ -246,7 +345,7 @@ function NotificationsCard() {
   const alerts = useRestAlerts()
   const [perm, setPerm] = useState(() => 'Notification' in window ? Notification.permission : 'denied')
   return (
-    <Card title="Notifications">
+    <Card>
       {pushSupported() && (
         <div>
           <p className="font-medium">Rest alerts</p>
@@ -272,7 +371,7 @@ function NotificationsCard() {
 function BodyWeightLog() {
   const { data, reload } = useData()
   return (
-    <Card title="Body weight log">
+    <Card>
       <ul className="divide-y divide-line text-sm">
         {[...data.bodyWeight].reverse().map(b => (
           <li key={b.date} className="flex items-center justify-between py-2">
@@ -298,7 +397,7 @@ function SourcesCard() {
     ['estimate', 'Estimated, e.g. duration from number of sets', undefined],
   ]
   return (
-    <Card title="Where the data comes from">
+    <Card>
       <ul className="space-y-2.5 text-sm">
         {rows.map(([s, label, sample]) => (
           <li key={label} className="flex items-center gap-3"><span className="w-28"><SourceBadge source={s} sample={!!sample} /></span><span className="text-muted">{label}</span></li>
@@ -308,39 +407,17 @@ function SourcesCard() {
   )
 }
 
-const FOUND = {
-  new: 'Found one, installing…',
-  later: 'Ready. It installs when you finish your workout.',
-  latest: "You're on the latest ✓",
-  offline: "Couldn't check. Are you online?",
-}
-
 function AboutCard() {
-  const [busy, setBusy] = useState(false)
-  const [said, setSaid] = useState<keyof typeof FOUND | null>(null)
-  const look = async () => {
-    setBusy(true)
-    const found = await checkForUpdate()
-    setBusy(false)
-    setSaid(found)
-    if (found !== 'new') setTimeout(() => setSaid(null), 4000) // 'new': the update pop-up takes over
-  }
   return (
-    <div>
-      <Card title="About" action={<span className="text-xs tabular-nums text-muted">Version {__BUILD__.date} · {__BUILD__.sha}</span>}>
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <button className={`btn-ghost relative min-h-11 ${busy ? 'busy' : ''}`} aria-busy={busy} disabled={busy} onClick={look}><Tap />Check for updates</button>
-          {said && <span role="status" className={`animate-fade-in text-sm ${said === 'latest' ? 'text-good' : 'text-muted'}`}>{FOUND[said]}</span>}
-        </div>
-        <ol className="max-h-96 space-y-4 overflow-y-auto text-sm">
-          {CHANGELOG.map(c => (
-            <li key={c.date}>
-              <p className="font-semibold">{fmtDate(c.date)}</p>
-              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted">{c.changes.map(x => <li key={x}>{x}</li>)}</ul>
-            </li>
-          ))}
-        </ol>
-      </Card>
-    </div>
+    <Card action={<span className="text-xs tabular-nums text-muted">Version {__BUILD__.date} · {__BUILD__.sha}</span>}>
+      <ol className="space-y-4 text-sm">
+        {CHANGELOG.map(c => (
+          <li key={c.date}>
+            <p className="font-semibold">{fmtDate(c.date)}</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted">{c.changes.map(x => <li key={x}>{x}</li>)}</ul>
+          </li>
+        ))}
+      </ol>
+    </Card>
   )
 }
