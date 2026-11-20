@@ -65,7 +65,7 @@ Feedback from using the app at the gym, 2026-11-16. Ticked when shipped.
 - [x] **Rest picker as a button**: timer icon + time, opens big time buttons.
 - [ ] **Swap: keep it in the routine** ("Use it in Pull day from now on"), if people keep swapping the same thing.
 - [x] **"Ask ChatGPT for a routine"**: on Import a plan (+ Import plan on the workout screen), pick what you want to train from three choices worked out from your last 7 days (e.g. Legs / Arms / Back, whatever's been missed most), then copy a prompt: "I want to do a Legs workout, this is what I've done this week: …" plus the plan format so the reply pastes straight into + Import plan as a new routine. Reuses `planPrompt` and the copy-workout text.
-- [ ] **Edit set notes on a logged workout** (Workouts → Edit keeps them but can't change them).
+- [x] **Edit set notes on a logged workout**: a pencil per set in Workouts → Edit adds, changes or clears its note.
 - [ ] **Edit an exercise**: on its page, rename it (typos), change its muscle, or merge it into another (all sets move over, the duplicate goes, PBs and suggestions recalculate). Renaming onto an existing name offers to merge. New Worker routes plus local.ts twins; back up prod before shipping, since merge rewrites history.
 
 - [ ] **Feature toggles**: Settings → Features, a switch per optional feature. Off hides its tab, cards and buttons; the data stays. Do this first, then build each idea below behind its own switch.

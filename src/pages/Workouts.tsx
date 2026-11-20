@@ -154,7 +154,7 @@ function SetRow({ set, n }: { set: WorkoutSet; n: number }) {
 }
 
 const timed = (set: WorkoutSet) => set.seconds !== null && set.reps === null
-type Draft = { weight: string; reps: string; removed: boolean; u: Unit } // u: the unit the weight box was filled in, kept even if it changes meanwhile
+type Draft = { weight: string; reps: string; removed: boolean; u: Unit; note: string; noting: boolean } // u: the unit the weight box was filled in, kept even if it changes meanwhile; noting: its note box is open
 
 /** The whole workout editable at once: title, notes, every set. Delete lives here, out of the way. */
 function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, WorkoutSet[]][]; close: () => void }) {
@@ -165,7 +165,7 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
   // Weights in each exercise's own unit (lb for one in lb), back to kg when saved: in the unit the box was filled in.
   const [sets, setSets] = useState(() => new Map<number, Draft>((w?.sets ?? []).map(x => {
     const u = unitOf(model.exById.get(x.exercise_id)?.name)
-    return [x.id, { weight: shown(x.weight_kg, u), reps: (timed(x) ? x.seconds : x.reps)?.toString() ?? '', removed: false, u }]
+    return [x.id, { weight: shown(x.weight_kg, u), reps: (timed(x) ? x.seconds : x.reps)?.toString() ?? '', removed: false, u, note: x.notes ?? '', noting: false }]
   })))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -188,12 +188,13 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
     if (!w) return
     if (title !== (w.title ?? '') || notes !== (w.notes ?? '')) await api('PATCH', `workouts/${w.id}`, { title: title.trim() || null, notes: notes.trim() || null })
     for (const x of w.sets) {
-      const d = sets.get(x.id)!
+      const d0 = sets.get(x.id)!
+      const d = d0.noting || x.notes ? d0 : { ...d0, note: '' } // a new note whose box was closed again isn't saved
       if (d.removed) await api('DELETE', `sets/${x.id}`)
-      else if (d.weight !== shown(x.weight_kg, d.u) || d.reps !== ((timed(x) ? x.seconds : x.reps)?.toString() ?? '')) {
+      else if (d.weight !== shown(x.weight_kg, d.u) || d.reps !== ((timed(x) ? x.seconds : x.reps)?.toString() ?? '') || d.note.trim() !== (x.notes ?? '')) {
         // Weight untouched (only the reps changed): send it back exactly as stored, not via the box's rounding.
         const weight_kg = d.weight === shown(x.weight_kg, d.u) ? x.weight_kg ?? '' : d.weight === '' ? '' : toKg(+d.weight, d.u)
-        await api('PATCH', `sets/${x.id}`, { weight_kg, reps: timed(x) ? null : d.reps, seconds: timed(x) ? d.reps : null, notes: x.notes })
+        await api('PATCH', `sets/${x.id}`, { weight_kg, reps: timed(x) ? null : d.reps, seconds: timed(x) ? d.reps : x.seconds, notes: d.note.trim() || null })
       }
     }
   })
@@ -211,15 +212,25 @@ function WorkoutEditor({ s, groups, close }: { s: Session; groups: [number, Work
       {groups.map(([exId, list]) => (
         <div key={exId}>
           <p className="font-semibold">{model.exById.get(exId)?.name}</p>
-          <div className="mt-2 grid grid-cols-[1.5rem_1fr_auto_1fr_2.75rem] items-center gap-2 text-sm">
+          <div className="mt-2 grid grid-cols-[1.5rem_1fr_auto_1fr_2.75rem_2.75rem] items-center gap-2 text-sm">
             {list.map((x, i) => {
               const d = sets.get(x.id)!
+              // A set's note box: open while it had a note (so clearing one mid-edit doesn't close it), or once the pencil opens it.
+              const noteOpen = (d.noting || !!x.notes) && !d.removed
               return [
                 <span key={`n${x.id}`} className={`text-center text-muted ${d.removed ? 'line-through' : ''} ${x.warmup ? 'text-xs font-extrabold' : ''}`}>{x.warmup ? 'W' : list.slice(0, i + 1).filter(y => !y.warmup).length}</span>,
                 <input key={`w${x.id}`} className="input px-2 text-center" type="number" step="0.5" min="0" inputMode="decimal" disabled={d.removed} value={d.weight} onChange={e => edit(x.id, { weight: e.target.value })} aria-label={`Set ${i + 1} ${d.u}`} placeholder={d.u} />,
                 <span key={`x${x.id}`} className="text-muted">×</span>,
                 <input key={`r${x.id}`} className="input px-2 text-center" type="number" step="1" min="0" inputMode="numeric" disabled={d.removed} value={d.reps} onChange={e => edit(x.id, { reps: e.target.value })} aria-label={`Set ${i + 1} ${timed(x) ? 'seconds' : 'reps'}`} placeholder={timed(x) ? 'sec' : 'reps'} />,
+                // The pencil opens (or closes) a new note's box; on a set that had one, the box is already there, so it goes to it. Lit when there's a note.
+                <button key={`e${x.id}`} className={`icon-btn ${d.note ? 'text-accent' : 'text-muted'}`} disabled={d.removed} aria-expanded={noteOpen} aria-controls={`note-${x.id}`}
+                  onClick={() => (x.notes ? document.getElementById(`note-${x.id}`)?.focus() : edit(x.id, { noting: !d.noting }))}
+                  aria-label={d.note ? `Edit the note on set ${i + 1}` : `Add a note to set ${i + 1}`}><Icon d={PENCIL} className="h-4 w-4" /></button>,
                 <button key={`d${x.id}`} className="icon-btn" onClick={() => edit(x.id, { removed: !d.removed })} aria-label={d.removed ? `Keep set ${i + 1}` : `Remove set ${i + 1}`}>{d.removed ? '↺' : '✕'}</button>,
+                noteOpen && (
+                  <input key={`t${x.id}`} id={`note-${x.id}`} className="input col-span-5 col-start-2 py-2 text-sm" maxLength={300} autoFocus={d.noting} value={d.note} onChange={e => edit(x.id, { note: e.target.value })}
+                    placeholder="How it felt, form, pain…" aria-label={`Note on set ${i + 1}`} />
+                ),
               ]
             })}
           </div>

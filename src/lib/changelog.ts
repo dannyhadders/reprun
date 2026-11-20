@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'Workouts → Edit: tap the pencil on a set to add, change or clear its note afterwards.',
       'Home: the link to every milestone now says View Milestones.',
       'A new body map on Home: a proper front and back figure with real muscles, lit indigo for a few sets through to cyan for the most, the busiest ones glowing. Underneath, bars rank your muscle groups, most-trained first, with the change on the period before.',
       'Exercises the app didn\'t know by name ("Chest-Supported Row", "Leg Extensions") now count towards the right muscle on the body map, including ones you\'ve already logged. Cardio like an incline walk stays out of it.',

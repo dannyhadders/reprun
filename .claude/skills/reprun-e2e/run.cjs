@@ -766,7 +766,7 @@ const CHECKS = {
     await t.expect(null, 'and nothing is left waiting', (await t.page.evaluate(() => localStorage.getItem('reprun.units'))) === null)
   }],
 
-  'workout-edit': ['Edit a past workout (rename, drop a set), then delete it', async t => {
+  'workout-edit': ['Edit a past workout (rename, drop a set, add and clear a set note), then delete it', async t => {
     await begin(t, true)
     await tab(t, '/workouts')
     const top = topWorkout(t)
@@ -779,6 +779,16 @@ const CHECKS = {
     await t.page.getByRole('button', { name: 'Save', exact: true }).click()
     await t.expect(topWorkout(t).getByRole('heading', { level: 3, name: 'Edited day' }), `"${title}" renamed to Edited day`)
     await t.expect(topWorkout(t).getByText('14 sets'), 'with one set fewer (14)')
+    await topWorkout(t).getByRole('button', { name: 'Edit', exact: true }).click()
+    await t.page.getByRole('button', { name: 'Add a note to set 1' }).first().click()
+    await t.page.getByRole('textbox', { name: 'Note on set 1' }).first().fill('Felt heavy, check form')
+    await t.shot('Set note in the editor')
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(topWorkout(t).getByText('Felt heavy, check form'), 'A set note added afterwards shows on the workout')
+    await topWorkout(t).getByRole('button', { name: 'Edit', exact: true }).click()
+    await t.page.getByRole('textbox', { name: 'Note on set 1' }).first().fill('')
+    await t.page.getByRole('button', { name: 'Save', exact: true }).click()
+    await t.expect(topWorkout(t).getByText('Felt heavy, check form'), 'Clearing it removes it', 0)
     await topWorkout(t).getByRole('button', { name: 'Edit', exact: true }).click()
     await t.page.getByRole('button', { name: 'Delete workout' }).click()
     await t.page.getByRole('dialog').last().getByRole('button', { name: /Delete/ }).click()
