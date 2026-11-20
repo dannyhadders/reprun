@@ -746,6 +746,15 @@ const CHECKS = {
     await t.expect(t.page.locator('main').getByText(/ lb$/).first(), 'Exercises show lb')
   }],
 
+  'body-map': ['Home body map: the anatomy figure lights the muscles trained, with ranked bars', async t => {
+    await begin(t, true)
+    await t.expect(t.page.getByRole('img', { name: 'Front: muscles shaded by sets' }), 'The front figure is drawn')
+    await t.expect(t.page.getByRole('img', { name: 'Back: muscles shaded by sets' }), 'and the back one')
+    await t.expect(null, 'Muscles are lit (more than one colour)', (await t.page.locator('svg[aria-label="Front: muscles shaded by sets"] g[fill]').evaluateAll(gs => new Set(gs.map(g => g.getAttribute('fill'))).size)) > 1)
+    await t.page.getByRole('img', { name: 'Front: muscles shaded by sets' }).scrollIntoViewIfNeeded()
+    await t.shot('Body map')
+  }],
+
   'units-pending': ['kg / lb: a switch still waiting on the phone (no signal) is listed in Settings, and Back to kg clears it', async t => {
     await begin(t, true)
     await t.page.evaluate(() => localStorage.setItem('reprun.units', JSON.stringify({ 'bench press': 'lb' }))) // what a switch with no signal leaves
