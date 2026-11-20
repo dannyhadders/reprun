@@ -198,9 +198,21 @@
     .strip { overflow: hidden; padding: 12px 0 8px; mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent); }
     .strip .row { display: flex; gap: 20px; width: max-content; animation: marquee 50s linear infinite; }
     .strip:hover .row { animation-play-state: paused; }
-    .strip img { width: 190px; height: auto; border-radius: 24px; border: 1px solid var(--line); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.7); }
-    @media (max-width: 600px) { .strip img { width: 150px; } }
+    /* Four copies, sized with the screen: half the row (two copies) is always wider than the window, so no gap on a wide screen. */
+    .strip img { width: clamp(190px, 7.5vw, 280px); height: auto; border-radius: 24px; border: 1px solid var(--line); box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.7); }
     @keyframes marquee { to { transform: translateX(calc(-50% - 10px)); } }
+    /* Phones: a swipe carousel instead. Each screen snaps to the middle; the one in the middle is full size, its neighbours shrink and dim. */
+    @media (max-width: 600px) {
+      .strip { position: relative; overflow-x: auto; scrollbar-width: none; mask-image: none; -webkit-mask-image: none; }
+      .strip.held { scroll-snap-type: x mandatory; } /* snaps only while a finger is on it: snapping would fight the glide */
+      .strip::-webkit-scrollbar { display: none; }
+      .strip .row { animation: none; gap: 12px; padding: 0 calc(50vw - 115px); }
+      .strip img { width: 230px; scroll-snap-align: center; }
+      @supports (animation-timeline: view()) {
+        .strip img { animation: coverflow linear both; animation-timeline: view(inline); }
+        @keyframes coverflow { 0%, 100% { transform: scale(0.82); opacity: 0.45; } 50% { transform: none; opacity: 1; } }
+      }
+    }
 
     /* Phone vs host your own: ticks only, a blank where it doesn't apply. */
     .compare { margin-top: 44px; border: 1px solid var(--line); border-radius: 20px; background: rgba(18, 21, 29, 0.6); overflow: hidden; }
@@ -248,6 +260,8 @@
     .faq details[open] summary .i { transform: rotate(180deg); }
     .faq p { margin: 0; padding: 0 4px 20px; max-width: 640px; color: var(--muted); font-size: 16px; }
     .faq-more { text-align: center; margin-top: 24px; color: var(--muted); font-size: 15px; }
+    /* A solid band behind the whole section: the background glows made the answers hard to read. */
+    #faq { background: var(--bg); border-block: 1px solid var(--line); }
 
     .final { text-align: center; padding: 80px 0 96px; }
     .final h2 { font-size: clamp(40px, 7vw, 80px); }
@@ -674,7 +688,21 @@
         <img src="/screens/year.webp" alt="Year in review" loading="lazy" width="540" height="1214" />
         <img src="/screens/welcome.webp" alt="The welcome screen" loading="lazy" width="540" height="1214" />
         <img src="/screens/backup.webp" alt="Backup: everything in one file" loading="lazy" width="540" height="1214" />
-        <!-- Second copy so the marquee loops without a gap. -->
+        <!-- Three more copies so the marquee loops without a gap, however wide the screen. -->
+        <img src="/screens/home.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/log.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/exercises.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/runs.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/year.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/welcome.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/backup.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/home.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/log.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/exercises.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/runs.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/year.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/welcome.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
+        <img src="/screens/backup.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
         <img src="/screens/home.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
         <img src="/screens/log.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
         <img src="/screens/exercises.webp" alt="" aria-hidden="true" loading="lazy" width="540" height="1214" />
@@ -888,6 +916,32 @@
     const fold = () => document.querySelectorAll('.fgroup').forEach((d) => { d.open = !narrow.matches; });
     narrow.addEventListener('change', fold);
     fold();
+
+    // Screens strip on a phone (the swipe carousel): glides on by itself while in view, looping through the copies.
+    // A touch stops it and snaps to the nearest screen; it glides on again 4s after the last swipe.
+    {
+      const strip = document.querySelector('.strip'), shots = strip.querySelectorAll('img');
+      const phone = matchMedia('(max-width: 600px)'), calm = matchMedia('(prefers-reduced-motion: reduce)');
+      const loop = () => shots[7].offsetLeft - shots[0].offsetLeft; // one copy of the seven screens
+      let seen = false, held = false, idle = 0, x = 0, last = 0;
+      new IntersectionObserver(([e]) => { seen = e.isIntersecting; }).observe(strip);
+      const hold = () => { held = true; strip.classList.add('held'); clearTimeout(idle); };
+      const letGo = () => { clearTimeout(idle); idle = setTimeout(() => { held = false; strip.classList.remove('held'); x = strip.scrollLeft; }, 4000); };
+      strip.addEventListener('touchstart', hold, { passive: true });
+      strip.addEventListener('touchend', letGo);
+      strip.addEventListener('pointerdown', hold);
+      strip.addEventListener('pointerup', letGo);
+      const step = (t) => {
+        const dt = Math.min(50, t - last); last = t;
+        if (phone.matches && !calm.matches && seen && !held) {
+          x += dt * 0.04; // 40px a second
+          if (x >= loop()) x -= loop();
+          strip.scrollLeft = x; // own float, not scrollLeft += : Safari rounds scrollLeft and a small step would stall
+        }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
 
     // The hero's phones only move while you can see them (the brand rule for the website's demos).
     const fan = document.getElementById('fan');
