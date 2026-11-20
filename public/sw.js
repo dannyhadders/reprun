@@ -16,7 +16,7 @@ self.addEventListener('install', e => e.waitUntil((async () => {
   await c.put('/', res)
 })()))
 
-// A new version waits until the app says go (the "New version" banner), so it never swaps files under an open page.
+// A new version waits until the app says go (components/Update.tsx, at a safe moment behind its pop-up), so it never swaps files under an open page.
 // The very first install has nothing to wait for and takes over straight away.
 self.addEventListener('message', e => e.data === 'update' && self.skipWaiting())
 

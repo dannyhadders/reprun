@@ -106,6 +106,7 @@ What else a home-screen web app can do on iPhone, picked 2026-11-17.
 - [x] **Home-screen how-to as a video**: the intro's "Put it on your home screen" page plays a real iPhone recording (Safari or Chrome) beside the three steps, which light up in sync. Made in the HyperFrames project `reprun-install` (build.py guide-*; timings in GUIDE in Onboarding.tsx). Plus an Instagram cut.
 - [ ] **Page transitions** (View Transitions API, Safari 18+): slide/fade between pages instead of a flash. Skip where the browser doesn't have it.
 - [x] **"New version" prompt**: a new `sw.js` waits; a banner says "New version ready", Update switches and reloads once (a running workout survives), ✕ leaves it for the next cold start. Checks for a new version each time the app comes to the front.
+- [x] **Updates install themselves**: the open app compares index.html's build sha (on coming to the front, every 15 min, tab changes); a new one installs, then at a safe moment (no workout, sheet or typing) a pop-up shows Update in progress → the tick, Update complete and the first few changelog lines. Replaces the banner, which people missed.
 - [x] **Clear old cached files**: one cache per build (`reprun-<sha>`), filled with the shell and its files when the new version installs, every other build's cache deleted when it takes over. Tested: update, then reopen offline.
 
 ## Later: desktop

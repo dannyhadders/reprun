@@ -2,6 +2,12 @@
 // Every user-facing change adds a line under today's date (see CLAUDE.md).
 export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
+    date: '2026-11-20',
+    changes: [
+      'RepRun updates itself now, so you\'re always on the latest version: when a new one is out, a short pop-up says Update in progress, then Update complete with a tick and the first few things that changed. It waits until you finish a workout or close what you\'re typing in.',
+    ],
+  },
+  {
     date: '2026-11-19',
     changes: [
       'Home\'s numbers (sessions, km, kg, streak) fit on smaller phones instead of being cut off ("2 sessio…"): they shrink a little when the card is narrow.',
@@ -129,3 +135,9 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   { date: '2026-11-13', changes: ['Installed app opens on the dashboard, with a Start workout shortcut.', 'New logo and home-screen icons.'] },
   { date: '2026-11-12', changes: ['First version: gym and running dashboard, workout logger, Strava sync, spreadsheet import.'] },
 ]
+
+/** A changelog line cut to its first phrase for the update pop-up: no brackets, up to the first colon or full stop, 60 characters at most. */
+export function shortNote(line: string) {
+  const t = line.replace(/\s*\([^)]*\)/g, '').split(/: |\. /)[0].replace(/\.$/, '')
+  return t.length > 60 ? `${t.slice(0, t.lastIndexOf(' ', 58))}…` : t
+}

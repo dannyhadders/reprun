@@ -292,3 +292,11 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   assert([0, 0.34, 0.67, 0.99].every(r => pickStyle(3, null, r) !== 'C'), 'pb moment: no roll-up for 3+ PBs')
   console.log('pb moment self-check passed')
 }
+// The update pop-up's What's new: each changelog line cut to its first phrase.
+{
+  const { shortNote } = await import('../src/lib/changelog.ts')
+  eq(shortNote('Share pictures now carry the RR logo next to the RepRun name, on all four looks.'), 'Share pictures now carry the RR logo next to the RepRun…', 'short note: long line cut at a word')
+  eq(shortNote('Build a routine right in the app, no ChatGPT needed: Start a workout → + Import'), 'Build a routine right in the app, no ChatGPT needed', 'short note: up to the colon')
+  eq(shortNote('Home\'s numbers (sessions, km) fit on smaller phones. They shrink.'), 'Home\'s numbers fit on smaller phones', 'short note: brackets out, first sentence')
+  console.log('short note self-check passed')
+}

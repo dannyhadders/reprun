@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { isBackup } from '../../shared/backup'
 import { GOALS } from '../../shared/rules'
@@ -307,12 +307,8 @@ function SourcesCard() {
 }
 
 function AboutCard() {
-  // From the "Updated ✓" toast's What's new: open on the changelog.
-  const [params] = useSearchParams()
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => { if (params.has('about')) ref.current?.scrollIntoView({ block: 'start' }) }, [params])
   return (
-    <div ref={ref} className="scroll-mt-4">
+    <div>
       <Card title="About" action={<span className="text-xs tabular-nums text-muted">Version {__BUILD__.date} · {__BUILD__.sha}</span>}>
         <ol className="max-h-96 space-y-4 overflow-y-auto text-sm">
           {CHANGELOG.map(c => (

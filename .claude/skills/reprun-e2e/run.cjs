@@ -66,6 +66,13 @@ const CHECKS = {
     await t.shot('Empty Home')
   }],
 
+  'update-check': ['Self-update: index.html carries the build for the open app to compare, and a plain open shows no update pop-up', async t => {
+    await begin(t, false)
+    await t.expect(null, 'index.html says which build it is', await t.page.locator('meta[name="reprun-build"]').count() === 1)
+    await t.page.waitForTimeout(6000) // past the 5 s retry, which once fired on the first install's passing worker
+    if (await t.page.getByRole('alertdialog').count()) throw new Error('An update pop-up showed with no new version')
+  }],
+
   'sample-tour': ['Sample data: every tab loads, nothing wider than the screen', async t => {
     await begin(t, true)
     await t.expect(t.page.getByText('Next up'), 'Home shows the routine due next')

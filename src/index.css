@@ -22,6 +22,7 @@
   --animate-sheet-in: sheet-in 0.25s cubic-bezier(0.2, 0.9, 0.3, 1);
   --animate-flicker: flicker 2.4s ease-in-out infinite;
   --animate-glow: glow 2.8s ease-in-out infinite;
+  --animate-tick-in: tick-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.4) both, tick-pulse 1.4s ease-in-out 0.5s infinite;
 }
 
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
@@ -44,6 +45,11 @@
   50% { box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.6), 0 0 0 6px rgb(129 140 248 / 0.16), 0 0 36px 2px rgb(129 140 248 / 0.5); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* Update complete (components/Update.tsx): the green disc pops in then breathes, and the tick draws itself on it. */
+@keyframes tick-in { from { opacity: 0; transform: scale(0.3); } }
+@keyframes tick-pulse { 50% { transform: scale(1.07); } }
+@keyframes draw { from { stroke-dashoffset: 22; } }
+.draw-tick path { stroke-dasharray: 22; animation: draw 0.32s ease-out 0.22s backwards; } /* no offset of its own: Reduce Motion shows it whole */
 /* The PB moment (components/PbMoment.tsx): trophy drops in, rows rise, cards slide up and shine, the stamp lands. */
 @keyframes pbm-cup { 0% { transform: scale(0.2) rotate(-20deg); opacity: 0; } 60% { transform: scale(1.15) rotate(4deg); opacity: 1; } 100% { transform: none; } }
 @keyframes pbm-rise { from { opacity: 0; transform: translateY(16px); } }
