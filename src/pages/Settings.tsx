@@ -380,8 +380,8 @@ function StravaCard() {
       </p>
       <p className="mt-2 text-sm">{plural(real, 'real activity', 'real activities')} · {plural(samples, 'sample activity', 'sample activities')} · {plural(model.runs.length, 'run')} in total</p>
       <div className="mt-4 flex flex-wrap gap-2">
-        {data.strava.configured && !data.strava.connected && <a className="btn bg-strava" href="/api/strava/connect">Connect Strava</a>}
-        {data.strava.connected && <button className="btn bg-strava" disabled={busy} onClick={() => run(async () => `Synced ${plural((await api<{ activities: number }>('POST', 'strava/sync')).activities, 'activity', 'activities')}.`)}>Sync now</button>}
+        {data.strava.configured && !data.strava.connected && <a className="btn bg-strava-deep" href="/api/strava/connect">Connect Strava</a>}
+        {data.strava.connected && <button className="btn bg-strava-deep" disabled={busy} onClick={() => run(async () => `Synced ${plural((await api<{ activities: number }>('POST', 'strava/sync')).activities, 'activity', 'activities')}.`)}>Sync now</button>}
         {samples > 0
           ? <button className="btn-ghost" disabled={busy} onClick={async () => await ask(`Remove ${samples} sample Strava activities?`, 'Remove', true) && run(async () => (await api('DELETE', 'strava/sample'), 'Sample data removed.'))}>Remove sample data</button>
           : <button className="btn-ghost" disabled={busy} onClick={() => run(async () => `Added ${plural((await api<{ activities: number }>('POST', 'strava/sample')).activities, 'sample activity', 'sample activities')}.`)}>Load sample data</button>}

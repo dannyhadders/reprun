@@ -85,6 +85,15 @@ const CHECKS = {
       return [(x + 0.05) / (y + 0.05), s.color, s.backgroundColor]
     })
     await t.expect(null, `Start fresh contrast is ${ratio.toFixed(2)}:1 (${fg} on ${bgc})`, ratio >= 4.5)
+    // The Strava buttons only show with Strava set up (never in this build), so check their fill colour itself.
+    const strava = await t.page.evaluate(() => {
+      const el = Object.assign(document.createElement('b'), { style: 'background: var(--color-strava-deep)' })
+      document.body.append(el)
+      const [r, g, b] = getComputedStyle(el).backgroundColor.match(/[\d.]+/g).slice(0, 3).map(v => v / 255).map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+      el.remove()
+      return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05)
+    })
+    await t.expect(null, `White on the Strava buttons' orange is ${strava.toFixed(2)}:1`, strava >= 4.5)
   }],
 
   'light-theme': ['Appearance: Light turns the app light, survives a reload, and Dark turns it back', async t => {

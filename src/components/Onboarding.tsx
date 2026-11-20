@@ -392,7 +392,7 @@ function StravaHistory({ configured, onFile }: { configured?: boolean; onFile: (
   const [busy, setBusy] = useState(false)
   return (
     <Option icon={I.file} title="Bring in your Strava history" sub="Every run, ride and gym session you've recorded. Strava keeps times and distances, not sets, so gym sessions come in as their time.">
-      {configured && <a className="btn mt-3 w-full bg-strava" href="/api/strava/connect">Connect Strava</a>}
+      {configured && <a className="btn mt-3 w-full bg-strava-deep" href="/api/strava/connect">Connect Strava</a>}
       <button className="mt-3 flex min-h-11 w-full items-center justify-between text-sm font-medium text-accent" aria-expanded={open} onClick={() => setOpen(!open)}>
         {configured ? 'Or import your Strava download' : 'How to get it'} <span className={`transition ${open ? 'rotate-180' : ''}`}>▾</span>
       </button>

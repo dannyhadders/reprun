@@ -12,6 +12,7 @@
   --color-accent-deep: #5b5ef0; /* fills behind white text: white on accent is 2.98:1, on this 4.88:1 */
   --color-accent-2-deep: #0e7490; /* gradient end behind white: 5.36:1 */
   --color-strava: #fc4c02;
+  --color-strava-deep: #c2410c; /* fills behind white: white on strava is 3.40:1, on this 5.18:1 */
   --color-good: #34d399;
   --color-bad: #f87171;
   --color-bad-deep: #dc2626; /* fills behind white: 4.83:1 */

@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'The Connect Strava and Sync now buttons are a deeper orange, so their white writing is easier to read.',
       'kg and lb fixes: weights like 33.75 kg stay exactly 33.75 (they were rounded to 33.8, which could show a PB you didn\'t lift), lb weights read back exactly as typed (285 lb no longer shows as 284.9), and progress in lb goes up 5 lb at a time. Switching a machine to lb with no signal is remembered too.',
       'Plans and routines know about lb too: a pasted plan can say "@ 135lb" as well as "@ 60kg", and building or editing a routine shows each exercise\'s weight in its own unit.',
       'A light theme: Settings → Appearance → Light. Same colours, deeper shades, so it\'s easy to read in daylight. Dark is still the default.',

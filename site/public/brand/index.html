@@ -20,7 +20,7 @@
     :root {
       --bg: #0a0c11; --surface: #12151d; --surface-2: #1a1f2b; --line: #242a38; --line-strong: #323a4d;
       --ink: #e8eaf0; --muted: #8b93a7; --faint: #5d657a; --accent: #818cf8; --accent-2: #22d3ee;
-      --accent-deep: #5b5ef0; --accent-2-deep: #0e7490; --bad-deep: #dc2626;
+      --accent-deep: #5b5ef0; --accent-2-deep: #0e7490; --bad-deep: #dc2626; --strava-deep: #c2410c;
       --good: #34d399; --bad: #f87171; --pb: #fbbf24; --strava: #fc4c02;
       --grad: linear-gradient(90deg, var(--accent), var(--accent-2));
       --ease: cubic-bezier(0.2, 0.9, 0.3, 1);
@@ -235,7 +235,7 @@
         <h2>Near-black, two blues, and a <span class="g">gradient</span>.</h2>
         <p>Dark is the look, and the default. The app also has a light theme (Settings → Appearance), with the same tokens in deeper shades. Indigo to cyan is the brand; green, red and gold only ever mean done, wrong and personal best. Tap a swatch to copy it.</p>
         <p class="rule">Every colour is a token. No raw hex in a component.</p>
-        <p class="rule">White text never sits on <code>accent</code>, <code>accent-2</code> or <code>bad</code> (2.98, 1.81 and 2.77:1: all fail). A filled button or badge with white on it uses the <code>-deep</code> shade instead: <code>accent-deep</code> 4.88:1, <code>accent-2-deep</code> 5.36:1 (the gradient end, as on the Start workout button), <code>bad-deep</code> 4.83:1. Indigo text, rings, borders and charts stay on <code>accent</code>, which reads better on the page.</p>
+        <p class="rule">White text never sits on <code>accent</code>, <code>accent-2</code>, <code>bad</code> or <code>strava</code> (2.98, 1.81, 2.77 and 3.40:1: all fail). A filled button or badge with white on it uses the <code>-deep</code> shade instead: <code>accent-deep</code> 4.88:1, <code>accent-2-deep</code> 5.36:1 (the gradient end, as on the Start workout button), <code>bad-deep</code> 4.83:1, <code>strava-deep</code> 5.18:1 (Connect Strava, Sync now). Indigo text, rings, borders and charts stay on <code>accent</code>, which reads better on the page.</p>
         <p class="rule"><code>faint</code> is for large or throwaway text only (3.36:1).</p>
         <p class="rule">Light theme (the app only; the website, share pictures and reels stay dark): <code>bg</code> #f5f6fa, <code>surface</code> #ffffff, <code>surface-2</code> #eceef4, <code>line</code> #dfe2ea, <code>ink</code> #12151d, <code>muted</code> #596175, <code>accent</code> #4f46e5, <code>accent-2</code> #0e7490, <code>good</code> #047857, <code>bad</code> #c81e1e, <code>pb</code> #a35a00, <code>strava</code> #c2410c. Every text colour reads at 4.5:1 or better on <code>bg</code>, <code>surface</code> and <code>surface-2</code> (<code>strava</code> 4.46 on <code>surface-2</code>). The <code>-deep</code> fills are the same in both. They live in <code>src/index.css</code> under <code>[data-theme="light"]</code>.</p>
       </div>
@@ -508,7 +508,7 @@
       ['accent', '#818cf8', 'indigo: brand, links, rings', 1], ['accent-2', '#22d3ee', 'cyan: gradient end, labels', 1],
       ['accent-deep', '#5b5ef0', 'fills behind white text: buttons, selected tab (4.88:1)'], ['accent-2-deep', '#0e7490', 'gradient end behind white (5.36:1)'],
       ['good', '#34d399', 'done, ticked, going up', 1], ['bad', '#f87171', 'delete, errors, going down', 1], ['bad-deep', '#dc2626', 'delete fills behind white (4.83:1)'],
-      ['pb', '#fbbf24', 'personal bests only', 1], ['strava', '#fc4c02', 'Strava data only', 1],
+      ['pb', '#fbbf24', 'personal bests only', 1], ['strava', '#fc4c02', 'Strava data only', 1], ['strava-deep', '#c2410c', 'Strava buttons behind white (5.18:1)'],
     ]
     document.getElementById('swatches').innerHTML = PALETTE.map(([t, v, use, text]) => {
       const r = text ? ratio(v, '#0a0c11') : 0
