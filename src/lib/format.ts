@@ -26,7 +26,13 @@ export const setUnits = (p: { unit?: Unit; units?: Record<string, Unit> }) => vo
 /** An exercise's unit (your switch for it, else your default); no name = your default, for totals. */
 export const unitOf = (name?: string): Unit => (name && units.each[name.toLowerCase()]) || units.unit
 export const fromKg = (v: number, u: Unit) => (u === 'lb' ? v * LB : v)
-export const toKg = (v: number, u: Unit) => (u === 'lb' ? Math.round((v / LB) * 100) / 100 : v)
+// A kg weight shown in lb (57.5 → "126.8") comes back as 57.52, a false PB over 57.5. So within 0.03 kg of a ¼-kg step it
+// snaps back to that step; a real lb weight (220 lb = 99.79 kg, 225 = 102.06) is never that close and keeps its value.
+export const toKg = (v: number, u: Unit) => {
+  if (u === 'kg') return v
+  const k = v / LB, step = Math.round(k * 4) / 4
+  return Math.abs(k - step) < 0.03 ? step : Math.round(k * 100) / 100
+}
 /** A kg value as the box shows it: "220.5" in lb, "100" in kg. */
 export const shown = (v: number | null | undefined, u: Unit) => (v === null || v === undefined ? '' : String(Math.round(fromKg(v, u) * 10) / 10))
 /** "100 kg", or "220.5 lb" for an exercise in lb. The name picks the unit; without one it's your default. */

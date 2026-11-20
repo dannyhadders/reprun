@@ -298,6 +298,7 @@ const { swapExercise, moveExercise, routineFromWorkout } = await import(sessionP
   eq([f.unitOf('Leg Press'), f.unitOf('Squat'), f.unitOf()], ['lb', 'kg', 'kg'], 'units: a switched exercise, else the default')
   eq([f.kg(100, 'Leg Press'), f.kg(100, 'Squat'), f.setText({ weight_kg: 99.79, reps: 10, seconds: null }, 'Leg Press')], ['220.5 lb', '100 kg', '220 lb × 10'], 'units: shown in the exercise unit')
   eq([setKg('220', true), f.shown(setKg('220', true), 'lb'), convert('100', false, true), convert('220.5', true, false), convert('', false, true)], [99.79, '220', '220.5', '100', ''], 'units: lb to kg and back without drift')
+  eq([setKg('126.8', true), setKg('220.5', true), setKg('225', true), setKg('45', true)], [57.5, 100, 102.06, 20.41], 'units: kg shown in lb snaps back (no false PB); real lb weights kept')
   f.setUnits({ unit: 'kg', units: { 'incline leg press': 'lb' } }) // "Leg Press" is the catalogue's Incline Leg Press
   const e = newExercise('Leg Press')
   eq(e.lb, true, 'units: a switched exercise starts in lb in the logger')
