@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'Settings → About has a Check for updates button: it says you\'re on the latest, or fetches the new version and updates there and then.',
       'RepRun updates itself now, so you\'re always on the latest version: when a new one is out, a short pop-up says Update in progress, then Update complete with a tick and the first few things that changed. It waits until you finish a workout or close what you\'re typing in.',
     ],
   },

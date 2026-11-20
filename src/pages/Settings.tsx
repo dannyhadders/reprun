@@ -12,6 +12,8 @@ import { lastBackup, saveBackup } from '../lib/backupFile'
 import { ThisPhoneCard } from '../components/PhoneOnly'
 import { pushSupported, ReminderSwitches, RestAlertsButton, useRestAlerts, WhatsSent } from '../lib/push'
 import { CHANGELOG } from '../lib/changelog'
+import { checkForUpdate } from '../components/Update'
+import { Tap } from '../lib/haptic'
 import { ago, date as fmtDate, kg, localISO, plural, shortDate } from '../lib/format'
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
@@ -306,10 +308,30 @@ function SourcesCard() {
   )
 }
 
+const FOUND = {
+  new: 'Found one, installing…',
+  later: 'Ready. It installs when you finish your workout.',
+  latest: "You're on the latest ✓",
+  offline: "Couldn't check. Are you online?",
+}
+
 function AboutCard() {
+  const [busy, setBusy] = useState(false)
+  const [said, setSaid] = useState<keyof typeof FOUND | null>(null)
+  const look = async () => {
+    setBusy(true)
+    const found = await checkForUpdate()
+    setBusy(false)
+    setSaid(found)
+    if (found !== 'new') setTimeout(() => setSaid(null), 4000) // 'new': the update pop-up takes over
+  }
   return (
     <div>
       <Card title="About" action={<span className="text-xs tabular-nums text-muted">Version {__BUILD__.date} · {__BUILD__.sha}</span>}>
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <button className={`btn-ghost relative min-h-11 ${busy ? 'busy' : ''}`} aria-busy={busy} disabled={busy} onClick={look}><Tap />Check for updates</button>
+          {said && <span role="status" className={`animate-fade-in text-sm ${said === 'latest' ? 'text-good' : 'text-muted'}`}>{FOUND[said]}</span>}
+        </div>
         <ol className="max-h-96 space-y-4 overflow-y-auto text-sm">
           {CHANGELOG.map(c => (
             <li key={c.date}>

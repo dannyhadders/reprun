@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { CHANGELOG, shortNote } from '../lib/changelog'
 import { Tap } from '../lib/haptic'
@@ -37,6 +37,12 @@ const resuming = (() => { try { return !fresh && !!sessionStorage.getItem(BUSY) 
 const inTheWay = () => !!loadActive() || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName ?? '')
   || !!document.querySelector('dialog[open], [role="dialog"]')
 
+type Found = 'new' | 'later' | 'latest' | 'offline'
+let check: (now?: boolean) => Promise<Found> = async () => 'latest' // set once the service worker is registered
+/** Settings → Check for updates: look right now. 'new' means the pop-up follows once it's downloaded; 'later' that it
+ * waits for the workout to finish. */
+export const checkForUpdate = () => check(true)
+
 /**
  * Keeps everyone on the latest build, with no banner to miss. It looks for a new version when the app comes back to the
  * front, every 15 minutes while open and on every tab change: index.html carries the build's sha (vite.config.ts), and a
@@ -48,9 +54,8 @@ const inTheWay = () => !!loadActive() || /^(INPUT|TEXTAREA|SELECT)$/.test(docume
 export function UpdateBanner() {
   const [phase, setPhase] = useState<'busy' | 'done' | 'leaving' | null>(fresh || resuming ? 'busy' : null)
   const [held, setHeld] = useState(false)
-  const check = useRef(() => {})
   const { pathname } = useLocation()
-  useEffect(() => check.current(), [pathname])
+  useEffect(() => void check(), [pathname])
 
   useEffect(() => {
     if (!live) return
@@ -77,20 +82,24 @@ export function UpdateBanner() {
       reg = r
       apply()
       r.addEventListener('updatefound', () => r.installing?.addEventListener('statechange', apply))
-      check.current = () => {
-        if (r.waiting) return apply()
-        if (Date.now() - last < 30_000) return
+      const found = (): Found => (apply(), inTheWay() ? 'later' : 'new')
+      check = async (now = false) => {
+        if (r.waiting) return found()
+        if (!now && Date.now() - last < 30_000) return 'latest'
         last = Date.now()
-        // A new sha means a new worker: registering its address installs it, and `ready` picks it up when it's done.
-        void fetch('/', { cache: 'no-store' }).then(async r => {
-          if (!r.ok || r.redirected) return // offline, or Access wants a sign-in: try again later
-          const sha = /name="reprun-build" content="(\w+)"/.exec(await r.text())?.[1]
-          if (sha && sha !== __BUILD__.sha) await sw.register(`/sw.js?v=${sha}`)
-        }).catch(() => {})
+        // A new sha means a new worker: registering its address installs it, and `apply` runs when it's done.
+        try {
+          const res = await fetch('/', { cache: 'no-store' })
+          if (!res.ok || res.redirected) return 'offline' // or Access wants a sign-in: try again later
+          const sha = /name="reprun-build" content="(\w+)"/.exec(await res.text())?.[1]
+          if (!sha || sha === __BUILD__.sha) return 'latest'
+          await sw.register(`/sw.js?v=${sha}`)
+          return found()
+        } catch { return 'offline' }
       }
-      check.current()
+      void check()
     })
-    const front = () => document.visibilityState === 'visible' && check.current()
+    const front = () => document.visibilityState === 'visible' && void check()
     document.addEventListener('visibilitychange', front)
     // ponytail: the 15-minute look also retries an update that was waiting for a workout or a sheet to close
     const every = setInterval(front, 15 * 60_000)

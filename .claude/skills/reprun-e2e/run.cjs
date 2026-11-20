@@ -71,6 +71,10 @@ const CHECKS = {
     await t.expect(null, 'index.html says which build it is', await t.page.locator('meta[name="reprun-build"]').count() === 1)
     await t.page.waitForTimeout(6000) // past the 5 s retry, which once fired on the first install's passing worker
     if (await t.page.getByRole('alertdialog').count()) throw new Error('An update pop-up showed with no new version')
+    await tab(t, '/settings')
+    await t.page.getByRole('button', { name: 'Check for updates' }).click()
+    await t.expect(t.page.getByRole('status').filter({ hasText: "You're on the latest" }), 'Check for updates: on the latest')
+    await t.shot('Settings: Check for updates', true)
   }],
 
   'sample-tour': ['Sample data: every tab loads, nothing wider than the screen', async t => {
