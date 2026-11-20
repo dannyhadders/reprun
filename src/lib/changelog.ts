@@ -4,6 +4,7 @@ export const CHANGELOG: { date: string; changes: string[] }[] = [
   {
     date: '2026-11-20',
     changes: [
+      'Settings → Profile lists an exercise you switched to lb (or kg) even before it\'s saved with no signal, and Back to kg works offline too: it\'s sent once you\'re back online.',
       'Warm-ups: on barbell lifts, + Warm-up adds the bar × 10, then 50%, 70% and 85% of your working weight, each rounded to plates you can load. A ticked warm-up rests 60 seconds. Tap a set\'s number to make it a warm-up (or a note). Warm-ups are saved and show as W, but never count towards PBs, volume or your next weights.',
       'Weights in lb covers body weight too: the Home card, its chart and Settings → Profile use your unit, and adding a past workout takes each exercise\'s weight in its own unit.',
       'Setup notes: a note that stays with an exercise ("seat 4, grip on the rings"), shown under its name every time you do it and on its page. Tap the pencil to change or clear it. For how a set felt, use the set note as before.',

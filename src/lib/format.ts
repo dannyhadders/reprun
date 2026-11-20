@@ -29,7 +29,6 @@ export const pendingUnits = (): Record<string, Unit> => { try { return JSON.pars
 const savePending = (p: Record<string, Unit>) => { try { if (Object.keys(p).length) localStorage.setItem(PENDING, JSON.stringify(p)); else localStorage.removeItem(PENDING) } catch { /* kept in memory only */ } }
 /** An exercise switched to `u` (lower-case name): applies now, and waits on the phone until the server has it. */
 export const addPendingUnit = (key: string, u: Unit) => (savePending({ ...pendingUnits(), [key]: u }), void (units.each = { ...units.each, [key]: u }))
-export const dropPendingUnit = (key: string) => { const p = pendingUnits(); delete p[key]; savePending(p) }
 /** Called by DataProvider whenever the data loads, so every page formats with the current choice. */
 export const setUnits = (p: { unit?: Unit; units?: Record<string, Unit> }) => {
   const unit = p.unit ?? 'kg', each = { ...p.units }, left: Record<string, Unit> = {}

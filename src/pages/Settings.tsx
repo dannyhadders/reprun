@@ -15,7 +15,8 @@ import { pushSupported, ReminderSwitches, RestAlertsButton, useRestAlerts, Whats
 import { CHANGELOG } from '../lib/changelog'
 import { checkForUpdate } from '../components/Update'
 import { Tap } from '../lib/haptic'
-import { ago, date as fmtDate, dropPendingUnit, kg, localISO, plural, shortDate, shown, toKg, unitOf } from '../lib/format'
+import { ago, date as fmtDate, kg, pendingUnits, localISO, plural, shortDate, shown, toKg, unitOf } from '../lib/format'
+import { rememberUnit } from '../lib/session'
 
 declare const __BUILD__: { sha: string; date: string } // vite.config.ts
 
@@ -150,19 +151,21 @@ function UpdateRow() {
   )
 }
 
-/** Exercises switched away from your default unit (from the logger), each with a way back. Saved straight away. */
+/** Exercises switched away from your default unit (from the logger), each with a way back. Includes switches still
+ *  waiting on the phone (no signal yet), and going back waits the same way, so it works offline too. */
 function SwitchedUnits({ onChange }: { onChange: (units: Profile['units']) => void }) {
   const { data, reload } = useData()
+  const [, redraw] = useState(0)
   const def = data.profile.unit ?? 'kg'
-  const list = Object.entries(data.profile.units ?? {}).filter(([, u]) => u !== def)
+  const list = Object.entries({ ...data.profile.units, ...pendingUnits() }).filter(([, u]) => u !== def)
   if (!list.length) return null
   const back = async (key: string) => {
     const units = { ...data.profile.units }
     delete units[key]
-    dropPendingUnit(key) // a switch still on its way from the logger mustn't put it back
     onChange(units)
-    await api('PATCH', 'profile', { units: { [key]: null } })
-    await reload()
+    const sent = rememberUnit(key, def) // pending until the server has it; sent as a removal (lib/session.ts)
+    redraw(n => n + 1)
+    if (await sent) await reload()
   }
   return (
     <div className="mt-5 rounded-2xl border border-line">

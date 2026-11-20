@@ -746,6 +746,16 @@ const CHECKS = {
     await t.expect(t.page.locator('main').getByText(/ lb$/).first(), 'Exercises show lb')
   }],
 
+  'units-pending': ['kg / lb: a switch still waiting on the phone (no signal) is listed in Settings, and Back to kg clears it', async t => {
+    await begin(t, true)
+    await t.page.evaluate(() => localStorage.setItem('reprun.units', JSON.stringify({ 'bench press': 'lb' }))) // what a switch with no signal leaves
+    await settings(t, 'Profile')
+    await t.expect(t.page.getByRole('button', { name: 'Back to kg' }), 'The waiting switch is listed under In lb', 1)
+    await t.page.getByRole('button', { name: 'Back to kg' }).click()
+    await t.expect(t.page.getByRole('button', { name: 'Back to kg' }), 'Back to kg empties the list', 0)
+    await t.expect(null, 'and nothing is left waiting', (await t.page.evaluate(() => localStorage.getItem('reprun.units'))) === null)
+  }],
+
   'workout-edit': ['Edit a past workout (rename, drop a set), then delete it', async t => {
     await begin(t, true)
     await tab(t, '/workouts')
