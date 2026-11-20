@@ -29,6 +29,9 @@ self.addEventListener('activate', e => e.waitUntil((async () => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url)
   if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return
+  // The app's update check (components/Update.tsx) reads the server's index.html; caching that one in this build's
+  // cache would put the next build's page here, whose files aren't, and an offline open would load a blank screen.
+  if (e.request.cache === 'no-store') return
 
   // Every page is the same SPA shell, so all navigations share one cache entry.
   const key = e.request.mode === 'navigate' ? '/' : e.request
